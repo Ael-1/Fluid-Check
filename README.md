@@ -1,4 +1,4 @@
-# FluidCheck 💧
+# FluidCheck: Fluid Intake Tracker
 
 FluidCheck is an Android application designed to help users manage their hydration and nutrition goals using Google's Gemini AI. It provides personalized health recommendations based on user input such as weight, activity level, and environmental conditions.
 
