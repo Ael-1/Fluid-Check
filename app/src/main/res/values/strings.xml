@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Fluid Check</string>
+    <string name="daily_goal">Daily Goal</string>
+    <string name="ml_unit">ml</string>
+    <string name="add_fluid">Add Fluid</string>
+    <string name="history">History</string>
+    <string name="analytics">Analytics</string>
+    <string name="account">Account</string>
+    <string name="today_progress">Today\'s Progress</string>
+    <string name="remaining">remaining</string>
+</resources>
