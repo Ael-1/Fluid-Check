@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "21635365133",
+    "firebase_url": "https://studio-6272596600-598c8-default-rtdb.firebaseio.com",
+    "project_id": "studio-6272596600-598c8",
+    "storage_bucket": "studio-6272596600-598c8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:21635365133:android:cf8c17ceddab43f11e9844",
+        "android_client_info": {
+          "package_name": "com.example.fluidcheck"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEOQpufeEfsKZ_xpPgBR3-UQL-1ritOpc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

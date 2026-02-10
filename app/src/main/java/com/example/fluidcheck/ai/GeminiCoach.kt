@@ -1,13 +1,12 @@
 package com.example.fluidcheck.ai
 
 import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.content
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class GeminiCoach(apiKey: String) {
     private val model = GenerativeModel(
-        modelName = "gemini-1.5-flash",
+        modelName = "gemma-3-12b-it",
         apiKey = apiKey
     )
 
@@ -15,7 +14,7 @@ class GeminiCoach(apiKey: String) {
         weight: String,
         height: String,
         age: String,
-        gender: String,
+        sex: String,
         activity: String,
         environment: String
     ): String? = withContext(Dispatchers.IO) {
@@ -27,7 +26,7 @@ class GeminiCoach(apiKey: String) {
             - Weight: $weight kg
             - Height: $height cm
             - Age: $age
-            - Gender: $gender
+            - Biological Sex: $sex
             - Activity Level: $activity
             - Environment: $environment
             
@@ -36,7 +35,7 @@ class GeminiCoach(apiKey: String) {
 
         try {
             val response = model.generateContent(prompt)
-            response.text?.filter { it.isDigit() }
+            response.text?.trim()
         } catch (e: Exception) {
             null
         }
@@ -46,19 +45,11 @@ class GeminiCoach(apiKey: String) {
         preferences: String,
         habits: String
     ): String? = withContext(Dispatchers.IO) {
-        val prompt = """
-            You are a professional hydration coach. 
-            Give a short, personalized recommendation (max 2 sentences) for what the user should drink next or a hydration tip.
-            
-            User Preferences: $preferences
-            User Habits: $habits
-            
-            Make it encouraging and based on their preferences.
-        """.trimIndent()
+        val prompt = "As a hydration coach, give a short, personalized recommendation (max 2 sentences) based on these preferences: '$preferences' and habits: '$habits'. Make it encouraging."
 
         try {
             val response = model.generateContent(prompt)
-            response.text
+            response.text?.trim()
         } catch (e: Exception) {
             null
         }

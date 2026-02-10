@@ -6,9 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,10 +17,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.fluidcheck.R
+import com.example.fluidcheck.model.ChartData
 import com.example.fluidcheck.ui.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -52,7 +52,7 @@ fun ProgressScreen() {
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "Your Progress",
+            text = stringResource(R.string.your_progress),
             style = MaterialTheme.typography.headlineLarge.copy(
                 fontSize = 32.sp,
                 color = TextDark,
@@ -61,7 +61,7 @@ fun ProgressScreen() {
         )
 
         Text(
-            text = "View your hydration trends over time.",
+            text = stringResource(R.string.progress_subtitle),
             style = MaterialTheme.typography.bodyLarge.copy(
                 color = MutedForeground
             ),
@@ -177,8 +177,8 @@ fun DateNavigationBar(label: String, onPrevious: () -> Unit, onNext: () -> Unit)
         ) {
             IconButton(onClick = onPrevious, modifier = Modifier.size(32.dp)) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                    contentDescription = "Previous",
+                    imageVector = AppIcons.ArrowLeft,
+                    contentDescription = stringResource(R.string.previous),
                     tint = Color(0xFF94A3B8),
                     modifier = Modifier.size(20.dp)
                 )
@@ -186,7 +186,7 @@ fun DateNavigationBar(label: String, onPrevious: () -> Unit, onNext: () -> Unit)
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "VIEWING",
+                    text = stringResource(R.string.viewing),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     color = Color(0xFF94A3B8),
@@ -202,8 +202,8 @@ fun DateNavigationBar(label: String, onPrevious: () -> Unit, onNext: () -> Unit)
 
             IconButton(onClick = onNext, modifier = Modifier.size(32.dp)) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = "Next",
+                    imageVector = AppIcons.ArrowRight,
+                    contentDescription = stringResource(R.string.next),
                     tint = Color(0xFF94A3B8),
                     modifier = Modifier.size(20.dp)
                 )
@@ -348,13 +348,6 @@ fun HydrationLineChart(
         }
     }
 }
-
-data class ChartData(
-    val points: List<Float>,
-    val xLabels: List<String>,
-    val yLabels: List<String>,
-    val maxValue: Float
-)
 
 fun getChartDataForRange(range: String, offset: Int): Pair<String, ChartData> {
     val random = Random(offset + range.hashCode())
