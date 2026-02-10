@@ -4,15 +4,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,17 +17,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fluidcheck.R
-import com.example.fluidcheck.ui.theme.GradientEnd
-import com.example.fluidcheck.ui.theme.GradientMid
-import com.example.fluidcheck.ui.theme.GradientStart
-import com.example.fluidcheck.ui.theme.PrimaryBlue
+import com.example.fluidcheck.ui.theme.*
 
 @Composable
 fun LoginScreen(
@@ -41,6 +34,7 @@ fun LoginScreen(
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var showErrorDialog by remember { mutableStateOf(false) }
     
     val focusManager = LocalFocusManager.current
@@ -72,35 +66,35 @@ fun LoginScreen(
             // Logo Area
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Surface(
-                    modifier = Modifier.size(192.dp),
+                    modifier = Modifier.size(160.dp),
                     shape = RoundedCornerShape(40.dp),
                     color = Color.White.copy(alpha = 0.2f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Image(
-                            painter = painterResource(id = R.drawable.fluid_check_icon),
-                            contentDescription = "App Logo",
-                            modifier = Modifier.size(120.dp)
+                            painter = painterResource(id = AppIcons.AppLogo),
+                            contentDescription = stringResource(R.string.app_name),
+                            modifier = Modifier.size(100.dp)
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "FLUID CHECK",
+                    text = stringResource(R.string.app_name).uppercase(),
                     color = Color.White,
-                    fontSize = 36.sp,
+                    fontSize = 32.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
                 )
                 Text(
-                    text = "Your Smart Hydration Partner",
+                    text = "Smart Fluid Intake Tracker", // Leaving specialized taglines for now or add to strings
                     color = Color.White.copy(alpha = 0.8f),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
                 )
             }
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Glass Form Card
             Surface(
@@ -111,17 +105,17 @@ fun LoginScreen(
                 border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
             ) {
                 Column(
-                    modifier = Modifier.padding(vertical = 40.dp, horizontal = 24.dp),
+                    modifier = Modifier.padding(vertical = 32.dp, horizontal = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Welcome Back",
+                        text = stringResource(R.string.login_welcome),
                         color = Color.White,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Login with your credentials",
+                        text = stringResource(R.string.login_subtitle),
                         color = Color.White.copy(alpha = 0.6f),
                         fontSize = 14.sp
                     )
@@ -129,18 +123,14 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(32.dp))
 
                     // Username Field
-                    val usernameInteractionSource = remember { MutableInteractionSource() }
-                    val isUsernameFocused by usernameInteractionSource.collectIsFocusedAsState()
-                    
                     OutlinedTextField(
                         value = username,
                         onValueChange = { username = it },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
-                        placeholder = { Text("Username", color = Color.White.copy(alpha = 0.5f)) },
-                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(20.dp)) },
-                        interactionSource = usernameInteractionSource,
+                        placeholder = { Text(stringResource(R.string.username_label), color = Color.White.copy(alpha = 0.5f)) },
+                        leadingIcon = { Icon(AppIcons.Person, contentDescription = null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(20.dp)) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = Color.White.copy(alpha = 0.15f),
                             unfocusedContainerColor = Color.White.copy(alpha = 0.1f),
@@ -160,19 +150,21 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Password Field
-                    val passwordInteractionSource = remember { MutableInteractionSource() }
-                    val isPasswordFocused by passwordInteractionSource.collectIsFocusedAsState()
-
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
-                        placeholder = { Text("Password", color = Color.White.copy(alpha = 0.5f)) },
-                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(20.dp)) },
-                        visualTransformation = PasswordVisualTransformation(),
-                        interactionSource = passwordInteractionSource,
+                        placeholder = { Text(stringResource(R.string.password_label), color = Color.White.copy(alpha = 0.5f)) },
+                        leadingIcon = { Icon(AppIcons.Lock, contentDescription = null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(20.dp)) },
+                        trailingIcon = {
+                            val image = if (passwordVisible) AppIcons.Visibility else AppIcons.VisibilityOff
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(imageVector = image, contentDescription = null, tint = Color.White.copy(alpha = 0.6f))
+                            }
+                        },
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = Color.White.copy(alpha = 0.15f),
                             unfocusedContainerColor = Color.White.copy(alpha = 0.1f),
@@ -195,9 +187,9 @@ fun LoginScreen(
                         )
                     )
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    // Submit Button
+                    // Sign In Button
                     Button(
                         onClick = {
                             focusManager.clearFocus()
@@ -212,38 +204,54 @@ fun LoginScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                         shape = RoundedCornerShape(16.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Spacer(modifier = Modifier.weight(1f))
-                            Text(
-                                text = "SIGN IN",
-                                color = PrimaryBlue,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
-                            Spacer(modifier = Modifier.weight(1f))
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = null,
-                                tint = PrimaryBlue,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                        Text(
+                            text = stringResource(R.string.sign_in),
+                            color = PrimaryBlue,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    // Sign Up Link
-                    TextButton(onClick = onSignUpClick) {
+                    // Sign Up Button
+                    OutlinedButton(
+                        onClick = onSignUpClick,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
+                    ) {
                         Text(
-                            text = "Don't have an account? Sign up",
-                            color = Color.White.copy(alpha = 0.7f),
-                            fontSize = 14.sp,
-                            textAlign = TextAlign.Center
+                            text = stringResource(R.string.sign_up),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
                         )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Gmail Button
+                    OutlinedButton(
+                        onClick = { /* Handle Gmail Login */ },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(AppIcons.AccountCircle, contentDescription = null, tint = Color.White)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.gmail_continue),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White
+                            )
+                        }
                     }
                 }
             }
@@ -252,11 +260,11 @@ fun LoginScreen(
         if (showErrorDialog) {
             AlertDialog(
                 onDismissRequest = { showErrorDialog = false },
-                title = { Text(text = "Login Failed") },
-                text = { Text(text = "Invalid username or password. Please try again.") },
+                title = { Text(text = stringResource(R.string.login_failed_title)) },
+                text = { Text(text = stringResource(R.string.login_failed_msg)) },
                 confirmButton = {
                     TextButton(onClick = { showErrorDialog = false }) {
-                        Text("OK")
+                        Text(stringResource(R.string.ok))
                     }
                 },
                 containerColor = Color.White,

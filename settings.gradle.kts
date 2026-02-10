@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Fluid(Check"
+rootProject.name = "FluidCheck"
 include(":app")

@@ -1,6 +1,6 @@
-# AquaTrack: Definitive Android Migration Technical Specification
+# Fluid Check: Definitive Android Migration Technical Specification
 
-This document provides exhaustive structural, visual, and behavioral specifications for translating the Fluid Check (AquaTrack) web prototype into a native Android application using Jetpack Compose and Material 3.
+This document provides exhaustive structural, visual, and behavioral specifications for translating the Fluid Check web prototype into a native Android application using Jetpack Compose and Material 3.
 
 ---
 
@@ -14,141 +14,112 @@ This document provides exhaustive structural, visual, and behavioral specificati
 - **Error**: `#FFEF4444` (Destructive Red)
 - **Success**: `#FF22C55E`
 - **White (High Alpha)**: `#FFFFFFFF`
+- **Progress Lap 1**: `#FFACE6FD` (Light Blue 200)
+- **Progress Lap 2**: `#FF40E6FD` (Vibrant Cyan/Blue)
 
 ### 1.2 Typography (Material 3 Type Tokens)
-- **Display Large (Hero Percentage)**: Poppins Black, 84sp, Tracking -0.02em.
+- **Display Large (Hero Percentage)**: Poppins Black, 68sp, Tracking -0.02em.
 - **Headline Large (Auth Title)**: Poppins Black, 36sp, Tracking -0.05em.
 - **Title Medium (Section Headers)**: Poppins Bold, 22sp.
 - **Title Small (Card Titles)**: Poppins SemiBold, 18sp.
 - **Body Large (Standard)**: PT Sans Regular, 16sp.
 - **Label Large (Buttons)**: PT Sans Bold, 14sp, All-Caps tracking.
 
----
-
-## 2. Authentication Screen (Login/Signup)
-### 2.1 Background Layout
-- **Attributes**: Full-screen `Brush.linearGradient(colors = listOf(#3B82F6, #0EA5E9))`.
-- **Overlay**: Decorative white circles (`alpha = 0.1f`) with `blur(32.dp)` for depth.
-
-### 2.2 Auth Card (Glassmorphic)
-- **Attributes**: `padding(24.dp)`, `RoundedCornerShape(40.dp)`, `border(1.dp, White.copy(0.2f))`, `blur(20.dp)`.
-- **CardHeader**:
-  - `Title`: "Welcome Back", White, Poppins Black.
-  - `Description`: "Login with your credentials", White (60% alpha), PT Sans.
-- **Form Elements**:
-  - **Username/Password Textboxes**:
-    - `Height`: 56.dp.
-    - `Shape`: `RoundedCornerShape(16.dp)`.
-    - `Background`: `White.copy(alpha = 0.1f)`.
-    - `Leading Icon`: `User` / `Lock` vector, White (40% alpha).
-    - `Behavior`: Updates state on each character input.
-  - **Action Button**:
-    - `Background`: `#FFFFFFFF`.
-    - `ContentColor`: `#3B82F6`.
-    - `Label`: "SIGN IN", PT Sans Bold.
-    - `Behavior`: `onClick` validates credentials ('ael'/'1234') -> `setLoggedIn(true)`.
-- **Auth Toggle Button**:
-  - `Attributes`: Transparent button, White text (60% alpha).
-  - `Behavior`: `onClick` toggles `authMode` state between "Login" and "Signup".
+### 1.3 Asset & Text Management (Resource Architecture)
+- **Unified Icons (`AppIcons.kt`)**: 
+    - Centralized semantic naming (e.g., `AppIcons.Streak`).
+    - `AppIcons.Gender` used for biological Sex fields.
+- **Unified Strings (`strings.xml`)**:
+    - Zero hard-coded UI strings.
+    - Placeholder Pattern: Dropdowns use "Select...", Text fields use "Input...".
+- **Text Robustness**:
+    - All labels, inputs, and placeholders must use `maxLines = 1` and `TextOverflow.Ellipsis`.
+    - Prevents UI slicing/stretching on small devices.
+    - Fields must remain a fixed height (`58.dp`) regardless of content length.
 
 ---
 
-## 3. Global Navigation & Layout
-### 3.1 Transparent Header
-- **Attributes**: Height `64.dp`, Background `Color.Transparent`.
-- **Logo Pill**: `RoundedCornerShape(12.dp)`, `PrimaryBlue.copy(0.1f)` background.
-- **Behavior**: Remains fixed at top of all tabs.
-
-### 3.2 Bottom Navigation Bar
-- **Attributes**: Height `110.dp`, `Color.White` background, `0.dp` tonal elevation.
-- **Items**: Home (Home Icon), Progress (BarChart Icon), AI Coach (AutoAwesome Icon), Settings (Settings Icon).
-- **Visual Specifications**:
-  - `Icon Size`: `36.dp`.
-  - `Indicator`: Pill-shaped `PrimaryBlue.copy(alpha = 0.15f)` background behind the active icon.
-  - `Icon Tint`: `PrimaryBlue` when active, `Color.Gray.copy(alpha = 0.6f)` when inactive.
-  - `Labels`: Disabled (`label = null`).
-- **Behavioral Logic**:
-  - `onClick`: Triggers `onNavigate` to the respective route using `navController`.
-  - `Navigation Settings`: `launchSingleTop = true`, `restoreState = true`, and `popUpTo` the start destination.
-
-### 3.3 Floating Action Button (FAB)
-- **Attributes**: `56.dp x 56.dp`, `RoundedCornerShape(16.dp)`, `PrimaryBlue`.
-- **Behavior**: 
-  - **Visibility**: Only `visible` when `activeTab == "Home"`.
-  - `onClick`: Opens "Log New Drink" Bottom Sheet.
+## 2. Onboarding & Setup
+### 2.1 Initial Setup Assistance
+- **Trigger**: New users or forced via debug credentials (`ael/1234`). Controlled by `isSetupComplete` boolean in DataStore.
+- **Data Capture**: Weight, Height, Age, Sex, Activity Level, and Environment.
+- **AI Integration**: Invokes Gemini AI to calculate an ideal hydration goal based on physical data.
+- **Goal Confirmation**: Displays an `AlertDialog` prompting the user to accept the AI-calculated goal or use the system default (3000ml).
+- **Skip Functionality**: Users can "Skip for now", which bypasses physical data entry and sets the daily goal to the 3000ml default.
+- **Reversibility**: Informational text clarifies that settings can be changed later in the app.
 
 ---
 
-## 4. Home Page
-### 4.1 Hero Progress Ring
-- **Attributes**: Diameter `420px`, Stroke `18px`.
-- **Arc Properties**: Background circle `#FFFFFFFF` (15% alpha), Progress arc `Solid White`.
-- **Behavior**: Animates sweep angle based on `(totalIntake / dailyGoal) * 360f`.
+## 3. Authentication Screens
+### 3.1 Global Auth Background
+- **Attributes**: Full-screen `Brush.linearGradient`.
+- **Interactivity**: Tap to clear focus.
 
-### 4.2 Interactive Intake Pill (Edit Goal Trigger)
-- **Attributes**: `RoundedCornerShape(50.dp)`, `White.copy(0.2f)` background, `border(1.dp, White.copy(0.1f))`.
-- **Content**: Intake text ("1,200 / 3,000 ml") + `Edit2` Lucide icon.
-- **Behavior**: `onClick` launches **Update Daily Goal Dialog**.
+### 3.2 Login Screen (LoginScreen.kt)
+- **Credentials**: Validated against hard-coded mock data or local persistence.
+- **Action Buttons**: SIGN IN (Primary), SIGN UP (Outlined), Gmail (Outlined).
 
-### 4.3 Update Daily Goal Dialog (Bottom Sheet Style)
-- **Attributes**: Aligned to bottom, `RoundedCornerShape(top = 24.dp)`.
-- **Input Field**: Large numeric field, `RoundedCornerShape(16.dp)`, autofocus.
-- **Button**: "SAVE CHANGES", `PrimaryBlue`, high-elevation shadow.
-- **Behavior**: `onClick` updates global `dailyGoal` and closes.
-
-### 4.4 Streak Pill
-- **Attributes**: Positioned `16.dp` below progress ring. Glassmorphic.
-- **Content**: Flame icon (Orange) + "12 Day Streak" text.
+### 3.3 Sign Up Screen (SignUpScreen.kt)
+- **Validation**:
+    - Username: `R.string.error_empty_username`.
+    - Email: `R.string.error_invalid_email`.
+    - Password: min 6 chars, `R.string.error_short_password`.
 
 ---
 
-## 5. Progress Page
-### 5.1 Time Range Tabs
-- **Options**: Day, Week, Month, Year.
-- **Properties**: Pill container, white active indicator with `shadow(2.dp)`.
-- **Behavior**: `onClick` resets `navOffset` to 0.
+## 4. Global Navigation & Layout
+### 4.1 UI Components & Responsiveness
+- **Fixed Height Inputs**: Text fields and custom dropdown containers set to `58.dp` or `64.dp` (Home dialog) to ensure box stability.
+- **Adaptive Grid**: Hero section and cards adjust padding based on screen height.
+- **Dropdown Docking**: `ExposedDropdownMenu` must be correctly anchored using `Modifier.menuAnchor()` and `Modifier.exposedDropdownSize()` to appear docked directly below the field without overlaying it.
 
-### 5.2 Date Navigation Bar
-- **Properties**: Pill shape, `SecondaryBlue.copy(0.3f)` background.
-- **Behavior**:
-  - `Arrows`: Increment/Decrement `navOffset`.
-  - `Labels`: "Today" -> "Yesterday" -> "March 15, 2024" (Dynamic formatting).
-
-### 5.3 Chart Components (Unified Line Visuals)
-- **All Views (Daily, Weekly, Monthly, Yearly)**:
-  - **Type**: Line Chart (`monotone` curve).
-  - **Stroke**: `PrimaryBlue`, `3.dp` width.
-  - **Points**: `4.dp` radius white dots with blue borders.
-  - **Behavior**: Displays Tooltip with ml value on long-press/touch.
-  - **Data Mapping**:
-    - Daily: 12AM -> 11PM hourly intervals.
-    - Weekly: Mon -> Sun.
-    - Monthly: Week 1 -> Week 4.
-    - Yearly: Jan -> Dec.
+### 4.2 Floating Action Button (FAB)
+- **Attributes**: `64.dp`, Primary Blue, `AppIcons.Add` icon.
+- **Behavior**: Opens "Log New Drink" sheet with validated Amount and Time fields.
 
 ---
 
-## 6. AI Coach Page
-### 6.1 Smart Goal Setter Card
-- **Layout**: Grid layout for inputs (Weight, Height, Age, Gender, Activity, Environment).
-- **Behavior**: `onClick Calculate` triggers Genkit AI Flow. Displays loading spinner.
-- **Result Box**: Large ml text in a `PrimaryBlue.copy(0.1f)` alert container.
+## 5. User Features (UserRecord Driven)
+### 5.1 Home Page (Hero Progress Ring)
+- **Multi-Lap Progress**: Ring layers for >100% goals.
+- **Recent Logs**: Displays last 5 entries with Edit/Delete capabilities.
+- **Goal Management**: "Update Daily Goal" dialog uses `64.dp` high fields with `18.sp` font size for high visibility.
 
-### 6.2 AI Recommendations Card
-- **Layout**: TextAreas for "Preferences" and "Habits".
-- **Behavior**: `onClick Get Recommendation` calls Genkit. Displays tip with `Lightbulb` icon.
+### 5.2 AI Coach Page
+- **Smart Goal Setter**: Interactive form using `UserRecord` fields.
+- **Goal Application**: Features a "Set as Daily Goal" action that persists the AI-recommended value directly to device storage.
+- **Dropdowns**: Capped at `280.dp` height with internal scrolling to prevent screen overflow.
+- **Validation**: "Calculate" button is disabled or blocked until all mandatory states are resolved.
 
 ---
 
-## 7. Settings Page
-### 7.1 Profile Header
-- **Layout**: Top gradient section.
-- **Elements**: 96dp User Icon, Name Text (Poppins Black), Streak Badge.
+## 6. Admin Dashboard
+### 6.1 User Management
+- **Model**: Uses `UserCredentials` for directory listings (Name, Email, Role, Streak).
+- **Actions**: Edit/Delete icons mapped to `AppIcons`.
 
-### 7.2 Reminders Section
-- **Elements**: `Switch` (Material 3 Toggle) + `DropdownSelect` for frequency.
-- **Behavior**: Toggle state is persistent; Dropdown selection updates notification worker interval.
+---
 
-### 7.3 Logout Section
-- **Attributes**: Full-width Red Button, 14dp height, 24dp corner radius.
-- **Behavior**: `onClick` resets `isLoggedIn` and clears cache.
+## 7. Profile & Information Management
+### 7.1 Edit Profile Screen
+- **UserRecord Section**: Allows updating physical data.
+- **Validation**: "Save Changes" blocked if fields are blank or set to selection placeholders.
+- **Consistency**: Uses same `ResponsiveEditField` and `ResponsiveDropdownField` components as Initial Setup.
+
+---
+
+## 8. Architecture & Data Management
+### 8.1 Package Organization
+- `com.example.fluidcheck.ui`: Composables and screen logic.
+- `com.example.fluidcheck.model`: Data classes (`UserCredentials`, `UserRecord`, `FluidLog`).
+- `com.example.fluidcheck.repository`: Local persistence and data logic.
+
+### 8.2 Local Persistence (DataStore)
+- **Implementation**: `androidx.datastore:datastore-preferences`.
+- **Scope**: Stores `UserRecord` (physical data), `dailyGoal`, and `isSetupComplete` status indexed by username.
+- **Reactivity**: Uses Kotlin `Flow` to provide real-time updates to the UI when preferences change.
+
+### 8.3 AI Integration
+- **Service**: `GeminiCoach.kt` utilizing `GenerativeModel`.
+- **Connectivity**: Requires internet connection; provides fallback error handling ("Check connection") if offline.
+- **Context**: Prompts explicitly reference "Biological Sex" for clinical accuracy in hydration modeling.

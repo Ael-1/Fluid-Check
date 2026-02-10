@@ -1,36 +1,39 @@
 package com.example.fluidcheck.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.fluidcheck.R
 import com.example.fluidcheck.ui.theme.*
 
 @Composable
-fun SettingsScreen(onLogout: () -> Unit = {}) {
+fun SettingsScreen(
+    isAdmin: Boolean = false,
+    onLogout: () -> Unit = {},
+    onEditProfile: () -> Unit = {},
+    onAboutDeveloper: () -> Unit = {}
+) {
     val scrollState = rememberScrollState()
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text(text = "Sign Out", fontWeight = FontWeight.Bold) },
-            text = { Text(text = "Are you sure you want to sign out?") },
+            title = { Text(text = stringResource(R.string.sign_out), fontWeight = FontWeight.Bold) },
+            text = { Text(text = stringResource(R.string.sign_out_confirm_msg)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -38,12 +41,12 @@ fun SettingsScreen(onLogout: () -> Unit = {}) {
                         onLogout()
                     }
                 ) {
-                    Text("SIGN OUT", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.sign_out), color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("CANCEL", color = TextDark)
+                    Text(stringResource(R.string.cancel), color = TextDark)
                 }
             },
             containerColor = Color.White,
@@ -60,19 +63,45 @@ fun SettingsScreen(onLogout: () -> Unit = {}) {
         Spacer(modifier = Modifier.height(16.dp))
 
         // 7.1 Profile Header
-        ProfileHeader()
+        if (isAdmin) {
+            AdminProfileHeader(onEditProfile = onEditProfile)
+        } else {
+            ProfileHeader(onEditProfile = onEditProfile)
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 7.2 Reminders Section
-        SmartRemindersSection()
+        // 7.2 Reminders Section (Only for Users)
+        if (!isAdmin) {
+            SmartRemindersSection()
+            Spacer(modifier = Modifier.height(24.dp))
+        }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // System Status Section (from visual reference)
-        SystemStatusSection()
+        // System Status Section
+        SystemStatusSection(isAdmin = isAdmin)
 
         Spacer(modifier = Modifier.height(32.dp))
+
+        // 7.4 About Developer Button
+        OutlinedButton(
+            onClick = onAboutDeveloper,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
+        ) {
+            Icon(AppIcons.Info, contentDescription = null, tint = TextDark)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = stringResource(R.string.about_developer),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                color = TextDark
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // 7.3 Logout Section
         Button(
@@ -84,19 +113,31 @@ fun SettingsScreen(onLogout: () -> Unit = {}) {
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
         ) {
             Text(
-                text = "SIGN OUT",
+                text = stringResource(R.string.sign_out),
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 color = Color.White
             )
         }
 
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Footer
+        Text(
+            text = stringResource(R.string.rights_reserved),
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            fontSize = 12.sp,
+            color = MutedForeground,
+            fontWeight = FontWeight.Medium
+        )
+
         Spacer(modifier = Modifier.height(48.dp))
     }
 }
 
 @Composable
-fun ProfileHeader() {
+fun ProfileHeader(onEditProfile: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
@@ -105,7 +146,6 @@ fun ProfileHeader() {
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
     ) {
         Column {
-            // Top Gradient/Blue section
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -114,7 +154,6 @@ fun ProfileHeader() {
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    // User Icon in White Circle
                     Surface(
                         modifier = Modifier.size(96.dp),
                         shape = CircleShape,
@@ -123,7 +162,7 @@ fun ProfileHeader() {
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                imageVector = Icons.Outlined.Person,
+                                imageVector = AppIcons.PersonOutline,
                                 contentDescription = null,
                                 modifier = Modifier.size(48.dp),
                                 tint = PrimaryBlue
@@ -142,7 +181,6 @@ fun ProfileHeader() {
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    // Streak Badge
                     Surface(
                         color = Color.White,
                         shape = RoundedCornerShape(16.dp),
@@ -153,7 +191,7 @@ fun ProfileHeader() {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Default.LocalFireDepartment,
+                                imageVector = AppIcons.Streak,
                                 contentDescription = null,
                                 tint = Color(0xFFFF9800),
                                 modifier = Modifier.size(24.dp)
@@ -161,13 +199,13 @@ fun ProfileHeader() {
                             Spacer(modifier = Modifier.width(10.dp))
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "STREAK",
+                                    text = "STREAK", // Keeping "STREAK" hardcoded or can be added to strings
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MutedForeground
                                 )
                                 Text(
-                                    text = "12 Days",
+                                    text = "12 Days", // Mock data
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = PrimaryBlue
@@ -178,14 +216,13 @@ fun ProfileHeader() {
                 }
             }
             
-            // Bottom White section with Edit Button
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(24.dp)
             ) {
                 OutlinedButton(
-                    onClick = { /* Edit Profile */ },
+                    onClick = onEditProfile,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
@@ -193,7 +230,83 @@ fun ProfileHeader() {
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
                 ) {
                     Text(
-                        text = "Edit Profile",
+                        text = stringResource(R.string.edit_profile),
+                        color = TextDark,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AdminProfileHeader(onEditProfile: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(40.dp),
+        color = Color.White,
+        shadowElevation = 2.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(PrimaryBlue.copy(alpha = 0.12f))
+                    .padding(vertical = 40.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Surface(
+                        modifier = Modifier.size(110.dp),
+                        shape = CircleShape,
+                        color = Color.White,
+                        shadowElevation = 12.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = AppIcons.PersonOutline,
+                                contentDescription = null,
+                                modifier = Modifier.size(56.dp),
+                                tint = PrimaryBlue
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(20.dp))
+                    
+                    Text(
+                        text = "Administrator",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Black,
+                        color = TextDark
+                    )
+                    Text(
+                        text = "SYSTEM OVERSEER",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MutedForeground,
+                        letterSpacing = 1.sp
+                    )
+                }
+            }
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onEditProfile,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
+                ) {
+                    Text(
+                        text = stringResource(R.string.edit_profile),
                         color = TextDark,
                         fontWeight = FontWeight.Medium
                     )
@@ -206,9 +319,9 @@ fun ProfileHeader() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartRemindersSection() {
-    var remindersEnabled by remember { mutableStateOf(false) }
-    var frequency by remember { mutableStateOf("Every 1 hour") }
-    var expanded by remember { mutableStateOf(false) }
+    var remindersEnabled by mutableStateOf(false)
+    var frequency by mutableStateOf("Every 1 hour")
+    var expanded by mutableStateOf(false)
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -219,13 +332,13 @@ fun SmartRemindersSection() {
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Text(
-                text = "Smart Reminders",
+                text = stringResource(R.string.smart_reminders),
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextDark
             )
             Text(
-                text = "Stay on track with gentle nudges.",
+                text = stringResource(R.string.reminders_subtitle),
                 fontSize = 14.sp,
                 color = MutedForeground,
                 modifier = Modifier.padding(top = 4.dp)
@@ -233,7 +346,6 @@ fun SmartRemindersSection() {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Enable Reminders Row
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
@@ -246,14 +358,14 @@ fun SmartRemindersSection() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Notifications,
+                        imageVector = AppIcons.Notifications,
                         contentDescription = null,
                         tint = PrimaryBlue,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "Enable Reminders",
+                        text = stringResource(R.string.enable_reminders),
                         fontSize = 16.sp,
                         color = TextDark,
                         modifier = Modifier.weight(1f)
@@ -275,7 +387,7 @@ fun SmartRemindersSection() {
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text = "Reminder Frequency",
+                text = stringResource(R.string.reminder_frequency),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = TextDark
@@ -283,7 +395,6 @@ fun SmartRemindersSection() {
             
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Frequency Dropdown
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = { expanded = !expanded },
@@ -323,7 +434,7 @@ fun SmartRemindersSection() {
 }
 
 @Composable
-fun SystemStatusSection() {
+fun SystemStatusSection(isAdmin: Boolean) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
@@ -334,14 +445,14 @@ fun SystemStatusSection() {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Outlined.Notifications, // Image shows a bell icon
+                    imageVector = if (isAdmin) AppIcons.Admin else AppIcons.Notifications,
                     contentDescription = null,
                     tint = PrimaryBlue,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = "System Status",
+                    text = stringResource(R.string.system_status),
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextDark
@@ -355,8 +466,7 @@ fun SystemStatusSection() {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(text = "Auto-Sync Data", fontSize = 16.sp, color = TextDark)
-                // Green dot
+                Text(text = stringResource(R.string.auto_sync), fontSize = 16.sp, color = TextDark)
                 Box(
                     modifier = Modifier
                         .size(8.dp)
@@ -371,8 +481,8 @@ fun SystemStatusSection() {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(text = "Cloud Backup", fontSize = 16.sp, color = TextDark)
-                Text(text = "Enabled", fontSize = 14.sp, color = MutedForeground)
+                Text(text = stringResource(R.string.cloud_backup), fontSize = 16.sp, color = TextDark)
+                Text(text = stringResource(R.string.enabled), fontSize = 14.sp, color = MutedForeground)
             }
         }
     }
