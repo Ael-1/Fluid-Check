@@ -1,6 +1,7 @@
 package com.example.fluidcheck
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -14,13 +15,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.fluidcheck.model.UserRecord
+import com.example.fluidcheck.repository.AuthRepository
+import com.example.fluidcheck.repository.FirestoreRepository
 import com.example.fluidcheck.repository.UserPreferencesRepository
 import com.example.fluidcheck.ui.MainScreen
 import com.example.fluidcheck.ui.auth.LoginScreen
 import com.example.fluidcheck.ui.auth.SignUpScreen
 import com.example.fluidcheck.ui.screens.InitialSetupScreen
-import com.example.fluidcheck.ui.theme.AquaTrackTheme
+import com.example.fluidcheck.ui.theme.FluidCheckTheme
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,99 +32,127 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            AquaTrackTheme {
+            FluidCheckTheme {
                 val context = LocalContext.current
-                val repository = remember { UserPreferencesRepository(context) }
+                val authRepository = remember { AuthRepository() }
+                val firestoreRepository = remember { FirestoreRepository() }
                 val scope = rememberCoroutineScope()
 
-                var isLoggedIn by rememberSaveable { mutableStateOf(false) }
+                var isLoggedIn by rememberSaveable { mutableStateOf(authRepository.isUserLoggedIn()) }
                 var isAdmin by rememberSaveable { mutableStateOf(false) }
-                var username by rememberSaveable { mutableStateOf("") }
-                var currentAuthScreen by rememberSaveable { mutableStateOf("login") } // "login" or "signup"
+                var userEmail by rememberSaveable { mutableStateOf(authRepository.currentUser?.email ?: "") }
+                var currentAuthScreen by rememberSaveable { mutableStateOf("login") }
                 
                 var isSetupComplete by remember { mutableStateOf(false) }
                 var isCheckingSetup by remember { mutableStateOf(false) }
-                
-                // DEBUG FLAG: Set to true when 'ael' signs in to force setup visualization
-                var debugForceSetup by rememberSaveable { mutableStateOf(false) }
 
-                // Check for setup completion when logged in
-                LaunchedEffect(isLoggedIn, username) {
-                    if (isLoggedIn && !isAdmin && username.isNotEmpty()) {
+                LaunchedEffect(isLoggedIn, authRepository.currentUser?.uid) {
+                    if (isLoggedIn) {
                         isCheckingSetup = true
-                        repository.isSetupComplete(username).collect { complete ->
-                            isSetupComplete = complete
-                            isCheckingSetup = false
-                        }
-                    } else {
-                        isSetupComplete = false
+                        val record = firestoreRepository.getUserRecord(authRepository.currentUser?.uid ?: "")
+                        // Use the setupCompleted flag to determine if we should show the setup screen
+                        isSetupComplete = record?.setupCompleted ?: false
+                        isCheckingSetup = false
                     }
                 }
 
                 if (!isLoggedIn) {
                     when (currentAuthScreen) {
                         "login" -> LoginScreen(
-                            onSignInClick = { u, p ->
-                                if (u == "ael" && p == "1234") {
-                                    username = u
-                                    isLoggedIn = true
-                                    isAdmin = false
-                                    debugForceSetup = true // Force setup for debugging
-                                    true
-                                } else if (u == "admin" && p == "admin") {
-                                    username = u
-                                    isLoggedIn = true
-                                    isAdmin = true
-                                    true
-                                } else {
-                                    false
+                            onSignInClick = { identifier, password ->
+                                scope.launch {
+                                    val email = if (identifier.contains("@")) {
+                                        identifier
+                                    } else {
+                                        firestoreRepository.getEmailFromUsername(identifier)
+                                    }
+
+                                    if (email == null) {
+                                        Toast.makeText(context, "User not found", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        val result = authRepository.signIn(email, password)
+                                        if (result.isSuccess) {
+                                            userEmail = email
+                                            isLoggedIn = true
+                                        } else {
+                                            Toast.makeText(context, "Login Failed: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
                                 }
+                                true
                             },
-                            onSignUpClick = {
-                                currentAuthScreen = "signup"
-                            }
+                            onSignUpClick = { currentAuthScreen = "signup" }
                         )
                         "signup" -> SignUpScreen(
-                            onSignUpSuccess = {
-                                username = "new_user"
-                                isLoggedIn = true
-                                isAdmin = false
+                            onSignUpSuccessWithDetails = { username, email, password ->
+                                scope.launch {
+                                    val result = authRepository.signUp(email, password)
+                                    if (result.isSuccess) {
+                                        val userId = authRepository.currentUser?.uid ?: return@launch
+                                        // Store email in user document for username login lookup
+                                        val userRecord = UserRecord() // Empty record for now, filled in setup
+                                        firestoreRepository.saveUserRecord(userId, userRecord, username)
+                                        // Also update the document with email
+                                        try {
+                                            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                                .collection("users").document(userId)
+                                                .update("email", email).await()
+                                        } catch (e: Exception) {
+                                            // Handle case where document might not exist yet if saveUserRecord failed
+                                            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                                .collection("users").document(userId)
+                                                .set(mapOf("email" to email, "username" to username), com.google.firebase.firestore.SetOptions.merge())
+                                        }
+                                        
+                                        userEmail = email
+                                        isLoggedIn = true
+                                    } else {
+                                        Toast.makeText(context, "Sign Up Failed: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             },
-                            onBackToLogin = {
-                                currentAuthScreen = "login"
-                            }
+                            onBackToLogin = { currentAuthScreen = "login" }
                         )
                     }
                 } else if (isCheckingSetup) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = com.example.fluidcheck.ui.theme.PrimaryBlue)
                     }
-                } else if (!isAdmin && (!isSetupComplete || debugForceSetup)) {
+                } else if (!isSetupComplete) {
                     InitialSetupScreen(
                         onComplete = { record, dailyGoal ->
                             scope.launch {
-                                if (!record.isEmpty()) {
-                                    repository.saveUserRecord(username, record)
+                                try {
+                                    val userId = authRepository.currentUser?.uid ?: return@launch
+                                    // Get the current username to preserve it
+                                    val doc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                        .collection("users").document(userId).get().await()
+                                    val username = doc.getString("username") ?: ""
+                                    
+                                    firestoreRepository.saveUserRecord(userId, record, username)
+                                    if (dailyGoal != null) {
+                                        firestoreRepository.saveDailyGoal(userId, dailyGoal)
+                                    }
+                                    isSetupComplete = true
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Error saving setup: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    // If saving failed, we still want the user to be able to use the app if possible, 
+                                    // or at least stay on the setup screen to try again.
+                                    // For "Skip for now", we might want to force completion anyway if we want to bypass errors.
                                 }
-                                if (dailyGoal != null) {
-                                    repository.saveDailyGoal(username, dailyGoal)
-                                }
-                                repository.setSetupComplete(username, true)
-                                debugForceSetup = false // Reset debug flag once complete
                             }
                         }
                     )
                 } else {
                     MainScreen(
-                        username = username,
+                        username = userEmail.split("@")[0], // Fallback display name
                         isAdmin = isAdmin,
                         onLogout = { 
+                            authRepository.signOut()
                             isLoggedIn = false
-                            isAdmin = false
-                            username = ""
+                            userEmail = ""
                             currentAuthScreen = "login"
                             isSetupComplete = false
-                            debugForceSetup = false
                         }
                     )
                 }

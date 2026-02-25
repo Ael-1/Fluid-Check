@@ -68,9 +68,18 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation("androidx.navigation:navigation-compose:2.9.7")
     implementation("androidx.compose.material:material-icons-extended")
-    implementation(platform("com.google.firebase:firebase-bom:34.9.0"))
+
+    // Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-analytics")
-    
+
+    // Firebase SDK
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+
+    // Firebase Authentication
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+
     // DataStore
     implementation(libs.androidx.datastore.preferences)
     

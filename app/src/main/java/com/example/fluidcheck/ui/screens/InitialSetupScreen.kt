@@ -68,7 +68,7 @@ fun InitialSetupScreen(
                     onClick = {
                         val goal = showGoalDialog?.filter { it.isDigit() }?.toIntOrNull()
                         onComplete(
-                            UserRecord(weight, height, age, sex, activity, environment),
+                            UserRecord(weight, height, age, sex, activity, environment, setupCompleted = true),
                             goal
                         )
                     },
@@ -81,7 +81,7 @@ fun InitialSetupScreen(
                 TextButton(
                     onClick = {
                         onComplete(
-                            UserRecord(weight, height, age, sex, activity, environment),
+                            UserRecord(weight, height, age, sex, activity, environment, setupCompleted = true),
                             3000 // Explicitly use 3000ml as requested
                         )
                     }
@@ -239,7 +239,7 @@ fun InitialSetupScreen(
                                         showGoalDialog = goal
                                     } else {
                                         onComplete(
-                                            UserRecord(weight, height, age, sex, activity, environment),
+                                            UserRecord(weight, height, age, sex, activity, environment, setupCompleted = true),
                                             3000
                                         )
                                     }
@@ -264,7 +264,7 @@ fun InitialSetupScreen(
                     
                     TextButton(
                         onClick = {
-                            onComplete(UserRecord(), 3000)
+                            onComplete(UserRecord(setupCompleted = true), 3000)
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {

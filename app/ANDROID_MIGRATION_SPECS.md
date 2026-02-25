@@ -15,7 +15,7 @@ This document provides exhaustive structural, visual, and behavioral specificati
 - **Success**: `#FF22C55E`
 - **White (High Alpha)**: `#FFFFFFFF`
 - **Progress Lap 1**: `#FFACE6FD` (Light Blue 200)
-- **Progress Lap 2**: `#FF40E6FD` (Vibrant Cyan/Blue)
+- **Progress Lap 2 / Glow Cyan**: `#FF40E6FD` (Vibrant Cyan)
 
 ### 1.2 Typography (Material 3 Type Tokens)
 - **Display Large (Hero Percentage)**: Poppins Black, 68sp, Tracking -0.02em.
@@ -81,7 +81,15 @@ This document provides exhaustive structural, visual, and behavioral specificati
 
 ## 5. User Features (UserRecord Driven)
 ### 5.1 Home Page (Hero Progress Ring)
-- **Multi-Lap Progress**: Ring layers for >100% goals.
+- **Infinite Progress Architecture**: 
+    - Supports unlimited laps using alternating colors (Lap 1: `#ACE6FD`, Lap 2+: `#40E6FD`).
+    - Base layers use `drawCircle` for solid fills, active layers use `drawArc` with `StrokeCap.Round`.
+    - Artifact Prevention: Head shadow shadows and round caps are hidden at exactly 0% or 100% to prevent starting-point dots.
+- **Achievement State (Ring Closed)**:
+    - Trigger: `totalIntake >= dailyGoal`.
+    - Metrics card transforms into a **Radiating Achievement Card**.
+    - Visuals: Intensive Cyan (`#40E6FD`) outer glow, 30dp pulse spread, and radiant border stroke.
+    - Text: Switches from "Remaining Intake" to "PROGRESS RING CLOSED!".
 - **Recent Logs**: Displays last 5 entries with Edit/Delete capabilities.
 - **Goal Management**: "Update Daily Goal" dialog uses `64.dp` high fields with `18.sp` font size for high visibility.
 

@@ -7,14 +7,15 @@ FluidCheck is an Android application designed to help users manage their hydrati
 - **Smart Hydration Coach:** AI-driven personalized recommendations based on your preferences and habits.
 - **Fluid Logging:** Track your daily fluid intake with various drink types.
 - **Progress Tracking:** Monitor your hydration trends over time with an interactive UI.
-- **User Authentication:** Secure login and sign-up (Firebase integration).
-- **Modern UI:** Beautiful, responsive interface built entirely with Jetpack Compose.
+- **Firebase Authentication:** Secure login and sign-up using Firebase Auth, including username-based lookup.
+- **Cloud Persistence (Implemented):** Ready for Cloud Firestore to store User records, hydration goals, and fluid logs (Requires backend setup).
+- **Modern UI:** Beautiful, responsive interface built entirely with Jetpack Compose following Material 3 guidelines.
 
 ## 🛠 Tech Stack
 - **Language:** [Kotlin](https://kotlinlang.org/)
 - **UI Framework:** [Jetpack Compose](https://developer.android.com/compose)
 - **AI Integration:** [Google Generative AI SDK (Gemini)](https://ai.google.dev/)
-- **Backend/Services:** [Firebase](https://firebase.google.com/) (Analytics, Google Services)
+- **Backend/Services:** [Firebase](https://firebase.google.com/) (Authentication, Firestore, Analytics)
 - **Local Storage:** [DataStore](https://developer.android.com/topic/libraries/architecture/datastore) (Preferences)
 - **Dependency Management:** Gradle Version Catalog (libs.versions.toml)
 
@@ -37,6 +38,7 @@ FluidCheck is an Android application designed to help users manage their hydrati
 
 4. **Firebase Setup:**
    - Create a new project in the [Firebase Console](https://console.firebase.google.com/).
+   - Enable **Authentication** (Email/Password) and **Cloud Firestore**.
    - Add an Android app with the package name `com.example.fluidcheck`.
    - Download the `google-services.json` file and place it in the `app/` directory.
 
@@ -47,8 +49,8 @@ FluidCheck is an Android application designed to help users manage their hydrati
 - [x] Basic UI Layout & Navigation
 - [x] Gemini AI Integration (Goal calculation & recommendations)
 - [x] Fluid Intake Logging
-- [x] Local Storage for User Records
-- [x] Firebase Analytics Integration
+- [x] Firebase Authentication (Login/Signup)
+- [ ] Cloud Firestore Setup (Code implemented, waiting for database activation)
 - [ ] Daily notification reminders
 - [ ] Detailed Analytics Dashboard
 

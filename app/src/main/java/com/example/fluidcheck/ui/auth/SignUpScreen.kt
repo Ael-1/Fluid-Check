@@ -28,7 +28,7 @@ import com.example.fluidcheck.ui.theme.*
 
 @Composable
 fun SignUpScreen(
-    onSignUpSuccess: () -> Unit,
+    onSignUpSuccessWithDetails: (String, String, String) -> Unit,
     onBackToLogin: () -> Unit
 ) {
     val context = LocalContext.current
@@ -241,7 +241,7 @@ fun SignUpScreen(
                     Button(
                         onClick = {
                             if (validateInputs()) {
-                                onSignUpSuccess()
+                                onSignUpSuccessWithDetails(username, email, password)
                             }
                         },
                         modifier = Modifier

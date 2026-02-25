@@ -2,11 +2,7 @@ package com.example.fluidcheck.repository
 
 import android.content.Context
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.fluidcheck.model.UserRecord
 import kotlinx.coroutines.flow.Flow
@@ -17,14 +13,18 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "us
 class UserPreferencesRepository(private val context: Context) {
     
     private object PreferencesKeys {
-        fun weightKey(username: String) = stringPreferencesKey("${username}_weight")
-        fun heightKey(username: String) = stringPreferencesKey("${username}_height")
-        fun ageKey(username: String) = stringPreferencesKey("${username}_age")
-        fun sexKey(username: String) = stringPreferencesKey("${username}_sex")
-        fun activityKey(username: String) = stringPreferencesKey("${username}_activity")
-        fun environmentKey(username: String) = stringPreferencesKey("${username}_environment")
-        fun dailyGoalKey(username: String) = intPreferencesKey("${username}_daily_goal")
-        fun setupCompleteKey(username: String) = booleanPreferencesKey("${username}_setup_complete")
+        // Sanitize keys to ensure they only contain alphanumeric characters and underscores
+        // This prevents crashes with usernames/emails containing dots, @, etc.
+        private fun sanitize(key: String): String = key.replace(Regex("[^a-zA-Z0-9_]"), "_")
+
+        fun weightKey(username: String) = stringPreferencesKey(sanitize("${username}_weight"))
+        fun heightKey(username: String) = stringPreferencesKey(sanitize("${username}_height"))
+        fun ageKey(username: String) = stringPreferencesKey(sanitize("${username}_age"))
+        fun sexKey(username: String) = stringPreferencesKey(sanitize("${username}_sex"))
+        fun activityKey(username: String) = stringPreferencesKey(sanitize("${username}_activity"))
+        fun environmentKey(username: String) = stringPreferencesKey(sanitize("${username}_environment"))
+        fun dailyGoalKey(username: String) = intPreferencesKey(sanitize("${username}_daily_goal"))
+        fun setupCompleteKey(username: String) = booleanPreferencesKey(sanitize("${username}_setup_complete"))
     }
 
     fun getUserRecord(username: String): Flow<UserRecord> = context.dataStore.data.map { preferences ->
@@ -34,7 +34,8 @@ class UserPreferencesRepository(private val context: Context) {
             age = preferences[PreferencesKeys.ageKey(username)] ?: "",
             sex = preferences[PreferencesKeys.sexKey(username)] ?: "",
             activity = preferences[PreferencesKeys.activityKey(username)] ?: "",
-            environment = preferences[PreferencesKeys.environmentKey(username)] ?: ""
+            environment = preferences[PreferencesKeys.environmentKey(username)] ?: "",
+            setupCompleted = preferences[PreferencesKeys.setupCompleteKey(username)] ?: false
         )
     }
 
@@ -46,8 +47,7 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.sexKey(username)] = record.sex
             preferences[PreferencesKeys.activityKey(username)] = record.activity
             preferences[PreferencesKeys.environmentKey(username)] = record.environment
-            // If any record is saved, we consider setup as complete (even if skipped with empty record)
-            preferences[PreferencesKeys.setupCompleteKey(username)] = true
+            preferences[PreferencesKeys.setupCompleteKey(username)] = record.setupCompleted
         }
     }
 

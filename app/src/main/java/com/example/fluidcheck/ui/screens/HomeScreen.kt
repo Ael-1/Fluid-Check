@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -39,6 +40,7 @@ import com.example.fluidcheck.ui.theme.*
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.floor
 
 @Composable
 fun HomeScreen(
@@ -203,7 +205,7 @@ fun LazyItemScope.HeroSection(
             StreakPill(days = 12)
             
             Spacer(modifier = Modifier.height(20.dp))
-            MetricsGrid(remaining = (dailyGoal - totalIntake).coerceAtLeast(0))
+            MetricsGrid(remaining = (dailyGoal - totalIntake).coerceAtLeast(0), isClosed = totalIntake >= dailyGoal)
         }
     }
 }
@@ -291,67 +293,75 @@ fun HeroProgressRing(
             val innerSize = size.copy(width = size.width - strokeWidthPx, height = size.height - strokeWidthPx)
             val topLeft = Offset(strokeWidthPx / 2, strokeWidthPx / 2)
 
-            drawArc(
+            // Background ring (always visible)
+            drawCircle(
                 color = Color.White.copy(alpha = 0.15f),
-                startAngle = 0f,
-                sweepAngle = 360f,
-                useCenter = false,
-                topLeft = topLeft,
-                size = innerSize,
-                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+                radius = innerSize.width / 2,
+                center = center,
+                style = Stroke(width = strokeWidthPx)
             )
 
             val lap1Color = Color(0xFFACE6FD)
-            drawArc(
-                color = lap1Color,
-                startAngle = -90f,
-                sweepAngle = 360f * animatedProgress.coerceIn(0f, 1f),
-                useCenter = false,
-                topLeft = topLeft,
-                size = innerSize,
-                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
-            )
+            val lap2Color = Color(0xFF40E6FD)
 
-            if (animatedProgress > 1f) {
-                val overflowSweep = 360f * (animatedProgress - 1f).coerceIn(0f, 1f)
-                val lap2Color = Color(0xFF40E6FD)
+            val numFullLaps = animatedProgress.toInt()
+            val currentLapProgress = animatedProgress % 1f
 
+            // Draw the base (the last full lap if we are on lap 2 or more)
+            if (numFullLaps > 0) {
+                val baseColor = if (numFullLaps % 2 == 1) lap1Color else lap2Color
+                drawCircle(
+                    color = baseColor,
+                    radius = innerSize.width / 2,
+                    center = center,
+                    style = Stroke(width = strokeWidthPx)
+                )
+            }
+
+            // Draw the current partial lap
+            val activeColor = if (numFullLaps % 2 == 0) lap1Color else lap2Color
+            val sweepAngle = 360f * currentLapProgress
+
+            if (sweepAngle > 0f) {
                 drawArc(
-                    color = lap2Color,
+                    color = activeColor,
                     startAngle = -90f,
-                    sweepAngle = overflowSweep,
+                    sweepAngle = sweepAngle,
                     useCenter = false,
                     topLeft = topLeft,
                     size = innerSize,
                     style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
                 )
 
-                drawIntoCanvas { canvas ->
-                    val paint = androidx.compose.ui.graphics.Paint().asFrameworkPaint().apply {
-                        isAntiAlias = true
-                        style = android.graphics.Paint.Style.STROKE
-                        strokeWidth = strokeWidthPx
-                        strokeCap = android.graphics.Paint.Cap.ROUND
-                        color = lap2Color.toArgb()
-                        setShadowLayer(
-                            12.dp.toPx(), 
-                            0f, 0f, 
-                            Color.Black.copy(alpha = 0.5f).toArgb()
+                // Head shadow effect - Only draw if not closed and not too small to avoid the "circle at start"
+                if (sweepAngle < 359f && sweepAngle > 1f) {
+                    drawIntoCanvas { canvas ->
+                        val paint = androidx.compose.ui.graphics.Paint().asFrameworkPaint().apply {
+                            isAntiAlias = true
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = strokeWidthPx
+                            strokeCap = android.graphics.Paint.Cap.ROUND
+                            color = activeColor.toArgb()
+                            setShadowLayer(
+                                12.dp.toPx(), 
+                                0f, 0f, 
+                                Color.Black.copy(alpha = 0.5f).toArgb()
+                            )
+                        }
+
+                        val rect = android.graphics.RectF(
+                            topLeft.x, topLeft.y, 
+                            topLeft.x + innerSize.width, topLeft.y + innerSize.height
+                        )
+
+                        canvas.nativeCanvas.drawArc(
+                            rect,
+                            -90f + sweepAngle - 0.1f,
+                            0.1f,
+                            false,
+                            paint
                         )
                     }
-
-                    val rect = android.graphics.RectF(
-                        topLeft.x, topLeft.y, 
-                        topLeft.x + innerSize.width, topLeft.y + innerSize.height
-                    )
-
-                    canvas.nativeCanvas.drawArc(
-                        rect,
-                        -90f + overflowSweep - 0.1f,
-                        0.1f,
-                        false,
-                        paint
-                    )
                 }
             }
 
@@ -399,7 +409,7 @@ fun HeroProgressRing(
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(verticalAlignment = Alignment.Bottom) {
-                val displayedPercentage = (animatedProgress.coerceAtMost(1f) * 100).toInt()
+                val displayedPercentage = (animatedProgress * 100).toInt()
                 Text(
                     text = displayedPercentage.toString(),
                     fontSize = 68.sp,
@@ -674,7 +684,7 @@ fun UpdateDailyGoalDialog(
 }
 
 @Composable
-fun MetricsGrid(remaining: Int) {
+fun MetricsGrid(remaining: Int, isClosed: Boolean) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -682,9 +692,10 @@ fun MetricsGrid(remaining: Int) {
         contentAlignment = Alignment.Center
     ) {
         MetricCard(
-            label = stringResource(R.string.remaining_intake),
-            value = "%,d".format(remaining),
+            label = if (isClosed) stringResource(R.string.progress_ring_closed) else stringResource(R.string.remaining_intake),
+            value = if (isClosed) "0" else "%,d".format(remaining),
             unit = stringResource(R.string.ml_unit),
+            isHighlighted = isClosed,
             modifier = Modifier.fillMaxWidth(0.9f)
         )
     }
@@ -696,12 +707,79 @@ fun MetricCard(
     value: String,
     unit: String? = null,
     icon: ImageVector? = null,
+    isHighlighted: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "GlowTransition")
+    
+    // Pulse glow opacity
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 0.9f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "GlowAlpha"
+    )
+
+    // Pulse glow size
+    val glowSpread by infiniteTransition.animateFloat(
+        initialValue = 10f,
+        targetValue = 30f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "GlowSpread"
+    )
+
+    val glowColor = Color(0xFF40E6FD) // Intense Cyan
+
     Surface(
-        color = Color.White.copy(alpha = 0.15f),
+        color = if (isHighlighted) Color.White.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.15f),
         shape = RoundedCornerShape(24.dp),
-        modifier = modifier
+        modifier = modifier.then(
+            if (isHighlighted) {
+                Modifier.drawBehind {
+                    drawIntoCanvas { canvas ->
+                        val paint = androidx.compose.ui.graphics.Paint().asFrameworkPaint().apply {
+                            isAntiAlias = true
+                            style = android.graphics.Paint.Style.FILL
+                            color = android.graphics.Color.TRANSPARENT
+                            setShadowLayer(
+                                glowSpread.dp.toPx(),
+                                0f, 0f,
+                                glowColor.copy(alpha = glowAlpha).toArgb()
+                            )
+                        }
+                        val rect = android.graphics.RectF(
+                            0f, 0f,
+                            size.width, size.height
+                        )
+                        canvas.nativeCanvas.drawRoundRect(
+                            rect,
+                            24.dp.toPx(), 24.dp.toPx(),
+                            paint
+                        )
+                    }
+                    
+                    // Radiant outer ring
+                    drawRoundRect(
+                        color = glowColor.copy(alpha = glowAlpha * 0.5f),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(24.dp.toPx()),
+                        style = Stroke(width = (glowSpread / 2).dp.toPx())
+                    )
+                    
+                    // Solid border
+                    drawRoundRect(
+                        color = Color.White.copy(alpha = glowAlpha),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(24.dp.toPx()),
+                        style = Stroke(width = 2.dp.toPx())
+                    )
+                }
+            } else Modifier
+        )
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
@@ -709,9 +787,9 @@ fun MetricCard(
         ) {
             Text(
                 text = label.uppercase(),
-                fontSize = 10.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Black,
-                color = Color.White.copy(alpha = 0.7f),
+                color = if (isHighlighted) Color.White else Color.White.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
                 lineHeight = 12.sp,
                 maxLines = 1,
@@ -725,7 +803,7 @@ fun MetricCard(
             ) {
                 Text(
                     text = value,
-                    fontSize = 24.sp,
+                    fontSize = 26.sp,
                     fontWeight = FontWeight.Black,
                     color = Color.White,
                     maxLines = 1,
@@ -735,7 +813,7 @@ fun MetricCard(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = unit,
-                        fontSize = 14.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         modifier = Modifier.align(Alignment.Bottom).padding(bottom = 2.dp)

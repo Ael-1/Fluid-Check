@@ -76,8 +76,7 @@ fun MainScreen(
             onDismiss = { showLogSheet = false },
             onConfirm = { type, amount ->
                 val time = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date())
-                val icon = getIconForFluidType(type)
-                val newLog = FluidLog(type = type, time = time, amount = amount, icon = icon)
+                val newLog = FluidLog(type = type, time = time, amount = amount)
                 
                 val updatedLogs = currentLogs + newLog
                 val newMap = userLogsMap.toMutableMap()
@@ -219,11 +218,12 @@ fun MainScreen(
                 }
                 composable(NavRoutes.SignUp.route) { 
                     SignUpScreen(
-                        onSignUpSuccess = { 
-                            // SignUp logic
+                        onSignUpSuccessWithDetails = { username, email, password ->
+                            // This route is typically handled by MainActivity, but if it remains here
+                            // you should handle the signup logic or navigate back.
                         },
                         onBackToLogin = { 
-                            // Back to login logic
+                            navController.popBackStack()
                         } 
                     )
                 }
@@ -648,8 +648,7 @@ fun EditLogSheet(
                     } else {
                         showError = false
                         val amount = amountText.toIntOrNull() ?: log.amount
-                        val icon = getIconForFluidType(selectedType)
-                        onSave(log.copy(type = selectedType, amount = amount, time = timeText, icon = icon))
+                        onSave(log.copy(type = selectedType, amount = amount, time = timeText))
                     }
                 },
                 modifier = Modifier
@@ -704,14 +703,14 @@ fun FluidBottomNavigation(
     val items = if (isAdmin) {
         listOf(
             NavigationItem(stringResource(R.string.analytics), NavRoutes.Admin.route, AppIcons.Admin),
-            NavigationItem(stringResource(R.string.account), NavRoutes.Settings.route, AppIcons.Settings)
+            NavigationItem(stringResource(R.string.settings), NavRoutes.Settings.route, AppIcons.Settings)
         )
     } else {
         listOf(
             NavigationItem(stringResource(R.string.home), NavRoutes.Home.route, AppIcons.Home),
-            NavigationItem(stringResource(R.string.history), NavRoutes.Progress.route, AppIcons.Progress),
+            NavigationItem(stringResource(R.string.progress), NavRoutes.Progress.route, AppIcons.Progress),
             NavigationItem("AI Coach", NavRoutes.AICoach.route, AppIcons.AICoach),
-            NavigationItem(stringResource(R.string.account), NavRoutes.Settings.route, AppIcons.Settings)
+            NavigationItem(stringResource(R.string.settings), NavRoutes.Settings.route, AppIcons.Settings)
         )
     }
 

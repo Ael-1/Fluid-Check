@@ -19,7 +19,8 @@ data class UserRecord(
     val age: String = "",
     val sex: String = "",
     val activity: String = "",
-    val environment: String = ""
+    val environment: String = "",
+    val setupCompleted: Boolean = false
 ) {
     fun isEmpty(): Boolean {
         return weight.isEmpty() && height.isEmpty() && age.isEmpty() && 

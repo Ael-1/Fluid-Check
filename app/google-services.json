@@ -13,7 +13,20 @@
           "package_name": "com.example.fluidcheck"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "21635365133-omr6t1f9l2bujpktef1hl7fs65t685os.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.fluidcheck",
+            "certificate_hash": "32b303e3f31161c40ebce99907c760d2fde4f629"
+          }
+        },
+        {
+          "client_id": "21635365133-2brmbr8m47ilo0f0ch7bm7sndmk15oan.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBEOQpufeEfsKZ_xpPgBR3-UQL-1ritOpc"
@@ -21,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "21635365133-2brmbr8m47ilo0f0ch7bm7sndmk15oan.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
