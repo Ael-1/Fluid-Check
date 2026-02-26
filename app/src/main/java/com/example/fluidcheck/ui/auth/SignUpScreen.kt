@@ -13,7 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -28,10 +27,10 @@ import com.example.fluidcheck.ui.theme.*
 
 @Composable
 fun SignUpScreen(
-    onSignUpSuccess: () -> Unit,
-    onBackToLogin: () -> Unit
+    onSignUpSuccessWithDetails: (String, String, String) -> Unit,
+    onBackToLogin: () -> Unit,
+    isLoading: Boolean = false
 ) {
-    val context = LocalContext.current
     var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -58,7 +57,7 @@ fun SignUpScreen(
             usernameError = null
         }
 
-        val emailPattern = "[a-zA-Z0-9._-]+@[a-z]+\\.+[a-z]+"
+        val emailPattern = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
         if (email.isBlank()) {
             emailError = emptyEmailErr
             isValid = false
@@ -153,6 +152,7 @@ fun SignUpScreen(
                             }
                         },
                         shape = RoundedCornerShape(16.dp),
+                        enabled = !isLoading,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = Color.White.copy(alpha = 0.15f),
                             unfocusedContainerColor = Color.White.copy(alpha = 0.1f),
@@ -161,7 +161,11 @@ fun SignUpScreen(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
                             errorBorderColor = Color.White,
-                            errorSupportingTextColor = Color.White
+                            errorSupportingTextColor = Color.White,
+                            disabledBorderColor = Color.White.copy(alpha = 0.1f),
+                            disabledTextColor = Color.White.copy(alpha = 0.5f),
+                            disabledLeadingIconColor = Color.White.copy(alpha = 0.3f),
+                            disabledPlaceholderColor = Color.White.copy(alpha = 0.3f)
                         )
                     )
 
@@ -185,6 +189,7 @@ fun SignUpScreen(
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         shape = RoundedCornerShape(16.dp),
+                        enabled = !isLoading,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = Color.White.copy(alpha = 0.15f),
                             unfocusedContainerColor = Color.White.copy(alpha = 0.1f),
@@ -193,7 +198,11 @@ fun SignUpScreen(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
                             errorBorderColor = Color.White,
-                            errorSupportingTextColor = Color.White
+                            errorSupportingTextColor = Color.White,
+                            disabledBorderColor = Color.White.copy(alpha = 0.1f),
+                            disabledTextColor = Color.White.copy(alpha = 0.5f),
+                            disabledLeadingIconColor = Color.White.copy(alpha = 0.3f),
+                            disabledPlaceholderColor = Color.White.copy(alpha = 0.3f)
                         )
                     )
 
@@ -211,7 +220,7 @@ fun SignUpScreen(
                         leadingIcon = { Icon(AppIcons.Lock, contentDescription = null, tint = Color.White.copy(alpha = 0.6f)) },
                         trailingIcon = {
                             val image = if (passwordVisible) AppIcons.Visibility else AppIcons.VisibilityOff
-                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }, enabled = !isLoading) {
                                 Icon(imageVector = image, contentDescription = null, tint = Color.White.copy(alpha = 0.6f))
                             }
                         },
@@ -223,6 +232,7 @@ fun SignUpScreen(
                         },
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         shape = RoundedCornerShape(16.dp),
+                        enabled = !isLoading,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = Color.White.copy(alpha = 0.15f),
                             unfocusedContainerColor = Color.White.copy(alpha = 0.1f),
@@ -231,50 +241,61 @@ fun SignUpScreen(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
                             errorBorderColor = Color.White,
-                            errorSupportingTextColor = Color.White
+                            errorSupportingTextColor = Color.White,
+                            disabledBorderColor = Color.White.copy(alpha = 0.1f),
+                            disabledTextColor = Color.White.copy(alpha = 0.5f),
+                            disabledLeadingIconColor = Color.White.copy(alpha = 0.3f),
+                            disabledPlaceholderColor = Color.White.copy(alpha = 0.3f)
                         )
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Create Account Button
-                    Button(
-                        onClick = {
-                            if (validateInputs()) {
-                                onSignUpSuccess()
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.White)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.create_account),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = PrimaryBlue
-                        )
-                    }
+                    if (isLoading) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(32.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
+                    } else {
+                        // Create Account Button
+                        Button(
+                            onClick = {
+                                if (validateInputs()) {
+                                    onSignUpSuccessWithDetails(username, email, password)
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                        ) {
+                            @Suppress("DEPRECATION")
+                            Text(
+                                text = stringResource(R.string.create_account),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryBlue
+                            )
+                        }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    // Login Button (Replaces text link)
-                    OutlinedButton(
-                        onClick = onBackToLogin,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
-                    ) {
-                        Text(
-                            text = stringResource(R.string.go_back),
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
+                        // Login Button (Replaces text link)
+                        OutlinedButton(
+                            onClick = onBackToLogin,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
+                        ) {
+                            @Suppress("DEPRECATION")
+                            Text(
+                                text = stringResource(R.string.go_back),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
                     }
                 }
             }

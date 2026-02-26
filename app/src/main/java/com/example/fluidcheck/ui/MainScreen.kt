@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,8 +29,8 @@ import com.example.fluidcheck.model.ALL_FLUID_TYPES
 import com.example.fluidcheck.model.FluidLog
 import com.example.fluidcheck.model.NavigationItem
 import com.example.fluidcheck.repository.UserPreferencesRepository
+import com.example.fluidcheck.repository.FirestoreRepository
 import com.example.fluidcheck.model.getIconForFluidType
-import com.example.fluidcheck.ui.admin.AdminDashboard
 import com.example.fluidcheck.ui.navigation.NavRoutes
 import com.example.fluidcheck.ui.screens.AICoachScreen
 import com.example.fluidcheck.ui.screens.HomeScreen
@@ -37,7 +38,7 @@ import com.example.fluidcheck.ui.screens.ProgressScreen
 import com.example.fluidcheck.ui.screens.SettingsScreen
 import com.example.fluidcheck.ui.screens.EditProfileScreen
 import com.example.fluidcheck.ui.screens.AboutDeveloperScreen
-import com.example.fluidcheck.ui.auth.SignUpScreen
+import com.example.fluidcheck.ui.admin.AdminDashboard
 import com.example.fluidcheck.ui.theme.AppBackground
 import com.example.fluidcheck.ui.theme.AppIcons
 import com.example.fluidcheck.ui.theme.PrimaryBlue
@@ -46,11 +47,17 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
+private const val ADMIN_EMAIL = "admin@fluidcheck.ai"
+
 @Composable
 fun MainScreen(
+    userId: String,
     username: String = "",
-    isAdmin: Boolean = false,
-    onLogout: () -> Unit = {}
+    isAdmin: Boolean = false, // Kept for compatibility
+    hasAdminPrivileges: Boolean = false, // Kept for compatibility
+    onLogout: () -> Unit = {},
+    onToggleRole: () -> Unit = {},
+    firestoreRepository: FirestoreRepository = remember { FirestoreRepository() }
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -62,31 +69,84 @@ fun MainScreen(
     val context = LocalContext.current
     val repository = remember { UserPreferencesRepository(context) }
 
-    // Observe daily goal from repository
-    val currentGoal by repository.getDailyGoal(username).collectAsState(initial = 3000)
+    // Use userId (UID) for synchronization as document ID
+    val userRecord by firestoreRepository.getUserRecordFlow(userId).collectAsState(initial = null)
     
-    // State for user logs (logs are still in-memory for now per project scope)
-    var userLogsMap by remember { mutableStateOf(mapOf<String, List<FluidLog>>()) }
+    // Core administrative check from database
+    val isDatabaseAdmin = userRecord?.role == "ADMIN"
+    val isPrimaryAdmin = userRecord?.email?.equals(ADMIN_EMAIL, ignoreCase = true) == true
     
-    val currentLogs = userLogsMap[username] ?: emptyList()
-    val totalIntake = currentLogs.sumOf { it.amount }
+    // Last session's mode from DataStore
+    // We pass isDatabaseAdmin as default, but we'll wait for the actual value if user is an admin
+    val savedAdminMode by repository.isAdminMode(userId, isDatabaseAdmin).collectAsState(initial = null)
+    
+    // Determine if we are still waiting for critical data
+    // We wait for userRecord ALWAYS, and if it's an admin, we wait for savedAdminMode to load
+    val isLoading = (userRecord == null || (isDatabaseAdmin && savedAdminMode == null)) && userId.isNotEmpty()
+
+    // UI state for switching between User and Admin views
+    // Initialized ONLY when loading is done to prevent flicker
+    var isAdminMode by rememberSaveable(userId, isPrimaryAdmin, savedAdminMode) { 
+        mutableStateOf(if (isPrimaryAdmin) true else savedAdminMode ?: false) 
+    }
+    
+    val todayLogs by firestoreRepository.getTodayFluidLogsFlow(userId).collectAsState(initial = emptyList())
+    val allLogs by firestoreRepository.getFluidLogsFlow(userId).collectAsState(initial = emptyList())
+
+    val currentGoal = userRecord?.dailyGoal ?: 3000
+    val totalIntake = todayLogs.sumOf { it.amount }
+    val currentStreak = userRecord?.streak ?: 0
+    val quickAddConfigs = userRecord?.quickAddConfig ?: emptyList()
+
+    // Handle Streak and Ring Logic
+    LaunchedEffect(totalIntake, currentGoal) {
+        if (!isAdminMode && totalIntake >= currentGoal && currentGoal > 0 && userRecord != null) {
+            val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+                timeZone = TimeZone.getTimeZone("GMT+8")
+            }.format(Date())
+            if (userRecord?.lastRingClosedDate != today) {
+                val calendar = Calendar.getInstance(TimeZone.getTimeZone("GMT+8"))
+                calendar.add(Calendar.DAY_OF_YEAR, -1)
+                val yesterday = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+                    timeZone = TimeZone.getTimeZone("GMT+8")
+                }.format(calendar.time)
+                
+                val newStreak = if (userRecord?.lastRingClosedDate == yesterday) {
+                    (userRecord?.streak ?: 0) + 1
+                } else {
+                    1
+                }
+                
+                firestoreRepository.updateStreak(userId, newStreak, today)
+                firestoreRepository.incrementTotalRingsClosed(userId)
+            }
+        }
+    }
 
     if (showLogSheet) {
         LogNewDrinkSheet(
             onDismiss = { showLogSheet = false },
             onConfirm = { type, amount ->
-                val time = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date())
-                val icon = getIconForFluidType(type)
-                val newLog = FluidLog(type = type, time = time, amount = amount, icon = icon)
-                
-                val updatedLogs = currentLogs + newLog
-                val newMap = userLogsMap.toMutableMap()
-                newMap[username] = updatedLogs
-                userLogsMap = newMap
-                
-                showLogSheet = false
                 scope.launch {
-                    snackbarHostState.showSnackbar("Logged $amount ml of $type")
+                    val sdfTime = SimpleDateFormat("h:mm a", Locale.getDefault()).apply {
+                        timeZone = TimeZone.getTimeZone("GMT+8")
+                    }
+                    val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+                        timeZone = TimeZone.getTimeZone("GMT+8")
+                    }
+                    val now = Date()
+                    val time = sdfTime.format(now)
+                    val date = sdfDate.format(now)
+                    
+                    val newLog = FluidLog(type = type, time = time, amount = amount, date = date)
+                    
+                    val result = firestoreRepository.saveFluidLog(userId, newLog)
+                    if (result.isSuccess) {
+                        showLogSheet = false
+                        snackbarHostState.showSnackbar("Logged $amount ml of $type")
+                    } else {
+                        snackbarHostState.showSnackbar("Error logging drink")
+                    }
                 }
             }
         )
@@ -97,23 +157,28 @@ fun MainScreen(
             log = logToEdit!!,
             onDismiss = { logToEdit = null },
             onSave = { updatedLog ->
-                val updatedLogs = currentLogs.map { if (it.id == updatedLog.id) updatedLog else it }
-                val newMap = userLogsMap.toMutableMap()
-                newMap[username] = updatedLogs
-                userLogsMap = newMap
-                logToEdit = null
                 scope.launch {
-                    snackbarHostState.showSnackbar("Log updated")
+                    val result = firestoreRepository.updateFluidLog(userId, logToEdit!!, updatedLog)
+                    if (result.isSuccess) {
+                        logToEdit = null
+                        snackbarHostState.showSnackbar("Log updated")
+                    } else {
+                        snackbarHostState.showSnackbar("Error updating log")
+                    }
                 }
             },
             onDelete = { logId ->
-                val updatedLogs = currentLogs.filter { it.id != logId }
-                val newMap = userLogsMap.toMutableMap()
-                newMap[username] = updatedLogs
-                userLogsMap = newMap
-                logToEdit = null
                 scope.launch {
-                    snackbarHostState.showSnackbar("Log deleted")
+                    val logToDelete = allLogs.find { it.id == logId }
+                    if (logToDelete != null) {
+                        val result = firestoreRepository.deleteFluidLog(userId, logToDelete)
+                        if (result.isSuccess) {
+                            logToEdit = null
+                            snackbarHostState.showSnackbar("Log deleted")
+                        } else {
+                            snackbarHostState.showSnackbar("Error deleting log")
+                        }
+                    }
                 }
             }
         )
@@ -125,28 +190,30 @@ fun MainScreen(
             TransparentHeader()
         },
         bottomBar = {
-            Column {
-                HorizontalDivider(
-                    thickness = 0.5.dp,
-                    color = Color.LightGray.copy(alpha = 0.3f)
-                )
-                FluidBottomNavigation(
-                    isAdmin = isAdmin,
-                    onNavigate = { route ->
-                        navController.navigate(route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+            if (!isLoading) {
+                Column {
+                    HorizontalDivider(
+                        thickness = 0.5.dp,
+                        color = Color.LightGray.copy(alpha = 0.3f)
+                    )
+                    FluidBottomNavigation(
+                        onNavigate = { route ->
+                            navController.navigate(route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    currentRoute = currentDestination?.route
-                )
+                        },
+                        currentRoute = currentDestination?.route,
+                        isAdmin = isAdminMode
+                    )
+                }
             }
         },
         floatingActionButton = {
-            if (currentDestination?.route == NavRoutes.Home.route) {
+            if (!isLoading && !isAdminMode && currentDestination?.route == NavRoutes.Home.route) {
                 FloatingActionButton(
                     onClick = { showLogSheet = true },
                     containerColor = PrimaryBlue,
@@ -169,66 +236,115 @@ fun MainScreen(
                 .padding(innerPadding)
                 .background(AppBackground)
         ) {
-            NavHost(
-                navController = navController,
-                startDestination = if (isAdmin) NavRoutes.Admin.route else NavRoutes.Home.route
-            ) {
-                composable(NavRoutes.Home.route) { 
-                    HomeScreen(
-                        dailyGoal = currentGoal,
-                        totalIntake = totalIntake,
-                        logs = currentLogs,
-                        onUpdateGoal = { newGoal ->
-                            scope.launch {
-                                repository.saveDailyGoal(username, newGoal)
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = PrimaryBlue)
+                }
+            } else {
+                NavHost(
+                    navController = navController,
+                    startDestination = if (isAdminMode) NavRoutes.Admin.route else NavRoutes.Home.route
+                ) {
+                    composable(NavRoutes.Home.route) { 
+                        HomeScreen(
+                            dailyGoal = currentGoal,
+                            totalIntake = totalIntake,
+                            logs = todayLogs,
+                            allLogs = allLogs,
+                            streakDays = currentStreak,
+                            quickAddConfigs = quickAddConfigs,
+                            onUpdateGoal = { newGoal ->
+                                scope.launch {
+                                    repository.saveDailyGoal(userId, newGoal)
+                                    firestoreRepository.saveDailyGoal(userId, newGoal)
+                                }
+                            },
+                            onEditLog = { log ->
+                                logToEdit = log
+                            },
+                            onQuickAdd = { config ->
+                                scope.launch {
+                                    val sdfTime = SimpleDateFormat("h:mm a", Locale.getDefault()).apply {
+                                        timeZone = TimeZone.getTimeZone("GMT+8")
+                                    }
+                                    val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+                                        timeZone = TimeZone.getTimeZone("GMT+8")
+                                    }
+                                    val now = Date()
+                                    val time = sdfTime.format(now)
+                                    val date = sdfDate.format(now)
+                                    
+                                    val newLog = FluidLog(type = config.type, time = time, amount = config.amount, date = date)
+                                    val result = firestoreRepository.saveFluidLog(userId, newLog)
+                                    if (result.isSuccess) {
+                                        snackbarHostState.showSnackbar("Logged ${config.amount} ml of ${config.type}")
+                                    }
+                                }
+                            },
+                            onUpdateQuickAdd = { newConfigs ->
+                                scope.launch {
+                                    firestoreRepository.updateQuickAddConfig(userId, newConfigs)
+                                }
                             }
-                        },
-                        onEditLog = { log ->
-                            logToEdit = log
-                        }
-                    )
-                }
-                composable(NavRoutes.Progress.route) { ProgressScreen() }
-                composable(NavRoutes.AICoach.route) { 
-                    AICoachScreen(
-                        onSetGoal = { newGoal ->
-                            scope.launch {
-                                repository.saveDailyGoal(username, newGoal)
-                                snackbarHostState.showSnackbar("Daily goal updated to ${newGoal}ml")
+                        )
+                    }
+                    composable(NavRoutes.Progress.route) { 
+                        ProgressScreen(
+                            allLogs = allLogs,
+                            dailyGoal = currentGoal,
+                            accountCreatedAt = userRecord?.createdAt
+                        )
+                    }
+                    composable(NavRoutes.AICoach.route) { 
+                        AICoachScreen(
+                            userRecord = userRecord,
+                            onSetGoal = { newGoal ->
+                                scope.launch {
+                                    repository.saveDailyGoal(userId, newGoal)
+                                    val result = firestoreRepository.saveDailyGoal(userId, newGoal)
+                                    if (result.isSuccess) {
+                                        snackbarHostState.showSnackbar("Daily goal updated to ${newGoal}ml")
+                                    }
+                                }
                             }
-                        }
-                    )
-                }
-                composable(NavRoutes.Settings.route) { 
-                    SettingsScreen(
-                        isAdmin = isAdmin, 
-                        onLogout = onLogout,
-                        onEditProfile = { navController.navigate(NavRoutes.EditProfile.route) },
-                        onAboutDeveloper = { navController.navigate(NavRoutes.AboutDeveloper.route) }
-                    )
-                }
-                composable(NavRoutes.EditProfile.route) {
-                    EditProfileScreen(
-                        username = username,
-                        repository = repository,
-                        onBack = { navController.popBackStack() }
-                    )
-                }
-                composable(NavRoutes.AboutDeveloper.route) {
-                    AboutDeveloperScreen(onBack = { navController.popBackStack() })
-                }
-                composable(NavRoutes.SignUp.route) { 
-                    SignUpScreen(
-                        onSignUpSuccess = { 
-                            // SignUp logic
-                        },
-                        onBackToLogin = { 
-                            // Back to login logic
-                        } 
-                    )
-                }
-                if (isAdmin) {
-                    composable(NavRoutes.Admin.route) { AdminDashboard() }
+                        )
+                    }
+                    composable(NavRoutes.Settings.route) { 
+                        SettingsScreen(
+                            username = userRecord?.username ?: username,
+                            email = userRecord?.email ?: "",
+                            isDatabaseAdmin = isDatabaseAdmin,
+                            isAdminMode = isAdminMode,
+                            onLogout = onLogout,
+                            onEditProfile = { navController.navigate(NavRoutes.EditProfile.route) },
+                            onAboutDeveloper = { navController.navigate(NavRoutes.AboutDeveloper.route) },
+                            onToggleRole = {
+                                isAdminMode = !isAdminMode
+                                scope.launch {
+                                    repository.setAdminMode(userId, isAdminMode)
+                                }
+                                navController.navigate(if (isAdminMode) NavRoutes.Admin.route else NavRoutes.Home.route) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                    composable(NavRoutes.EditProfile.route) {
+                        EditProfileScreen(
+                            userId = userId,
+                            username = userRecord?.username ?: username,
+                            isAdminMode = isAdminMode,
+                            repository = repository,
+                            firestoreRepository = firestoreRepository,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+                    composable(NavRoutes.AboutDeveloper.route) {
+                        AboutDeveloperScreen(onBack = { navController.popBackStack() })
+                    }
+                    composable(NavRoutes.Admin.route) {
+                        AdminDashboard(firestoreRepository = firestoreRepository)
+                    }
                 }
             }
         }
@@ -268,6 +384,7 @@ fun LogNewDrinkSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Spacer(modifier = Modifier.width(24.dp))
+                @Suppress("DEPRECATION")
                 Text(
                     text = stringResource(R.string.log_new_drink),
                     fontSize = 20.sp,
@@ -292,6 +409,7 @@ fun LogNewDrinkSheet(
                 )
             }
 
+            @Suppress("DEPRECATION")
             Text(
                 text = stringResource(R.string.fluid_type),
                 fontSize = 14.sp,
@@ -307,6 +425,7 @@ fun LogNewDrinkSheet(
                 onExpandedChange = { isExpanded = it },
                 modifier = Modifier.fillMaxWidth()
             ) {
+                val icon = getIconForFluidType(selectedType)
                 OutlinedTextField(
                     value = selectedType,
                     onValueChange = {},
@@ -316,7 +435,6 @@ fun LogNewDrinkSheet(
                         .height(56.dp)
                         .menuAnchor(),
                     leadingIcon = {
-                        val icon = getIconForFluidType(selectedType)
                         Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
                     },
                     trailingIcon = {
@@ -368,6 +486,7 @@ fun LogNewDrinkSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            @Suppress("DEPRECATION")
             Text(
                 text = stringResource(R.string.amount_ml),
                 fontSize = 14.sp,
@@ -417,6 +536,7 @@ fun LogNewDrinkSheet(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(AppIcons.AddCircle, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
+                    @Suppress("DEPRECATION")
                     Text(
                         text = stringResource(R.string.confirm),
                         fontWeight = FontWeight.Bold,
@@ -447,9 +567,10 @@ fun EditLogSheet(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text(text = stringResource(R.string.delete_log_title), fontWeight = FontWeight.Bold) },
-            text = { Text(text = stringResource(R.string.delete_log_msg)) },
+            title = { @Suppress("DEPRECATION") Text(text = stringResource(R.string.delete_log_title), fontWeight = FontWeight.Bold) },
+            text = { @Suppress("DEPRECATION") Text(text = stringResource(R.string.delete_log_msg)) },
             confirmButton = {
+                @Suppress("DEPRECATION")
                 TextButton(onClick = {
                     showDeleteDialog = false
                     onDelete(log.id)
@@ -458,7 +579,9 @@ fun EditLogSheet(
                 }
             },
             dismissButton = {
+                @Suppress("DEPRECATION")
                 TextButton(onClick = { showDeleteDialog = false }) {
+                    @Suppress("DEPRECATION")
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -487,6 +610,7 @@ fun EditLogSheet(
                 IconButton(onClick = { showDeleteDialog = true }) {
                     Icon(AppIcons.Delete, contentDescription = "Delete", tint = Color.Red)
                 }
+                @Suppress("DEPRECATION")
                 Text(
                     text = stringResource(R.string.edit_log),
                     fontSize = 20.sp,
@@ -503,6 +627,7 @@ fun EditLogSheet(
             Spacer(modifier = Modifier.height(24.dp))
 
             if (showError) {
+                @Suppress("DEPRECATION")
                 Text(
                     text = "Please fill in all fields.",
                     color = Color.Red,
@@ -511,6 +636,7 @@ fun EditLogSheet(
                 )
             }
 
+            @Suppress("DEPRECATION")
             Text(
                 text = stringResource(R.string.fluid_type),
                 fontSize = 14.sp,
@@ -526,6 +652,7 @@ fun EditLogSheet(
                 onExpandedChange = { isExpanded = it },
                 modifier = Modifier.fillMaxWidth()
             ) {
+                val icon = getIconForFluidType(selectedType)
                 OutlinedTextField(
                     value = selectedType,
                     onValueChange = {},
@@ -535,7 +662,6 @@ fun EditLogSheet(
                         .height(56.dp)
                         .menuAnchor(),
                     leadingIcon = {
-                        val icon = getIconForFluidType(selectedType)
                         Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
                     },
                     trailingIcon = {
@@ -588,6 +714,7 @@ fun EditLogSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            @Suppress("DEPRECATION")
             Text(
                 text = stringResource(R.string.amount_ml),
                 fontSize = 14.sp,
@@ -607,7 +734,7 @@ fun EditLogSheet(
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = PrimaryBlue,
-                    unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                    unfocusedBorderColor = Color.LightGray.copy(alpha = 0.3f)
                 ),
                 textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
                 singleLine = true
@@ -615,6 +742,7 @@ fun EditLogSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            @Suppress("DEPRECATION")
             Text(
                 text = stringResource(R.string.time_label),
                 fontSize = 14.sp,
@@ -648,8 +776,7 @@ fun EditLogSheet(
                     } else {
                         showError = false
                         val amount = amountText.toIntOrNull() ?: log.amount
-                        val icon = getIconForFluidType(selectedType)
-                        onSave(log.copy(type = selectedType, amount = amount, time = timeText, icon = icon))
+                        onSave(log.copy(type = selectedType, amount = amount, time = timeText))
                     }
                 },
                 modifier = Modifier
@@ -658,6 +785,7 @@ fun EditLogSheet(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
             ) {
+                @Suppress("DEPRECATION")
                 Text(
                     text = stringResource(R.string.save_changes),
                     fontWeight = FontWeight.Bold,
@@ -684,6 +812,7 @@ fun TransparentHeader() {
             modifier = Modifier.size(32.dp)
         )
         Spacer(modifier = Modifier.width(12.dp))
+        @Suppress("DEPRECATION")
         Text(
             text = stringResource(R.string.app_name),
             fontSize = 20.sp,
@@ -697,21 +826,25 @@ fun TransparentHeader() {
 
 @Composable
 fun FluidBottomNavigation(
-    isAdmin: Boolean = false,
     onNavigate: (String) -> Unit,
-    currentRoute: String?
+    currentRoute: String?,
+    isAdmin: Boolean = false
 ) {
     val items = if (isAdmin) {
         listOf(
-            NavigationItem(stringResource(R.string.analytics), NavRoutes.Admin.route, AppIcons.Admin),
-            NavigationItem(stringResource(R.string.account), NavRoutes.Settings.route, AppIcons.Settings)
+            NavigationItem("Dashboard", NavRoutes.Admin.route, AppIcons.Group),
+            @Suppress("DEPRECATION")
+            NavigationItem(stringResource(R.string.settings), NavRoutes.Settings.route, AppIcons.Settings)
         )
     } else {
         listOf(
+            @Suppress("DEPRECATION")
             NavigationItem(stringResource(R.string.home), NavRoutes.Home.route, AppIcons.Home),
-            NavigationItem(stringResource(R.string.history), NavRoutes.Progress.route, AppIcons.Progress),
+            @Suppress("DEPRECATION")
+            NavigationItem(stringResource(R.string.progress), NavRoutes.Progress.route, AppIcons.Progress),
             NavigationItem("AI Coach", NavRoutes.AICoach.route, AppIcons.AICoach),
-            NavigationItem(stringResource(R.string.account), NavRoutes.Settings.route, AppIcons.Settings)
+            @Suppress("DEPRECATION")
+            NavigationItem(stringResource(R.string.settings), NavRoutes.Settings.route, AppIcons.Settings)
         )
     }
 
@@ -733,6 +866,7 @@ fun FluidBottomNavigation(
                     )
                 },
                 label = {
+                    @Suppress("DEPRECATION")
                     Text(
                         text = item.title,
                         fontSize = 12.sp,

@@ -18,7 +18,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun AquaTrackTheme(
+fun FluidCheckTheme(
     content: @Composable () -> Unit
 ) {
     MaterialTheme(

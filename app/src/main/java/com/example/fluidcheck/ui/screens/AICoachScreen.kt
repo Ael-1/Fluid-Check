@@ -28,11 +28,15 @@ import androidx.compose.ui.unit.sp
 import com.example.fluidcheck.BuildConfig
 import com.example.fluidcheck.R
 import com.example.fluidcheck.ai.GeminiCoach
+import com.example.fluidcheck.model.UserRecord
 import com.example.fluidcheck.ui.theme.*
 import kotlinx.coroutines.launch
 
 @Composable
-fun AICoachScreen(onSetGoal: (Int) -> Unit) {
+fun AICoachScreen(
+    userRecord: UserRecord?,
+    onSetGoal: (Int) -> Unit
+) {
     val scrollState = rememberScrollState()
     val focusManager = LocalFocusManager.current
 
@@ -57,7 +61,7 @@ fun AICoachScreen(onSetGoal: (Int) -> Unit) {
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            SmartGoalSetterCard(coach, onSetGoal)
+            SmartGoalSetterCard(coach, userRecord, onSetGoal)
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -72,7 +76,11 @@ fun AICoachScreen(onSetGoal: (Int) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SmartGoalSetterCard(coach: GeminiCoach, onSetGoal: (Int) -> Unit) {
+fun SmartGoalSetterCard(
+    coach: GeminiCoach,
+    userRecord: UserRecord?,
+    onSetGoal: (Int) -> Unit
+) {
     var weight by remember { mutableStateOf("") }
     var height by remember { mutableStateOf("") }
     var age by remember { mutableStateOf("") }
@@ -83,6 +91,18 @@ fun SmartGoalSetterCard(coach: GeminiCoach, onSetGoal: (Int) -> Unit) {
     var sex by remember { mutableStateOf(selectionPlaceholder) }
     var activity by remember { mutableStateOf(selectionPlaceholder) }
     var environment by remember { mutableStateOf(selectionPlaceholder) }
+
+    // Auto-populate from Firestore record
+    LaunchedEffect(userRecord) {
+        userRecord?.let { record ->
+            if (weight.isEmpty()) weight = record.weight
+            if (height.isEmpty()) height = record.height
+            if (age.isEmpty()) age = record.age
+            if (sex == selectionPlaceholder && record.sex.isNotEmpty()) sex = record.sex
+            if (activity == selectionPlaceholder && record.activity.isNotEmpty()) activity = record.activity
+            if (environment == selectionPlaceholder && record.environment.isNotEmpty()) environment = record.environment
+        }
+    }
     
     var isLoading by remember { mutableStateOf(false) }
     var resultMl by remember { mutableStateOf<String?>(null) }

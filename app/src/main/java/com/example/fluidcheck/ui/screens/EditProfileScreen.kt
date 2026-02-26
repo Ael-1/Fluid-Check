@@ -1,6 +1,5 @@
 package com.example.fluidcheck.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -13,69 +12,194 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fluidcheck.R
 import com.example.fluidcheck.model.UserRecord
+import com.example.fluidcheck.repository.AuthRepository
 import com.example.fluidcheck.repository.UserPreferencesRepository
+import com.example.fluidcheck.repository.FirestoreRepository
 import com.example.fluidcheck.ui.theme.*
 import kotlinx.coroutines.launch
+
+private const val ADMIN_EMAIL = "admin@fluidcheck.ai"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
+    userId: String,
     username: String,
+    isAdminMode: Boolean = false,
     repository: UserPreferencesRepository,
+    firestoreRepository: FirestoreRepository = remember { FirestoreRepository() },
+    authRepository: AuthRepository = remember { AuthRepository() },
     onBack: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     var showSaveDialog by remember { mutableStateOf(false) }
+    var showReauthDialog by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     
-    // Load initial data
-    val currentRecord by repository.getUserRecord(username).collectAsState(initial = UserRecord())
+    // Load initial data using userId
+    val currentRecord by firestoreRepository.getUserRecordFlow(userId).collectAsState(initial = UserRecord())
     
+    // Core administrative check
+    val isPrimaryAdmin = currentRecord?.email == ADMIN_EMAIL
+    
+    // Show personal records ONLY if not primary admin AND not currently in admin mode
+    val showPersonalRecords = !isPrimaryAdmin && !isAdminMode
+    
+    // States for profile settings
+    var editableUsername by remember(currentRecord) { mutableStateOf(currentRecord?.username ?: username) }
+    var editableEmail by remember(currentRecord) { mutableStateOf(currentRecord?.email ?: "") }
+    var editablePassword by remember { mutableStateOf("") }
+    var reauthPassword by remember { mutableStateOf("") }
+
     // States for personal records
-    var weight by remember(currentRecord) { mutableStateOf(currentRecord.weight) }
-    var height by remember(currentRecord) { mutableStateOf(currentRecord.height) }
-    var age by remember(currentRecord) { mutableStateOf(currentRecord.age) }
+    var weight by remember(currentRecord) { mutableStateOf(currentRecord?.weight ?: "") }
+    var height by remember(currentRecord) { mutableStateOf(currentRecord?.height ?: "") }
+    var age by remember(currentRecord) { mutableStateOf(currentRecord?.age ?: "") }
     
     val placeholder = "Please select..."
-    var sex by remember(currentRecord) { mutableStateOf(if (currentRecord.sex.isEmpty()) placeholder else currentRecord.sex) }
-    var activity by remember(currentRecord) { mutableStateOf(if (currentRecord.activity.isEmpty()) placeholder else currentRecord.activity) }
-    var environment by remember(currentRecord) { mutableStateOf(if (currentRecord.environment.isEmpty()) placeholder else currentRecord.environment) }
+    var sex by remember(currentRecord) { mutableStateOf(if (currentRecord?.sex?.isEmpty() == true) placeholder else currentRecord?.sex ?: placeholder) }
+    var activity by remember(currentRecord) { mutableStateOf(if (currentRecord?.activity?.isEmpty() == true) placeholder else currentRecord?.activity ?: placeholder) }
+    var environment by remember(currentRecord) { mutableStateOf(if (currentRecord?.environment?.isEmpty() == true) placeholder else currentRecord?.environment ?: placeholder) }
 
     var showError by remember { mutableStateOf(false) }
 
-    if (showSaveDialog) {
+    if (showReauthDialog) {
         AlertDialog(
-            onDismissRequest = { showSaveDialog = false },
-            title = { Text(text = stringResource(R.string.save_changes), fontWeight = FontWeight.Bold) },
-            text = { Text(text = "Are you sure you want to save the changes you've made?") },
+            onDismissRequest = { showReauthDialog = false },
+            title = { Text("Re-authentication Required", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text("Please enter your current password to confirm changes to your email or password.")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    EditField(
+                        label = "Current Password",
+                        value = reauthPassword,
+                        onValueChange = { reauthPassword = it },
+                        icon = AppIcons.Lock,
+                        isPassword = true
+                    )
+                }
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
                         scope.launch {
-                            repository.saveUserRecord(
-                                username,
-                                UserRecord(weight, height, age, sex, activity, environment)
-                            )
-                            showSaveDialog = false
-                            onBack()
+                            isLoading = true
+                            val result = authRepository.reauthenticate(reauthPassword)
+                            if (result.isSuccess) {
+                                showReauthDialog = false
+                                showSaveDialog = true
+                            } else {
+                                snackbarHostState.showSnackbar("Invalid password. Please try again.")
+                            }
+                            isLoading = false
                         }
                     }
                 ) {
-                    Text(stringResource(R.string.confirm).uppercase(), color = PrimaryBlue, fontWeight = FontWeight.Bold)
+                    Text("CONFIRM", color = PrimaryBlue, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showSaveDialog = false }) {
-                    Text(stringResource(R.string.cancel), color = TextDark)
+                TextButton(onClick = { showReauthDialog = false }) {
+                    Text("CANCEL", color = TextDark)
+                }
+            }
+        )
+    }
+
+    if (showSaveDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isLoading) showSaveDialog = false },
+            title = { Text(text = stringResource(R.string.save_changes), fontWeight = FontWeight.Bold) },
+            text = { 
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = PrimaryBlue)
+                    }
+                } else {
+                    @Suppress("DEPRECATION")
+                    Text(text = "Are you sure you want to save the changes you've made?")
+                }
+            },
+            confirmButton = {
+                if (!isLoading) {
+                    @Suppress("DEPRECATION")
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                isLoading = true
+                                
+                                // 1. Update Username if changed
+                                if (editableUsername != (currentRecord?.username ?: "")) {
+                                    val userResult = firestoreRepository.updateUsername(userId, currentRecord?.username ?: "", editableUsername)
+                                    if (userResult.isFailure) {
+                                        snackbarHostState.showSnackbar(userResult.exceptionOrNull()?.message ?: "Error updating username")
+                                        isLoading = false
+                                        return@launch
+                                    }
+                                }
+
+                                // 2. Update Email if changed
+                                if (editableEmail != (currentRecord?.email ?: "")) {
+                                    val emailResult = authRepository.updateEmail(editableEmail)
+                                    if (emailResult.isFailure) {
+                                        snackbarHostState.showSnackbar("Error updating email. You may need to sign in again.")
+                                        isLoading = false
+                                        return@launch
+                                    }
+                                }
+
+                                // 3. Update Password if provided
+                                if (editablePassword.isNotEmpty()) {
+                                    val passResult = authRepository.updatePassword(editablePassword)
+                                    if (passResult.isFailure) {
+                                        snackbarHostState.showSnackbar("Error updating password.")
+                                        isLoading = false
+                                        return@launch
+                                    }
+                                }
+
+                                // 4. Save User Record
+                                val newRecord = (currentRecord ?: UserRecord()).copy(
+                                    uid = userId,
+                                    username = editableUsername,
+                                    email = editableEmail,
+                                    weight = weight,
+                                    height = height,
+                                    age = age,
+                                    sex = sex,
+                                    activity = activity,
+                                    environment = environment,
+                                    setupCompleted = true
+                                )
+                                repository.saveUserRecord(userId, newRecord)
+                                firestoreRepository.saveUserRecord(userId, newRecord)
+                                
+                                isLoading = false
+                                showSaveDialog = false
+                                onBack()
+                            }
+                        }
+                    ) {
+                        Text(stringResource(R.string.confirm).uppercase(), color = PrimaryBlue, fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            dismissButton = {
+                if (!isLoading) {
+                    @Suppress("DEPRECATION")
+                    TextButton(onClick = { showSaveDialog = false }) {
+                        Text(stringResource(R.string.cancel), color = TextDark)
+                    }
                 }
             },
             containerColor = Color.White,
@@ -84,11 +208,12 @@ fun EditProfileScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.edit_profile), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = onBack, enabled = !isLoading) {
                         Icon(AppIcons.ArrowBack, contentDescription = stringResource(R.string.go_back))
                     }
                 },
@@ -109,49 +234,72 @@ fun EditProfileScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Profile Container
-            ProfileSettingsContainer(username)
+            ProfileSettingsContainer(
+                username = editableUsername,
+                onUsernameChange = { editableUsername = it },
+                email = editableEmail,
+                onEmailChange = { editableEmail = it },
+                password = editablePassword,
+                onPasswordChange = { editablePassword = it },
+                enabled = !isLoading
+            )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            if (showPersonalRecords) {
+                Spacer(modifier = Modifier.height(24.dp))
 
-            if (showError) {
-                Text(
-                    text = "Please fill in all fields and selections.",
-                    color = Color.Red,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                if (showError) {
+                    @Suppress("DEPRECATION")
+                    Text(
+                        text = "Please fill in all fields and selections.",
+                        color = Color.Red,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+
+                // Personal Records Container
+                PersonalRecordsContainer(
+                    weight = weight, onWeightChange = { weight = it },
+                    height = height, onHeightChange = { height = it },
+                    age = age, onAgeChange = { age = it },
+                    sex = sex, onSexChange = { sex = it },
+                    activity = activity, onActivityChange = { activity = it },
+                    environment = environment, onEnvironmentChange = { environment = it },
+                    enabled = !isLoading
                 )
             }
 
-            // Personal Records Container
-            PersonalRecordsContainer(
-                weight = weight, onWeightChange = { weight = it },
-                height = height, onHeightChange = { height = it },
-                age = age, onAgeChange = { age = it },
-                sex = sex, onSexChange = { sex = it },
-                activity = activity, onActivityChange = { activity = it },
-                environment = environment, onEnvironmentChange = { environment = it },
-                placeholder = placeholder
-            )
-
             Spacer(modifier = Modifier.height(32.dp))
 
-            Button(
-                onClick = {
-                    if (weight.isBlank() || height.isBlank() || age.isBlank() || 
-                        sex == placeholder || activity == placeholder || environment == placeholder) {
-                        showError = true
-                    } else {
-                        showError = false
-                        showSaveDialog = true
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
-            ) {
-                Text(stringResource(R.string.save_changes), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = PrimaryBlue)
+                }
+            } else {
+                Button(
+                    onClick = {
+                        if (showPersonalRecords && (weight.isBlank() || height.isBlank() || age.isBlank() ||
+                            sex == placeholder || activity == placeholder || environment == placeholder)) {
+                            showError = true
+                        } else {
+                            showError = false
+                            // Check if sensitive changes require reauth
+                            if (editableEmail != (currentRecord?.email ?: "") || editablePassword.isNotEmpty()) {
+                                showReauthDialog = true
+                            } else {
+                                showSaveDialog = true
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                ) {
+                    @Suppress("DEPRECATION")
+                    Text(stringResource(R.string.save_changes), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
             }
 
             Spacer(modifier = Modifier.height(48.dp))
@@ -160,12 +308,15 @@ fun EditProfileScreen(
 }
 
 @Composable
-fun ProfileSettingsContainer(currentUsername: String) {
-    var displayName by remember { mutableStateOf(currentUsername.replaceFirstChar { it.uppercase() }) }
-    var username by remember { mutableStateOf(currentUsername) }
-    var email by remember { mutableStateOf("$currentUsername@example.com") }
-    var password by remember { mutableStateOf("********") }
-
+fun ProfileSettingsContainer(
+    username: String,
+    onUsernameChange: (String) -> Unit,
+    email: String,
+    onEmailChange: (String) -> Unit,
+    password: String,
+    onPasswordChange: (String) -> Unit,
+    enabled: Boolean
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
@@ -174,6 +325,7 @@ fun ProfileSettingsContainer(currentUsername: String) {
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
+            @Suppress("DEPRECATION")
             Text(
                 text = stringResource(R.string.profile_title),
                 fontSize = 22.sp,
@@ -202,12 +354,12 @@ fun ProfileSettingsContainer(currentUsername: String) {
                         )
                     }
                     SmallFloatingActionButton(
-                        onClick = { /* Change Photo */ },
+                        onClick = { if (enabled) { /* TODO: Implement Photo Selection */ } },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .size(32.dp),
                         shape = CircleShape,
-                        containerColor = PrimaryBlue,
+                        containerColor = if (enabled) PrimaryBlue else Color.Gray,
                         contentColor = Color.White
                     ) {
                         Icon(AppIcons.Camera, contentDescription = "Change photo", modifier = Modifier.size(16.dp))
@@ -217,13 +369,11 @@ fun ProfileSettingsContainer(currentUsername: String) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            EditField(label = stringResource(R.string.display_name_label), value = displayName, onValueChange = { displayName = it }, icon = AppIcons.Badge)
+            EditField(label = stringResource(R.string.username_label), value = username, onValueChange = onUsernameChange, icon = AppIcons.PersonOutline, enabled = enabled)
             Spacer(modifier = Modifier.height(16.dp))
-            EditField(label = stringResource(R.string.username_label), value = username, onValueChange = { username = it }, icon = AppIcons.PersonOutline)
+            EditField(label = stringResource(R.string.email_label), value = email, onValueChange = onEmailChange, icon = AppIcons.Email, enabled = enabled)
             Spacer(modifier = Modifier.height(16.dp))
-            EditField(label = stringResource(R.string.email_label), value = email, onValueChange = { email = it }, icon = AppIcons.Email)
-            Spacer(modifier = Modifier.height(16.dp))
-            EditField(label = stringResource(R.string.password_label), value = password, onValueChange = { password = it }, icon = AppIcons.Lock, isPassword = true)
+            EditField(label = "New Password", value = password, onValueChange = onPasswordChange, icon = AppIcons.Lock, isPassword = true, enabled = enabled, placeholder = "Leave blank to keep current")
         }
     }
 }
@@ -237,7 +387,7 @@ fun PersonalRecordsContainer(
     sex: String, onSexChange: (String) -> Unit,
     activity: String, onActivityChange: (String) -> Unit,
     environment: String, onEnvironmentChange: (String) -> Unit,
-    placeholder: String
+    enabled: Boolean
 ) {
     var sexExpanded by remember { mutableStateOf(false) }
     var actExpanded by remember { mutableStateOf(false) }
@@ -255,6 +405,7 @@ fun PersonalRecordsContainer(
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
+            @Suppress("DEPRECATION")
             Text(
                 text = stringResource(R.string.personal_records_title),
                 fontSize = 22.sp,
@@ -266,11 +417,11 @@ fun PersonalRecordsContainer(
 
             Row(modifier = Modifier.fillMaxWidth()) {
                 Box(modifier = Modifier.weight(1f)) {
-                    EditField(label = stringResource(R.string.weight_kg_label), value = weight, onValueChange = onWeightChange, icon = AppIcons.Scale)
+                    EditField(label = stringResource(R.string.weight_kg_label), value = weight, onValueChange = onWeightChange, icon = AppIcons.Scale, enabled = enabled)
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Box(modifier = Modifier.weight(1f)) {
-                    EditField(label = stringResource(R.string.height_cm_label), value = height, onValueChange = onHeightChange, icon = AppIcons.Height)
+                    EditField(label = stringResource(R.string.height_cm_label), value = height, onValueChange = { onHeightChange(it) }, icon = AppIcons.Height, enabled = enabled)
                 }
             }
             
@@ -278,13 +429,14 @@ fun PersonalRecordsContainer(
 
             Row(modifier = Modifier.fillMaxWidth()) {
                 Box(modifier = Modifier.weight(1f)) {
-                    EditField(label = stringResource(R.string.age_label), value = age, onValueChange = onAgeChange, icon = AppIcons.Age)
+                    EditField(label = stringResource(R.string.age_label), value = age, onValueChange = onAgeChange, icon = AppIcons.Age, enabled = enabled)
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 
                 // Sex Dropdown
                 Box(modifier = Modifier.weight(1f)) {
                     Column {
+                        @Suppress("DEPRECATION")
                         Text(
                             text = stringResource(R.string.sex_label),
                             fontSize = 14.sp,
@@ -293,8 +445,8 @@ fun PersonalRecordsContainer(
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                         ExposedDropdownMenuBox(
-                            expanded = sexExpanded,
-                            onExpandedChange = { sexExpanded = !sexExpanded }
+                            expanded = sexExpanded && enabled,
+                            onExpandedChange = { if (enabled) sexExpanded = !sexExpanded }
                         ) {
                             OutlinedTextField(
                                 value = sex,
@@ -311,10 +463,11 @@ fun PersonalRecordsContainer(
                                 ),
                                 leadingIcon = { Icon(AppIcons.Gender, contentDescription = null, tint = PrimaryBlue) },
                                 singleLine = true,
-                                textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
+                                textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
+                                enabled = enabled
                             )
                             ExposedDropdownMenu(
-                                expanded = sexExpanded,
+                                expanded = sexExpanded && enabled,
                                 onDismissRequest = { sexExpanded = false }
                             ) {
                                 sexOptions.forEach { option ->
@@ -335,6 +488,7 @@ fun PersonalRecordsContainer(
             Spacer(modifier = Modifier.height(16.dp))
             
             // Activity Level Dropdown
+            @Suppress("DEPRECATION")
             Text(
                 text = stringResource(R.string.activity_level_label),
                 fontSize = 14.sp,
@@ -343,8 +497,8 @@ fun PersonalRecordsContainer(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             ExposedDropdownMenuBox(
-                expanded = actExpanded,
-                onExpandedChange = { actExpanded = !actExpanded }
+                expanded = actExpanded && enabled,
+                onExpandedChange = { if (enabled) actExpanded = !actExpanded }
             ) {
                 OutlinedTextField(
                     value = activity,
@@ -361,10 +515,11 @@ fun PersonalRecordsContainer(
                     ),
                     leadingIcon = { Icon(AppIcons.Activity, contentDescription = null, tint = PrimaryBlue) },
                     singleLine = true,
-                    textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
+                    textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
+                    enabled = enabled
                 )
                 ExposedDropdownMenu(
-                    expanded = actExpanded,
+                    expanded = actExpanded && enabled,
                     onDismissRequest = { actExpanded = false }
                 ) {
                     activityLevels.forEach { option ->
@@ -382,6 +537,7 @@ fun PersonalRecordsContainer(
             Spacer(modifier = Modifier.height(16.dp))
             
             // Environment Dropdown
+            @Suppress("DEPRECATION")
             Text(
                 text = stringResource(R.string.environment_dropdown_label),
                 fontSize = 14.sp,
@@ -390,8 +546,8 @@ fun PersonalRecordsContainer(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             ExposedDropdownMenuBox(
-                expanded = envExpanded,
-                onExpandedChange = { envExpanded = !envExpanded }
+                expanded = envExpanded && enabled,
+                onExpandedChange = { if (enabled) envExpanded = !envExpanded }
             ) {
                 OutlinedTextField(
                     value = environment,
@@ -408,10 +564,11 @@ fun PersonalRecordsContainer(
                     ),
                     leadingIcon = { Icon(AppIcons.Weather, contentDescription = null, tint = PrimaryBlue) },
                     singleLine = true,
-                    textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
+                    textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
+                    enabled = enabled
                 )
                 ExposedDropdownMenu(
-                    expanded = envExpanded,
+                    expanded = envExpanded && enabled,
                     onDismissRequest = { envExpanded = false }
                 ) {
                     weatherOptions.forEach { option ->
@@ -435,11 +592,15 @@ fun EditField(
     value: String,
     onValueChange: (String) -> Unit,
     icon: ImageVector,
-    isPassword: Boolean = false
+    isPassword: Boolean = false,
+    readOnly: Boolean = false,
+    enabled: Boolean = true,
+    placeholder: String = ""
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
     Column {
+        @Suppress("DEPRECATION")
         Text(
             text = label,
             fontSize = 14.sp,
@@ -451,12 +612,13 @@ fun EditField(
             value = value,
             onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth(),
+            placeholder = { if (placeholder.isNotEmpty()) Text(placeholder, fontSize = 14.sp) },
             shape = RoundedCornerShape(16.dp),
             leadingIcon = { Icon(icon, contentDescription = null, tint = PrimaryBlue) },
             trailingIcon = {
                 if (isPassword) {
                     val image = if (passwordVisible) AppIcons.Visibility else AppIcons.VisibilityOff
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }, enabled = enabled) {
                         Icon(imageVector = image, contentDescription = "Toggle password visibility")
                     }
                 }
@@ -467,7 +629,9 @@ fun EditField(
                 unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
             ),
             singleLine = true,
-            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
+            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
+            readOnly = readOnly,
+            enabled = enabled
         )
     }
 }
