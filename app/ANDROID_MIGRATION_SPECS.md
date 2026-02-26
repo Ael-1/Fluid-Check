@@ -16,6 +16,7 @@ This document provides exhaustive structural, visual, and behavioral specificati
 - **White (High Alpha)**: `#FFFFFFFF`
 - **Progress Lap 1**: `#FFACE6FD` (Light Blue 200)
 - **Progress Lap 2 / Glow Cyan**: `#FF40E6FD` (Vibrant Cyan)
+- **Google Neutral Border**: `#FF747775` (Official Branding)
 
 ### 1.2 Typography (Material 3 Type Tokens)
 - **Display Large (Hero Percentage)**: Poppins Black, 68sp, Tracking -0.02em.
@@ -28,7 +29,7 @@ This document provides exhaustive structural, visual, and behavioral specificati
 ### 1.3 Asset & Text Management (Resource Architecture)
 - **Unified Icons (`AppIcons.kt`)**: 
     - Centralized semantic naming (e.g., `AppIcons.Streak`).
-    - `AppIcons.Gender` used for biological Sex fields.
+    - `AppIcons.GoogleLogo` pointing to official `ic_google_logo.xml`.
 - **Unified Strings (`strings.xml`)**:
     - Zero hard-coded UI strings.
     - Placeholder Pattern: Dropdowns use "Select...", Text fields use "Input...".
@@ -41,7 +42,7 @@ This document provides exhaustive structural, visual, and behavioral specificati
 
 ## 2. Onboarding & Setup
 ### 2.1 Initial Setup Assistance
-- **Trigger**: New users or forced via debug credentials (`ael/1234`). Controlled by `isSetupComplete` boolean in DataStore.
+- **Trigger**: New users or forced via Firestore record check (`setupCompleted` flag).
 - **Data Capture**: Weight, Height, Age, Sex, Activity Level, and Environment.
 - **AI Integration**: Invokes Gemini AI to calculate an ideal hydration goal based on physical data.
 - **Goal Confirmation**: Displays an `AlertDialog` prompting the user to accept the AI-calculated goal or use the system default (3000ml).
@@ -56,8 +57,12 @@ This document provides exhaustive structural, visual, and behavioral specificati
 - **Interactivity**: Tap to clear focus.
 
 ### 3.2 Login Screen (LoginScreen.kt)
-- **Credentials**: Validated against hard-coded mock data or local persistence.
-- **Action Buttons**: SIGN IN (Primary), SIGN UP (Outlined), Gmail (Outlined).
+- **Traditional Auth**: Sign-in via Username/Email and Password. Supports username-to-email resolution via Firestore.
+- **Social Auth (GMS Only)**:
+    - **Trigger**: Only visible if Google Play Services is detected (`GoogleApiAvailability`).
+    - **Visuals**: Centered 40dp white circular button with official borderless 24dp Google "G" logo.
+    - **Layout**: Positioned below primary actions, separated by "or sign in with" horizontal divider.
+- **Action Buttons**: SIGN IN (Primary), SIGN UP (Outlined).
 
 ### 3.3 Sign Up Screen (SignUpScreen.kt)
 - **Validation**:
@@ -79,39 +84,34 @@ This document provides exhaustive structural, visual, and behavioral specificati
 
 ---
 
-## 5. User Features (UserRecord Driven)
+## 5. User Features (Firestore Driven)
 ### 5.1 Home Page (Hero Progress Ring)
 - **Infinite Progress Architecture**: 
     - Supports unlimited laps using alternating colors (Lap 1: `#ACE6FD`, Lap 2+: `#40E6FD`).
     - Base layers use `drawCircle` for solid fills, active layers use `drawArc` with `StrokeCap.Round`.
-    - Artifact Prevention: Head shadow shadows and round caps are hidden at exactly 0% or 100% to prevent starting-point dots.
 - **Achievement State (Ring Closed)**:
     - Trigger: `totalIntake >= dailyGoal`.
     - Metrics card transforms into a **Radiating Achievement Card**.
     - Visuals: Intensive Cyan (`#40E6FD`) outer glow, 30dp pulse spread, and radiant border stroke.
-    - Text: Switches from "Remaining Intake" to "PROGRESS RING CLOSED!".
 - **Recent Logs**: Displays last 5 entries with Edit/Delete capabilities.
-- **Goal Management**: "Update Daily Goal" dialog uses `64.dp` high fields with `18.sp` font size for high visibility.
+- **Goal Management**: "Update Daily Goal" dialog uses `64.dp` high fields with `18.sp` font size.
 
 ### 5.2 AI Coach Page
 - **Smart Goal Setter**: Interactive form using `UserRecord` fields.
-- **Goal Application**: Features a "Set as Daily Goal" action that persists the AI-recommended value directly to device storage.
-- **Dropdowns**: Capped at `280.dp` height with internal scrolling to prevent screen overflow.
-- **Validation**: "Calculate" button is disabled or blocked until all mandatory states are resolved.
+- **Goal Application**: Features a "Set as Daily Goal" action that persists the AI-recommended value to Firestore.
 
 ---
 
 ## 6. Admin Dashboard
 ### 6.1 User Management
-- **Model**: Uses `UserCredentials` for directory listings (Name, Email, Role, Streak).
+- **Model**: Fetches directory listings from Firestore `users` collection.
 - **Actions**: Edit/Delete icons mapped to `AppIcons`.
 
 ---
 
 ## 7. Profile & Information Management
 ### 7.1 Edit Profile Screen
-- **UserRecord Section**: Allows updating physical data.
-- **Validation**: "Save Changes" blocked if fields are blank or set to selection placeholders.
+- **UserRecord Section**: Allows updating physical data in Firestore.
 - **Consistency**: Uses same `ResponsiveEditField` and `ResponsiveDropdownField` components as Initial Setup.
 
 ---
@@ -119,15 +119,16 @@ This document provides exhaustive structural, visual, and behavioral specificati
 ## 8. Architecture & Data Management
 ### 8.1 Package Organization
 - `com.example.fluidcheck.ui`: Composables and screen logic.
-- `com.example.fluidcheck.model`: Data classes (`UserCredentials`, `UserRecord`, `FluidLog`).
-- `com.example.fluidcheck.repository`: Local persistence and data logic.
+- `com.example.fluidcheck.model`: Data classes (`FluidLog`, `UserRecord`).
+- `com.example.fluidcheck.repository`: `AuthRepository` (Firebase Auth) and `FirestoreRepository`.
 
-### 8.2 Local Persistence (DataStore)
-- **Implementation**: `androidx.datastore:datastore-preferences`.
-- **Scope**: Stores `UserRecord` (physical data), `dailyGoal`, and `isSetupComplete` status indexed by username.
-- **Reactivity**: Uses Kotlin `Flow` to provide real-time updates to the UI when preferences change.
+### 8.2 Backend (Firebase)
+- **Authentication**: Firebase Auth with Email/Password and Google Sign-In support.
+- **Database**: Cloud Firestore.
+    - `users`: Main user records and sub-collection `fluid_logs`.
+    - `usernames`: Mapping collection for username-based login resolution.
+- **Security Rules**: Restricted to authenticated owners with public read for username lookup.
 
 ### 8.3 AI Integration
 - **Service**: `GeminiCoach.kt` utilizing `GenerativeModel`.
-- **Connectivity**: Requires internet connection; provides fallback error handling ("Check connection") if offline.
 - **Context**: Prompts explicitly reference "Biological Sex" for clinical accuracy in hydration modeling.

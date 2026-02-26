@@ -5,11 +5,12 @@ FluidCheck is an Android application designed to help users manage their hydrati
 ## 🚀 Features
 - **AI-Powered Personalized Goals:** Get custom daily water intake targets calculated by Gemini AI.
 - **Smart Hydration Coach:** AI-driven personalized recommendations based on your preferences and habits.
-- **Fluid Logging:** Track your daily fluid intake with various drink types.
-- **Progress Tracking:** Monitor your hydration trends over time with an interactive UI.
-- **Firebase Authentication:** Secure login and sign-up using Firebase Auth, including username-based lookup.
-- **Cloud Persistence (Implemented):** Ready for Cloud Firestore to store User records, hydration goals, and fluid logs (Requires backend setup).
-- **Modern UI:** Beautiful, responsive interface built entirely with Jetpack Compose following Material 3 guidelines.
+- **Fluid Logging:** Track your daily fluid intake with various drink types and cumulative data visualization.
+- **Progress Tracking:** Monitor your hydration trends over time with dynamic line charts (Day, Week, Month, Year views).
+- **Firebase Authentication:** Secure login and sign-up using Firebase Auth, including Google Sign-In and username-based lookup.
+- **Cloud Persistence:** Full Cloud Firestore integration for real-time synchronization of user records, hydration goals, and fluid logs.
+- **Admin Dashboard:** Comprehensive tools for managing users, roles, and system-wide analytics.
+- **Modern UI:** Beautiful, responsive interface built entirely with Jetpack Compose following Material 3 guidelines with a "Glassmorphism" aesthetic.
 
 ## 🛠 Tech Stack
 - **Language:** [Kotlin](https://kotlinlang.org/)
@@ -38,7 +39,7 @@ FluidCheck is an Android application designed to help users manage their hydrati
 
 4. **Firebase Setup:**
    - Create a new project in the [Firebase Console](https://console.firebase.google.com/).
-   - Enable **Authentication** (Email/Password) and **Cloud Firestore**.
+   - Enable **Authentication** (Email/Password & Google) and **Cloud Firestore**.
    - Add an Android app with the package name `com.example.fluidcheck`.
    - Download the `google-services.json` file and place it in the `app/` directory.
 
@@ -48,16 +49,15 @@ FluidCheck is an Android application designed to help users manage their hydrati
 ## 📝 Current Status
 - [x] Basic UI Layout & Navigation
 - [x] Gemini AI Integration (Goal calculation & recommendations)
-- [x] Fluid Intake Logging
-- [x] Firebase Authentication (Login/Signup)
-- [ ] Cloud Firestore Setup (Code implemented, waiting for database activation)
+- [x] Fluid Intake Logging with Edit/Delete capabilities
+- [x] Firebase Authentication (Email/Password & Google Sign-In)
+- [x] Cloud Firestore Integration (Real-time data syncing)
+- [x] Dynamic Progress Charts (Cumulative daily and historical views)
+- [x] Admin Dashboard & User Management
 - [ ] Daily notification reminders
-- [ ] Detailed Analytics Dashboard
+- [ ] Multi-language support
 
 ## 👨‍💻 Developer
 **Vincent Rafael Apog**
 - 3rd year Computer Engineering student at Mapúa Malayan Colleges Mindanao.
 - Developed as a partial fulfillment for CPE144L - Mobile Application Development.
-
-## 📄 License
-This project is licensed under the MIT License.

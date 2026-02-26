@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.example.fluidcheck.BuildConfig
 import com.example.fluidcheck.R
 import com.example.fluidcheck.ai.GeminiCoach
+import com.example.fluidcheck.model.DEFAULT_QUICK_ADD_CONFIGS
 import com.example.fluidcheck.model.UserRecord
 import com.example.fluidcheck.ui.theme.*
 import kotlinx.coroutines.launch
@@ -68,7 +69,16 @@ fun InitialSetupScreen(
                     onClick = {
                         val goal = showGoalDialog?.filter { it.isDigit() }?.toIntOrNull()
                         onComplete(
-                            UserRecord(weight, height, age, sex, activity, environment, setupCompleted = true),
+                            UserRecord(
+                                weight = weight, 
+                                height = height, 
+                                age = age, 
+                                sex = sex, 
+                                activity = activity, 
+                                environment = environment, 
+                                setupCompleted = true,
+                                quickAddConfig = DEFAULT_QUICK_ADD_CONFIGS
+                            ),
                             goal
                         )
                     },
@@ -81,7 +91,16 @@ fun InitialSetupScreen(
                 TextButton(
                     onClick = {
                         onComplete(
-                            UserRecord(weight, height, age, sex, activity, environment, setupCompleted = true),
+                            UserRecord(
+                                weight = weight, 
+                                height = height, 
+                                age = age, 
+                                sex = sex, 
+                                activity = activity, 
+                                environment = environment, 
+                                setupCompleted = true,
+                                quickAddConfig = DEFAULT_QUICK_ADD_CONFIGS
+                            ),
                             3000 // Explicitly use 3000ml as requested
                         )
                     }
@@ -239,7 +258,16 @@ fun InitialSetupScreen(
                                         showGoalDialog = goal
                                     } else {
                                         onComplete(
-                                            UserRecord(weight, height, age, sex, activity, environment, setupCompleted = true),
+                                            UserRecord(
+                                                weight = weight, 
+                                                height = height, 
+                                                age = age, 
+                                                sex = sex, 
+                                                activity = activity, 
+                                                environment = environment, 
+                                                setupCompleted = true,
+                                                quickAddConfig = DEFAULT_QUICK_ADD_CONFIGS
+                                            ),
                                             3000
                                         )
                                     }
@@ -264,10 +292,11 @@ fun InitialSetupScreen(
                     
                     TextButton(
                         onClick = {
-                            onComplete(UserRecord(setupCompleted = true), 3000)
+                            onComplete(UserRecord(setupCompleted = true, quickAddConfig = DEFAULT_QUICK_ADD_CONFIGS), 3000)
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        @Suppress("DEPRECATION")
                         Text(
                             "Skip for now",
                             color = MutedForeground,
@@ -307,6 +336,7 @@ fun ResponsiveEditField(
             onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth().height(58.dp),
             placeholder = { 
+                @Suppress("DEPRECATION")
                 Text(
                     text = placeholder, 
                     maxLines = 1, 
@@ -392,6 +422,7 @@ fun ResponsiveDropdownField(
                 options.forEach { option ->
                     DropdownMenuItem(
                         text = { 
+                            @Suppress("DEPRECATION")
                             Text(
                                 text = option, 
                                 fontSize = 16.sp,

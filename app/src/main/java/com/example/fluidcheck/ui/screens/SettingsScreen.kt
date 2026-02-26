@@ -1,5 +1,6 @@
 package com.example.fluidcheck.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,15 +20,25 @@ import androidx.compose.ui.unit.sp
 import com.example.fluidcheck.R
 import com.example.fluidcheck.ui.theme.*
 
+private const val ADMIN_EMAIL = "admin@fluidcheck.ai"
+
 @Composable
 fun SettingsScreen(
-    isAdmin: Boolean = false,
+    username: String = "",
+    email: String = "",
+    streak: Int = 0,
+    isDatabaseAdmin: Boolean = false,
+    isAdminMode: Boolean = false,
     onLogout: () -> Unit = {},
     onEditProfile: () -> Unit = {},
-    onAboutDeveloper: () -> Unit = {}
+    onAboutDeveloper: () -> Unit = {},
+    onToggleRole: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
     var showLogoutDialog by remember { mutableStateOf(false) }
+    
+    // Check if this is the core Admin account
+    val isPrimaryAdmin = email.equals(ADMIN_EMAIL, ignoreCase = true)
 
     if (showLogoutDialog) {
         AlertDialog(
@@ -35,6 +46,7 @@ fun SettingsScreen(
             title = { Text(text = stringResource(R.string.sign_out), fontWeight = FontWeight.Bold) },
             text = { Text(text = stringResource(R.string.sign_out_confirm_msg)) },
             confirmButton = {
+                @Suppress("DEPRECATION")
                 TextButton(
                     onClick = {
                         showLogoutDialog = false
@@ -45,6 +57,7 @@ fun SettingsScreen(
                 }
             },
             dismissButton = {
+                @Suppress("DEPRECATION")
                 TextButton(onClick = { showLogoutDialog = false }) {
                     Text(stringResource(R.string.cancel), color = TextDark)
                 }
@@ -62,37 +75,46 @@ fun SettingsScreen(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 7.1 Profile Header
-        if (isAdmin) {
-            AdminProfileHeader(onEditProfile = onEditProfile)
+        // Profile Header
+        if (isAdminMode) {
+            AdminProfileHeader(
+                username = username,
+                onEditProfile = onEditProfile
+            )
         } else {
-            ProfileHeader(onEditProfile = onEditProfile)
+            ProfileHeader(
+                username = username,
+                streak = streak,
+                onEditProfile = onEditProfile
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 7.2 Reminders Section (Only for Users)
-        if (!isAdmin) {
+        if (!isAdminMode) {
+            // Smart Reminders Section
             SmartRemindersSection()
+            
             Spacer(modifier = Modifier.height(24.dp))
         }
 
         // System Status Section
-        SystemStatusSection(isAdmin = isAdmin)
+        SystemStatusSection()
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // 7.4 About Developer Button
+        // About Developer Button
         OutlinedButton(
             onClick = onAboutDeveloper,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
             shape = RoundedCornerShape(16.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
+            border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
         ) {
             Icon(AppIcons.Info, contentDescription = null, tint = TextDark)
             Spacer(modifier = Modifier.width(8.dp))
+            @Suppress("DEPRECATION")
             Text(
                 text = stringResource(R.string.about_developer),
                 fontWeight = FontWeight.SemiBold,
@@ -101,9 +123,39 @@ fun SettingsScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // 7.3 Logout Section
+        // Role Toggle Button for promoted Admins (Primary Admin excluded)
+        if (isDatabaseAdmin && !isPrimaryAdmin) {
+            Button(
+                onClick = onToggleRole,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PrimaryBlue.copy(alpha = 0.1f),
+                    contentColor = PrimaryBlue
+                ),
+                border = BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.2f))
+            ) {
+                Icon(
+                    imageVector = if (isAdminMode) AppIcons.PersonOutline else AppIcons.Badge,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                @Suppress("DEPRECATION")
+                Text(
+                    text = if (isAdminMode) "Switch to User Mode" else "Switch to Admin Mode",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        // Logout Section
         Button(
             onClick = { showLogoutDialog = true },
             modifier = Modifier
@@ -112,6 +164,7 @@ fun SettingsScreen(
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
         ) {
+            @Suppress("DEPRECATION")
             Text(
                 text = stringResource(R.string.sign_out),
                 fontWeight = FontWeight.Bold,
@@ -123,6 +176,7 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         // Footer
+        @Suppress("DEPRECATION")
         Text(
             text = stringResource(R.string.rights_reserved),
             modifier = Modifier.fillMaxWidth(),
@@ -137,13 +191,19 @@ fun SettingsScreen(
 }
 
 @Composable
-fun ProfileHeader(onEditProfile: () -> Unit) {
+fun ProfileHeader(
+    username: String,
+    streak: Int,
+    onEditProfile: () -> Unit
+) {
+    val displayName = username.ifEmpty { "User" }.replaceFirstChar { it.uppercase() }
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
         color = Color.White,
         shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = BorderStroke(1.dp, Color(0xFFF1F5F9))
     ) {
         Column {
             Box(
@@ -172,8 +232,9 @@ fun ProfileHeader(onEditProfile: () -> Unit) {
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
+                    @Suppress("DEPRECATION")
                     Text(
-                        text = "Ael",
+                        text = displayName,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Black,
                         color = TextDark
@@ -181,38 +242,7 @@ fun ProfileHeader(onEditProfile: () -> Unit) {
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    Surface(
-                        color = Color.White,
-                        shape = RoundedCornerShape(16.dp),
-                        shadowElevation = 2.dp
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = AppIcons.Streak,
-                                contentDescription = null,
-                                tint = Color(0xFFFF9800),
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = "STREAK", // Keeping "STREAK" hardcoded or can be added to strings
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MutedForeground
-                                )
-                                Text(
-                                    text = "12 Days", // Mock data
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PrimaryBlue
-                                )
-                            }
-                        }
-                    }
+                    StreakBadge(streak = streak)
                 }
             }
             
@@ -227,8 +257,9 @@ fun ProfileHeader(onEditProfile: () -> Unit) {
                         .fillMaxWidth()
                         .height(56.dp),
                     shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
+                    border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
                 ) {
+                    @Suppress("DEPRECATION")
                     Text(
                         text = stringResource(R.string.edit_profile),
                         color = TextDark,
@@ -241,54 +272,69 @@ fun ProfileHeader(onEditProfile: () -> Unit) {
 }
 
 @Composable
-fun AdminProfileHeader(onEditProfile: () -> Unit) {
+fun AdminProfileHeader(
+    username: String,
+    onEditProfile: () -> Unit
+) {
+    val displayName = username.ifEmpty { "Admin" }.replaceFirstChar { it.uppercase() }
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
         color = Color.White,
         shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = BorderStroke(1.dp, Color(0xFFF1F5F9))
     ) {
         Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(PrimaryBlue.copy(alpha = 0.12f))
-                    .padding(vertical = 40.dp),
+                    .padding(vertical = 32.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Surface(
-                        modifier = Modifier.size(110.dp),
+                        modifier = Modifier.size(96.dp),
                         shape = CircleShape,
                         color = Color.White,
-                        shadowElevation = 12.dp
+                        shadowElevation = 8.dp
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                imageVector = AppIcons.PersonOutline,
+                                imageVector = AppIcons.Badge,
                                 contentDescription = null,
-                                modifier = Modifier.size(56.dp),
+                                modifier = Modifier.size(48.dp),
                                 tint = PrimaryBlue
                             )
                         }
                     }
                     
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     
+                    @Suppress("DEPRECATION")
                     Text(
-                        text = "Administrator",
+                        text = displayName,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Black,
                         color = TextDark
                     )
-                    Text(
-                        text = "SYSTEM OVERSEER",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MutedForeground,
-                        letterSpacing = 1.sp
-                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Surface(
+                        color = PrimaryBlue,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = "ADMINISTRATOR",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White,
+                            letterSpacing = 1.sp
+                        )
+                    }
                 }
             }
             
@@ -303,14 +349,53 @@ fun AdminProfileHeader(onEditProfile: () -> Unit) {
                         .fillMaxWidth()
                         .height(56.dp),
                     shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
+                    border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
                 ) {
+                    @Suppress("DEPRECATION")
                     Text(
                         text = stringResource(R.string.edit_profile),
                         color = TextDark,
                         fontWeight = FontWeight.Medium
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun StreakBadge(streak: Int) {
+    Surface(
+        color = Color.White,
+        shape = RoundedCornerShape(16.dp),
+        shadowElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = AppIcons.Streak,
+                contentDescription = null,
+                tint = Color(0xFFFF9800),
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                @Suppress("DEPRECATION")
+                Text(
+                    text = "STREAK", 
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MutedForeground
+                )
+                @Suppress("DEPRECATION")
+                Text(
+                    text = "$streak Days", 
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryBlue
+                )
             }
         }
     }
@@ -319,24 +404,26 @@ fun AdminProfileHeader(onEditProfile: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartRemindersSection() {
-    var remindersEnabled by mutableStateOf(false)
-    var frequency by mutableStateOf("Every 1 hour")
-    var expanded by mutableStateOf(false)
+    var remindersEnabled by remember { mutableStateOf(false) }
+    var frequency by remember { mutableStateOf("Every 1 hour") }
+    var expanded by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
         color = Color.White,
         shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = BorderStroke(1.dp, Color(0xFFF1F5F9))
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
+            @Suppress("DEPRECATION")
             Text(
                 text = stringResource(R.string.smart_reminders),
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextDark
             )
+            @Suppress("DEPRECATION")
             Text(
                 text = stringResource(R.string.reminders_subtitle),
                 fontSize = 14.sp,
@@ -350,7 +437,7 @@ fun SmartRemindersSection() {
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 color = Color.White,
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+                border = BorderStroke(1.dp, Color(0xFFF1F5F9))
             ) {
                 Row(
                     modifier = Modifier
@@ -364,6 +451,7 @@ fun SmartRemindersSection() {
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
+                    @Suppress("DEPRECATION")
                     Text(
                         text = stringResource(R.string.enable_reminders),
                         fontSize = 16.sp,
@@ -386,6 +474,7 @@ fun SmartRemindersSection() {
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            @Suppress("DEPRECATION")
             Text(
                 text = stringResource(R.string.reminder_frequency),
                 fontSize = 14.sp,
@@ -434,23 +523,24 @@ fun SmartRemindersSection() {
 }
 
 @Composable
-fun SystemStatusSection(isAdmin: Boolean) {
+fun SystemStatusSection() {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
         color = Color.White,
         shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = BorderStroke(1.dp, Color(0xFFF1F5F9))
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = if (isAdmin) AppIcons.Admin else AppIcons.Notifications,
+                    imageVector = AppIcons.Notifications,
                     contentDescription = null,
                     tint = PrimaryBlue,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
+                @Suppress("DEPRECATION")
                 Text(
                     text = stringResource(R.string.system_status),
                     fontSize = 22.sp,
@@ -466,6 +556,7 @@ fun SystemStatusSection(isAdmin: Boolean) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                @Suppress("DEPRECATION")
                 Text(text = stringResource(R.string.auto_sync), fontSize = 16.sp, color = TextDark)
                 Box(
                     modifier = Modifier
@@ -481,7 +572,9 @@ fun SystemStatusSection(isAdmin: Boolean) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                @Suppress("DEPRECATION")
                 Text(text = stringResource(R.string.cloud_backup), fontSize = 16.sp, color = TextDark)
+                @Suppress("DEPRECATION")
                 Text(text = stringResource(R.string.enabled), fontSize = 14.sp, color = MutedForeground)
             }
         }

@@ -23,6 +23,24 @@
     <string name="login_failed_title">Login Failed</string>
     <string name="login_failed_msg">Invalid username or password. Please try again.</string>
     <string name="ok">OK</string>
+    <string name="default_web_client_id">21635365133-2brmbr8m47ilo0f0ch7bm7sndmk15oan.apps.googleusercontent.com</string>
+    <string name="signup_success_title">Account Created!</string>
+    <string name="signup_success_msg">Your account has been successfully created. Please sign in to continue.</string>
+    <string name="error_empty_identifier">Username or Email cannot be empty</string>
+    <string name="error_empty_password">Password cannot be empty</string>
+    <string name="try_again">Try Again</string>
+    <string name="awesome_caps">AWESOME!</string>
+
+    <string name="error_username_taken_title">Username Taken</string>
+    <string name="error_username_taken_msg">This username is already in use. Please try another one.</string>
+    <string name="error_email_taken_title">Email Taken</string>
+    <string name="error_email_taken_msg">This email address is already associated with another account.</string>
+    <string name="error_invalid_credentials_title">Login Failed</string>
+    <string name="error_invalid_credentials_msg">Invalid credentials. Please check your password.</string>
+    <string name="error_user_not_found_title">User Not Found</string>
+    <string name="error_user_not_found_msg">We couldn\'t find an account with that username or email.</string>
+    <string name="signup_failed_title">Sign Up Failed</string>
+
 
     <string name="join_fluid_check">Join Fluid Check</string>
     <string name="signup_subtitle">Start your hydration journey today</string>

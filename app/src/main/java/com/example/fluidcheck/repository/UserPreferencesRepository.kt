@@ -14,60 +14,71 @@ class UserPreferencesRepository(private val context: Context) {
     
     private object PreferencesKeys {
         // Sanitize keys to ensure they only contain alphanumeric characters and underscores
-        // This prevents crashes with usernames/emails containing dots, @, etc.
         private fun sanitize(key: String): String = key.replace(Regex("[^a-zA-Z0-9_]"), "_")
 
-        fun weightKey(username: String) = stringPreferencesKey(sanitize("${username}_weight"))
-        fun heightKey(username: String) = stringPreferencesKey(sanitize("${username}_height"))
-        fun ageKey(username: String) = stringPreferencesKey(sanitize("${username}_age"))
-        fun sexKey(username: String) = stringPreferencesKey(sanitize("${username}_sex"))
-        fun activityKey(username: String) = stringPreferencesKey(sanitize("${username}_activity"))
-        fun environmentKey(username: String) = stringPreferencesKey(sanitize("${username}_environment"))
-        fun dailyGoalKey(username: String) = intPreferencesKey(sanitize("${username}_daily_goal"))
-        fun setupCompleteKey(username: String) = booleanPreferencesKey(sanitize("${username}_setup_complete"))
+        fun weightKey(userId: String) = stringPreferencesKey(sanitize("${userId}_weight"))
+        fun heightKey(userId: String) = stringPreferencesKey(sanitize("${userId}_height"))
+        fun ageKey(userId: String) = stringPreferencesKey(sanitize("${userId}_age"))
+        fun sexKey(userId: String) = stringPreferencesKey(sanitize("${userId}_sex"))
+        fun activityKey(userId: String) = stringPreferencesKey(sanitize("${userId}_activity"))
+        fun environmentKey(userId: String) = stringPreferencesKey(sanitize("${userId}_environment"))
+        fun dailyGoalKey(userId: String) = intPreferencesKey(sanitize("${userId}_daily_goal"))
+        fun setupCompleteKey(userId: String) = booleanPreferencesKey(sanitize("${userId}_setup_complete"))
+        fun adminModeKey(userId: String) = booleanPreferencesKey(sanitize("${userId}_admin_mode"))
     }
 
-    fun getUserRecord(username: String): Flow<UserRecord> = context.dataStore.data.map { preferences ->
+    fun getUserRecord(userId: String): Flow<UserRecord> = context.dataStore.data.map { preferences ->
         UserRecord(
-            weight = preferences[PreferencesKeys.weightKey(username)] ?: "",
-            height = preferences[PreferencesKeys.heightKey(username)] ?: "",
-            age = preferences[PreferencesKeys.ageKey(username)] ?: "",
-            sex = preferences[PreferencesKeys.sexKey(username)] ?: "",
-            activity = preferences[PreferencesKeys.activityKey(username)] ?: "",
-            environment = preferences[PreferencesKeys.environmentKey(username)] ?: "",
-            setupCompleted = preferences[PreferencesKeys.setupCompleteKey(username)] ?: false
+            uid = userId,
+            weight = preferences[PreferencesKeys.weightKey(userId)] ?: "",
+            height = preferences[PreferencesKeys.heightKey(userId)] ?: "",
+            age = preferences[PreferencesKeys.ageKey(userId)] ?: "",
+            sex = preferences[PreferencesKeys.sexKey(userId)] ?: "",
+            activity = preferences[PreferencesKeys.activityKey(userId)] ?: "",
+            environment = preferences[PreferencesKeys.environmentKey(userId)] ?: "",
+            setupCompleted = preferences[PreferencesKeys.setupCompleteKey(userId)] ?: false
         )
     }
 
-    suspend fun saveUserRecord(username: String, record: UserRecord) {
+    suspend fun saveUserRecord(userId: String, record: UserRecord) {
         context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.weightKey(username)] = record.weight
-            preferences[PreferencesKeys.heightKey(username)] = record.height
-            preferences[PreferencesKeys.ageKey(username)] = record.age
-            preferences[PreferencesKeys.sexKey(username)] = record.sex
-            preferences[PreferencesKeys.activityKey(username)] = record.activity
-            preferences[PreferencesKeys.environmentKey(username)] = record.environment
-            preferences[PreferencesKeys.setupCompleteKey(username)] = record.setupCompleted
+            preferences[PreferencesKeys.weightKey(userId)] = record.weight
+            preferences[PreferencesKeys.heightKey(userId)] = record.height
+            preferences[PreferencesKeys.ageKey(userId)] = record.age
+            preferences[PreferencesKeys.sexKey(userId)] = record.sex
+            preferences[PreferencesKeys.activityKey(userId)] = record.activity
+            preferences[PreferencesKeys.environmentKey(userId)] = record.environment
+            preferences[PreferencesKeys.setupCompleteKey(userId)] = record.setupCompleted
         }
     }
 
-    fun isSetupComplete(username: String): Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[PreferencesKeys.setupCompleteKey(username)] ?: false
+    fun isSetupComplete(userId: String): Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.setupCompleteKey(userId)] ?: false
     }
 
-    suspend fun setSetupComplete(username: String, complete: Boolean) {
+    suspend fun setSetupComplete(userId: String, complete: Boolean) {
         context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.setupCompleteKey(username)] = complete
+            preferences[PreferencesKeys.setupCompleteKey(userId)] = complete
         }
     }
 
-    fun getDailyGoal(username: String): Flow<Int> = context.dataStore.data.map { preferences ->
-        preferences[PreferencesKeys.dailyGoalKey(username)] ?: 3000
+    fun getDailyGoal(userId: String): Flow<Int> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.dailyGoalKey(userId)] ?: 3000
     }
 
-    suspend fun saveDailyGoal(username: String, goal: Int) {
+    suspend fun saveDailyGoal(userId: String, goal: Int) {
         context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.dailyGoalKey(username)] = goal
+            preferences[PreferencesKeys.dailyGoalKey(userId)] = goal
+        }
+    }
+
+    fun isAdminMode(userId: String, defaultValue: Boolean): Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.adminModeKey(userId)] ?: defaultValue
+    }
+
+    suspend fun setAdminMode(userId: String, isAdminMode: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.adminModeKey(userId)] = isAdminMode
         }
     }
 }

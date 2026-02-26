@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "21635365133-9btt20ln63ff7q8fup8gh7mdhep2ok13.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.fluidcheck",
+            "certificate_hash": "c995f9626047629016857a21e5f1dd8556b24c40"
+          }
+        },
+        {
           "client_id": "21635365133-omr6t1f9l2bujpktef1hl7fs65t685os.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

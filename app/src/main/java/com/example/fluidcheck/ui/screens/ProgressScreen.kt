@@ -24,23 +24,70 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fluidcheck.R
 import com.example.fluidcheck.model.ChartData
+import com.example.fluidcheck.model.FluidLog
 import com.example.fluidcheck.ui.theme.*
+import com.google.firebase.Timestamp
+import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import kotlin.random.Random
+import java.time.temporal.TemporalAdjusters
+import java.util.*
+
+private val PST_ZONE = ZoneId.of("GMT+8")
 
 @Composable
-fun ProgressScreen() {
+fun ProgressScreen(
+    allLogs: List<FluidLog>,
+    dailyGoal: Int,
+    accountCreatedAt: Timestamp? = null
+) {
     var selectedTab by remember { mutableStateOf("Day") }
     var navOffset by remember { mutableIntStateOf(0) }
 
-    // Reset offset when tab changes (Spec 5.1)
+    // Reset offset when tab changes
     LaunchedEffect(selectedTab) {
         navOffset = 0
     }
 
-    val (navLabel, chartData) = remember(selectedTab, navOffset) {
-        getChartDataForRange(selectedTab, navOffset)
+    val (navLabel, chartData) = remember(selectedTab, navOffset, allLogs, dailyGoal) {
+        getChartDataForRange(selectedTab, navOffset, allLogs, dailyGoal)
+    }
+
+    // Dynamic Left Bound: User's Account Creation Date
+    val creationDate = remember(accountCreatedAt) {
+        accountCreatedAt?.toDate()?.toInstant()?.atZone(PST_ZONE)?.toLocalDate()
+            ?: LocalDate.now(PST_ZONE)
+    }
+
+    val canGoNext = navOffset < 0
+    val canGoPrevious = remember(selectedTab, navOffset, creationDate) {
+        val today = LocalDate.now(PST_ZONE)
+        val currentTargetDate = today.plusDays(navOffset.toLong())
+        
+        when (selectedTab) {
+            "Day" -> {
+                // Can only go back if yesterday is still on or after account creation
+                currentTargetDate.minusDays(1) >= creationDate
+            }
+            "Week" -> {
+                // Can go back if the start of the PREVIOUS week is >= creationDate
+                val currentWeekStart = currentTargetDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                currentWeekStart.minusDays(1) >= creationDate
+            }
+            "Month" -> {
+                // Can go back if the start of the PREVIOUS month is >= creationDate
+                val currentMonthStart = currentTargetDate.with(TemporalAdjusters.firstDayOfMonth())
+                currentMonthStart.minusDays(1) >= creationDate
+            }
+            "Year" -> {
+                // Can go back if the start of the PREVIOUS year is >= creationDate
+                val currentYearStart = currentTargetDate.with(TemporalAdjusters.firstDayOfYear())
+                currentYearStart.minusDays(1) >= creationDate
+            }
+            else -> true
+        }
     }
 
     Column(
@@ -49,8 +96,10 @@ fun ProgressScreen() {
             .background(AppBackground)
             .padding(horizontal = 24.dp)
     ) {
+        @Suppress("DEPRECATION")
         Spacer(modifier = Modifier.height(32.dp))
 
+        @Suppress("DEPRECATION")
         Text(
             text = stringResource(R.string.your_progress),
             style = MaterialTheme.typography.headlineLarge.copy(
@@ -60,6 +109,7 @@ fun ProgressScreen() {
             )
         )
 
+        @Suppress("DEPRECATION")
         Text(
             text = stringResource(R.string.progress_subtitle),
             style = MaterialTheme.typography.bodyLarge.copy(
@@ -70,7 +120,7 @@ fun ProgressScreen() {
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Progress Card (Spec 5 Card background is white with shadow)
+        // Progress Card
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -84,7 +134,7 @@ fun ProgressScreen() {
                 modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // 5.1 Time Range Tabs
+                // Time Range Tabs
                 TimeRangeTabs(
                     selectedTab = selectedTab,
                     onTabSelected = { selectedTab = it }
@@ -92,18 +142,21 @@ fun ProgressScreen() {
 
                 Spacer(modifier = Modifier.height(28.dp))
 
-                // 5.2 Date Navigation Bar
+                // Date Navigation Bar
                 DateNavigationBar(
                     label = navLabel,
                     onPrevious = { navOffset-- },
-                    onNext = { navOffset++ }
+                    onNext = { navOffset++ },
+                    isPreviousEnabled = canGoPrevious,
+                    isNextEnabled = canGoNext
                 )
 
                 Spacer(modifier = Modifier.height(40.dp))
 
-                // 5.3 Chart Components
+                // Chart Components
                 HydrationLineChart(
                     dataPoints = chartData.points,
+                    xOffsets = chartData.xOffsets,
                     xLabels = chartData.xLabels,
                     yLabels = chartData.yLabels,
                     maxValue = chartData.maxValue,
@@ -149,6 +202,7 @@ fun TimeRangeTabs(selectedTab: String, onTabSelected: (String) -> Unit) {
                         },
                     contentAlignment = Alignment.Center
                 ) {
+                    @Suppress("DEPRECATION")
                     Text(
                         text = tab,
                         fontSize = 14.sp,
@@ -162,9 +216,15 @@ fun TimeRangeTabs(selectedTab: String, onTabSelected: (String) -> Unit) {
 }
 
 @Composable
-fun DateNavigationBar(label: String, onPrevious: () -> Unit, onNext: () -> Unit) {
+fun DateNavigationBar(
+    label: String,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    isPreviousEnabled: Boolean,
+    isNextEnabled: Boolean
+) {
     Surface(
-        color = AccentBlue.copy(alpha = 0.3f), // Spec 5.2
+        color = AccentBlue.copy(alpha = 0.3f),
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -175,11 +235,15 @@ fun DateNavigationBar(label: String, onPrevious: () -> Unit, onNext: () -> Unit)
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            IconButton(onClick = onPrevious, modifier = Modifier.size(32.dp)) {
+            IconButton(
+                onClick = onPrevious,
+                modifier = Modifier.size(32.dp),
+                enabled = isPreviousEnabled
+            ) {
                 Icon(
                     imageVector = AppIcons.ArrowLeft,
                     contentDescription = stringResource(R.string.previous),
-                    tint = Color(0xFF94A3B8),
+                    tint = if (isPreviousEnabled) TextDark else Color(0xFF94A3B8).copy(alpha = 0.3f),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -200,11 +264,15 @@ fun DateNavigationBar(label: String, onPrevious: () -> Unit, onNext: () -> Unit)
                 )
             }
 
-            IconButton(onClick = onNext, modifier = Modifier.size(32.dp)) {
+            IconButton(
+                onClick = onNext,
+                modifier = Modifier.size(32.dp),
+                enabled = isNextEnabled
+            ) {
                 Icon(
                     imageVector = AppIcons.ArrowRight,
                     contentDescription = stringResource(R.string.next),
-                    tint = Color(0xFF94A3B8),
+                    tint = if (isNextEnabled) TextDark else Color(0xFF94A3B8).copy(alpha = 0.3f),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -215,6 +283,7 @@ fun DateNavigationBar(label: String, onPrevious: () -> Unit, onNext: () -> Unit)
 @Composable
 fun HydrationLineChart(
     dataPoints: List<Float>,
+    xOffsets: List<Float>?,
     xLabels: List<String>,
     yLabels: List<String>,
     maxValue: Float,
@@ -235,6 +304,7 @@ fun HydrationLineChart(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             yLabels.reversed().forEach { label ->
+                @Suppress("DEPRECATION")
                 Text(
                     text = label,
                     fontSize = 11.sp,
@@ -252,7 +322,7 @@ fun HydrationLineChart(
                 // Grid Lines
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val height = size.height
-                    val lines = yLabels.size - 1
+                    val lines = if (yLabels.size > 1) yLabels.size - 1 else 1
                     for (i in 0..lines) {
                         val y = height - (i * (height / lines))
                         drawLine(
@@ -264,28 +334,31 @@ fun HydrationLineChart(
                     }
                 }
 
-                // 5.3 Line Chart Visuals
+                // Line Chart Visuals
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     if (dataPoints.isEmpty()) return@Canvas
 
                     val width = size.width
                     val height = size.height
-                    val spacing = width / (dataPoints.size - 1)
+                    val effectiveMax = if (maxValue <= 0f) 1f else maxValue
 
-                    val points = dataPoints.mapIndexed { index, value ->
-                        Offset(
-                            x = index * spacing,
-                            y = height - (value / maxValue * height)
-                        )
+                    val allOffsets = dataPoints.mapIndexed { index, value ->
+                        val x = if (xOffsets != null && index < xOffsets.size) {
+                            xOffsets[index] * width
+                        } else {
+                            val spacing = if (dataPoints.size > 1) width / (dataPoints.size - 1) else 0f
+                            index * spacing
+                        }
+                        Offset(x = x, y = height - (value / effectiveMax * height))
                     }
 
-                    // Monotone Curve Implementation
-                    val path = Path().apply {
-                        if (points.isNotEmpty()) {
-                            moveTo(points.first().x, points.first().y)
-                            for (i in 0 until points.size - 1) {
-                                val p1 = points[i]
-                                val p2 = points[i + 1]
+                    if (allOffsets.size >= 2) {
+                        val path = Path().apply {
+                            moveTo(allOffsets.first().x, allOffsets.first().y)
+                            for (i in 0 until allOffsets.size - 1) {
+                                val p1 = allOffsets[i]
+                                val p2 = allOffsets[i + 1]
+                                // Smooth curve
                                 val controlPoint1 = Offset(p1.x + (p2.x - p1.x) / 2f, p1.y)
                                 val controlPoint2 = Offset(p1.x + (p2.x - p1.x) / 2f, p2.y)
                                 cubicTo(
@@ -295,16 +368,16 @@ fun HydrationLineChart(
                                 )
                             }
                         }
+
+                        drawPath(
+                            path = path,
+                            color = PrimaryBlue,
+                            style = Stroke(width = 3.dp.toPx())
+                        )
                     }
 
-                    drawPath(
-                        path = path,
-                        color = PrimaryBlue,
-                        style = Stroke(width = 3.dp.toPx()) // 3.dp as per spec
-                    )
-
-                    // 5.3 Points: 4.dp radius white dots with blue borders
-                    points.forEach { point ->
+                    // Draw nodes (dots) for EVERY point in the provided data
+                    allOffsets.forEach { point ->
                         drawCircle(
                             color = Color.White,
                             radius = 4.dp.toPx(),
@@ -328,13 +401,13 @@ fun HydrationLineChart(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 xLabels.forEach { label ->
-                    // Increased threshold from 380 to 450 to accommodate more devices
                     val processedLabel = if (rangeType == "Year" && screenWidth < 450) {
                         label.take(1)
                     } else {
                         label
                     }
 
+                    @Suppress("DEPRECATION")
                     Text(
                         text = processedLabel,
                         fontSize = 11.sp,
@@ -349,71 +422,228 @@ fun HydrationLineChart(
     }
 }
 
-fun getChartDataForRange(range: String, offset: Int): Pair<String, ChartData> {
-    val random = Random(offset + range.hashCode())
+fun getChartDataForRange(
+    range: String,
+    offset: Int,
+    allLogs: List<FluidLog>,
+    dailyGoal: Int
+): Pair<String, ChartData> {
+    val today = LocalDate.now(PST_ZONE)
     return when (range) {
         "Day" -> {
-            val date = LocalDate.now().plusDays(offset.toLong())
+            val date = today.plusDays(offset.toLong())
             val label = when (offset) {
                 0 -> "Today"
                 -1 -> "Yesterday"
-                else -> date.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))
+                else -> date.format(DateTimeFormatter.ofPattern("MMM dd, yyyy", Locale.getDefault()))
             }
-            // Cumulative growth for day view as seen in image 1
-            var current = 0f
-            val points = List(7) { 
-                current += random.nextInt(100, 600).toFloat()
-                current
-            }.map { if (it > 2800f) 2800f else it }
             
+            val targetDateStr = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.getDefault()))
+            val dayLogs = allLogs.filter { it.date == targetDateStr }
+            
+            val timeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
+            val sortedLogs = dayLogs.mapNotNull { log ->
+                try {
+                    val time = LocalTime.parse(log.time, timeFormatter)
+                    log to time
+                } catch (e: Exception) {
+                    null
+                }
+            }.sortedBy { it.second }
+
+            // Cumulative Sum Logic
+            var runningTotal = 0f
+            val points = mutableListOf<Float>()
+            val xOffsets = mutableListOf<Float>()
+            
+            sortedLogs.forEach { (log, time) ->
+                runningTotal += log.amount
+                points.add(runningTotal)
+                val offsetInDay = time.toSecondOfDay().toFloat() / (24 * 60 * 60)
+                xOffsets.add(offsetInDay)
+            }
+
+            val chartMax = if (runningTotal > dailyGoal) {
+                (runningTotal * 1.2f).coerceAtLeast(100f)
+            } else {
+                dailyGoal.toFloat()
+            }
+
             Pair(
                 label,
                 ChartData(
                     points = points,
+                    xOffsets = xOffsets,
                     xLabels = listOf("12AM", "4AM", "8AM", "12PM", "4PM", "8PM", "11PM"),
-                    yLabels = listOf("0", "700", "1400", "2100", "2800"),
-                    maxValue = 2800f
+                    yLabels = generateYLabels(chartMax),
+                    maxValue = chartMax
                 )
             )
         }
         "Week" -> {
-            val label = if (offset == 0) "This Week" else "Last Week"
-            val points = List(7) { random.nextInt(1500, 3201).toFloat() }
+            val targetWeek = today.plusWeeks(offset.toLong())
+            val monday = targetWeek.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+            val sunday = monday.plusDays(6)
+            
+            val label = if (offset == 0) "This Week" 
+                       else "${monday.format(DateTimeFormatter.ofPattern("MMM dd", Locale.getDefault()))} - ${sunday.format(DateTimeFormatter.ofPattern("MMM dd", Locale.getDefault()))}"
+            
+            val weekPoints = mutableListOf<Float>()
+            for (i in 0..6) {
+                val currentDay = monday.plusDays(i.toLong())
+                val dayStr = currentDay.format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.getDefault()))
+                val total = allLogs.filter { it.date == dayStr }.sumOf { it.amount }.toFloat()
+                weekPoints.add(total)
+            }
+
+            val limitIndex = if (offset == 0) today.dayOfWeek.value - 1 else 6
+            val firstActive = weekPoints.indexOfFirst { it > 0 }
+            
+            val filteredPoints = mutableListOf<Float>()
+            val xOffsets = mutableListOf<Float>()
+            if (firstActive != -1 && firstActive <= limitIndex) {
+                for (i in firstActive..limitIndex) {
+                    filteredPoints.add(weekPoints[i])
+                    xOffsets.add(i / 6f)
+                }
+            }
+
+            val maxInChart = if (filteredPoints.isNotEmpty()) filteredPoints.maxOrNull() ?: 0f else 0f
+            val chartMax = if (maxInChart > dailyGoal) {
+                (maxInChart * 1.2f).coerceAtLeast(100f)
+            } else {
+                dailyGoal.toFloat()
+            }
+
             Pair(
                 label,
                 ChartData(
-                    points = points,
+                    points = filteredPoints,
+                    xOffsets = xOffsets,
                     xLabels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
-                    yLabels = listOf("0", "800", "1600", "2400", "3200"),
-                    maxValue = 3200f
+                    yLabels = generateYLabels(chartMax),
+                    maxValue = chartMax
                 )
             )
         }
         "Month" -> {
-            val label = if (offset == 0) "This Month" else "Last Month"
-            val points = List(4) { random.nextInt(5000, 18001).toFloat() }
+            val targetMonth = today.plusMonths(offset.toLong())
+            val label = if (offset == 0) "This Month" 
+                       else targetMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
+            
+            val lastDay = targetMonth.with(TemporalAdjusters.lastDayOfMonth())
+            val monthPoints = mutableListOf<Float>()
+            val weekRanges = listOf(1..7, 8..14, 15..21, 22..lastDay.dayOfMonth)
+            
+            weekRanges.forEach { range ->
+                val totalForWeek = allLogs.filter { log ->
+                    try {
+                        val logDate = LocalDate.parse(log.date)
+                        logDate.month == targetMonth.month && 
+                        logDate.year == targetMonth.year &&
+                        logDate.dayOfMonth in range
+                    } catch (e: Exception) {
+                        false
+                    }
+                }.sumOf { it.amount }.toFloat()
+                monthPoints.add(totalForWeek)
+            }
+
+            val limitIndex = if (offset == 0) {
+                when (today.dayOfMonth) {
+                    in 1..7 -> 0
+                    in 8..14 -> 1
+                    in 15..21 -> 2
+                    else -> 3
+                }
+            } else 3
+            
+            val firstActive = monthPoints.indexOfFirst { it > 0 }
+            val filteredPoints = mutableListOf<Float>()
+            val xOffsets = mutableListOf<Float>()
+            if (firstActive != -1 && firstActive <= limitIndex) {
+                for (i in firstActive..limitIndex) {
+                    filteredPoints.add(monthPoints[i])
+                    xOffsets.add(i / 3f)
+                }
+            }
+
+            val maxInChart = if (filteredPoints.isNotEmpty()) filteredPoints.maxOrNull() ?: 0f else 0f
+            val chartMax = if (maxInChart > (dailyGoal * 7)) {
+                (maxInChart * 1.2f).coerceAtLeast(100f)
+            } else {
+                (dailyGoal * 7).toFloat()
+            }
+
             Pair(
                 label,
                 ChartData(
-                    points = points,
+                    points = filteredPoints,
+                    xOffsets = xOffsets,
                     xLabels = listOf("Week 1", "Week 2", "Week 3", "Week 4"),
-                    yLabels = listOf("0", "5k", "10k", "15k", "20k"),
-                    maxValue = 20000f
+                    yLabels = generateYLabels(chartMax),
+                    maxValue = chartMax
                 )
             )
         }
         else -> { // Year
-            val label = if (offset == 0) "This Year" else (LocalDate.now().year + offset).toString()
-            val points = List(12) { random.nextInt(30000, 60001).toFloat() }
+            val targetYear = today.plusYears(offset.toLong())
+            val label = if (offset == 0) "This Year" else targetYear.year.toString()
+            
+            val yearPoints = mutableListOf<Float>()
+            for (month in 1..12) {
+                val totalForMonth = allLogs.filter { log ->
+                    try {
+                        val logDate = LocalDate.parse(log.date)
+                        logDate.year == targetYear.year && logDate.monthValue == month
+                    } catch (e: Exception) {
+                        false
+                    }
+                }.sumOf { it.amount }.toFloat()
+                yearPoints.add(totalForMonth)
+            }
+
+            val limitIndex = if (offset == 0) today.monthValue - 1 else 11
+            val firstActive = yearPoints.indexOfFirst { it > 0 }
+            val filteredPoints = mutableListOf<Float>()
+            val xOffsets = mutableListOf<Float>()
+            if (firstActive != -1 && firstActive <= limitIndex) {
+                for (i in firstActive..limitIndex) {
+                    filteredPoints.add(yearPoints[i])
+                    xOffsets.add(i / 11f)
+                }
+            }
+
+            val maxInChart = if (filteredPoints.isNotEmpty()) filteredPoints.maxOrNull() ?: 0f else 0f
+            val chartMax = if (maxInChart > (dailyGoal * 30)) {
+                (maxInChart * 1.2f).coerceAtLeast(100f)
+            } else {
+                (dailyGoal * 30).toFloat()
+            }
+
             Pair(
                 label,
                 ChartData(
-                    points = points,
+                    points = filteredPoints,
+                    xOffsets = xOffsets,
                     xLabels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"),
-                    yLabels = listOf("0", "15k", "30k", "45k", "60k"),
-                    maxValue = 60000f
+                    yLabels = generateYLabels(chartMax),
+                    maxValue = chartMax
                 )
             )
+        }
+    }
+}
+
+fun generateYLabels(maxValue: Float): List<String> {
+    val steps = 4
+    if (maxValue <= 0f) return listOf("0", "250", "500", "750", "1000")
+    val interval = maxValue / steps
+    return (0..steps).map { i ->
+        val value = i * interval
+        when {
+            value >= 1000f -> "${String.format("%.1f", value / 1000f)}k"
+            else -> value.toInt().toString()
         }
     }
 }

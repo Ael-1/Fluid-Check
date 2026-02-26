@@ -14,6 +14,12 @@
 /captures
 .externalNativeBuild
 .cxx
+
 local.properties
 secrets.properties
+
 google-services.json
+
+
+TODO.md
+ANDROID_MIGRATION_SPECS.md
