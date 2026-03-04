@@ -1,5 +1,6 @@
 package com.example.fluidcheck.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -41,12 +42,14 @@ fun EditProfileScreen(
     val scrollState = rememberScrollState()
     var showSaveDialog by remember { mutableStateOf(false) }
     var showReauthDialog by remember { mutableStateOf(false) }
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     
-    // Load initial data using userId
-    val currentRecord by firestoreRepository.getUserRecordFlow(userId).collectAsState(initial = UserRecord())
+    // Load initial data using userId - Wrap in remember so the flow isn't recreated on every recomposition
+    val userRecordFlow = remember(userId) { firestoreRepository.getUserRecordFlow(userId) }
+    val currentRecord by userRecordFlow.collectAsState(initial = null)
     
     // Core administrative check
     val isPrimaryAdmin = currentRecord?.email == ADMIN_EMAIL
@@ -58,7 +61,9 @@ fun EditProfileScreen(
     var editableUsername by remember(currentRecord) { mutableStateOf(currentRecord?.username ?: username) }
     var editableEmail by remember(currentRecord) { mutableStateOf(currentRecord?.email ?: "") }
     var editablePassword by remember { mutableStateOf("") }
+    var editableConfirmPassword by remember { mutableStateOf("") }
     var reauthPassword by remember { mutableStateOf("") }
+    var confirmPasswordError by remember { mutableStateOf<String?>(null) }
 
     // States for personal records
     var weight by remember(currentRecord) { mutableStateOf(currentRecord?.weight ?: "") }
@@ -70,7 +75,56 @@ fun EditProfileScreen(
     var activity by remember(currentRecord) { mutableStateOf(if (currentRecord?.activity?.isEmpty() == true) placeholder else currentRecord?.activity ?: placeholder) }
     var environment by remember(currentRecord) { mutableStateOf(if (currentRecord?.environment?.isEmpty() == true) placeholder else currentRecord?.environment ?: placeholder) }
 
+    val mismatchPasswordErr = stringResource(R.string.error_password_mismatch)
     var showError by remember { mutableStateOf(false) }
+
+    fun hasChanges(): Boolean {
+        val record = currentRecord ?: UserRecord()
+        return editableUsername != (record.username.ifEmpty { username }) ||
+               editableEmail != record.email ||
+               editablePassword.isNotEmpty() ||
+               weight != record.weight ||
+               height != record.height ||
+               age != record.age ||
+               sex != (if (record.sex.isEmpty()) placeholder else record.sex) ||
+               activity != (if (record.activity.isEmpty()) placeholder else record.activity) ||
+               environment != (if (record.environment.isEmpty()) placeholder else record.environment)
+    }
+
+    val onAttemptBack = {
+        if (hasChanges()) {
+            showUnsavedChangesDialog = true
+        } else {
+            onBack()
+        }
+    }
+
+    BackHandler(enabled = !isLoading) {
+        onAttemptBack()
+    }
+
+    if (showUnsavedChangesDialog) {
+        AlertDialog(
+            onDismissRequest = { showUnsavedChangesDialog = false },
+            title = { Text("Unsaved Changes", fontWeight = FontWeight.Bold) },
+            text = { Text("You have unsaved changes. Are you sure you want to discard them and go back?") },
+            confirmButton = {
+                TextButton(onClick = { 
+                    showUnsavedChangesDialog = false
+                    onBack()
+                }) {
+                    Text("DISCARD", color = Color.Red, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUnsavedChangesDialog = false }) {
+                    Text("KEEP EDITING", color = TextDark)
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(28.dp)
+        )
+    }
 
     if (showReauthDialog) {
         AlertDialog(
@@ -140,6 +194,13 @@ fun EditProfileScreen(
                                 
                                 // 1. Update Username if changed
                                 if (editableUsername != (currentRecord?.username ?: "")) {
+                                    // Check if the new username is already taken by someone else
+                                    if (!firestoreRepository.isUsernameAvailable(editableUsername)) {
+                                        snackbarHostState.showSnackbar("This username is already taken. Please try another one.")
+                                        isLoading = false
+                                        return@launch
+                                    }
+                                    
                                     val userResult = firestoreRepository.updateUsername(userId, currentRecord?.username ?: "", editableUsername)
                                     if (userResult.isFailure) {
                                         snackbarHostState.showSnackbar(userResult.exceptionOrNull()?.message ?: "Error updating username")
@@ -181,12 +242,17 @@ fun EditProfileScreen(
                                     environment = environment,
                                     setupCompleted = true
                                 )
-                                repository.saveUserRecord(userId, newRecord)
-                                firestoreRepository.saveUserRecord(userId, newRecord)
+                                val saveResult = firestoreRepository.saveUserRecord(userId, newRecord)
                                 
-                                isLoading = false
-                                showSaveDialog = false
-                                onBack()
+                                if (saveResult.isSuccess) {
+                                    repository.saveUserRecord(userId, newRecord)
+                                    isLoading = false
+                                    showSaveDialog = false
+                                    onBack()
+                                } else {
+                                    snackbarHostState.showSnackbar("Failed to sync profile to cloud. Please check your internet and try again.")
+                                    isLoading = false
+                                }
                             }
                         }
                     ) {
@@ -213,7 +279,7 @@ fun EditProfileScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.edit_profile), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !isLoading) {
+                    IconButton(onClick = onAttemptBack, enabled = !isLoading) {
                         Icon(AppIcons.ArrowBack, contentDescription = stringResource(R.string.go_back))
                     }
                 },
@@ -235,12 +301,25 @@ fun EditProfileScreen(
 
             // Profile Container
             ProfileSettingsContainer(
+                userId = userId,
                 username = editableUsername,
                 onUsernameChange = { editableUsername = it },
                 email = editableEmail,
                 onEmailChange = { editableEmail = it },
                 password = editablePassword,
-                onPasswordChange = { editablePassword = it },
+                onPasswordChange = { 
+                    editablePassword = it 
+                    if (it.isEmpty()) {
+                        editableConfirmPassword = ""
+                        confirmPasswordError = null
+                    }
+                },
+                confirmPassword = editableConfirmPassword,
+                onConfirmPasswordChange = { 
+                    editableConfirmPassword = it 
+                    if (confirmPasswordError != null) confirmPasswordError = null
+                },
+                confirmPasswordError = confirmPasswordError,
                 enabled = !isLoading
             )
 
@@ -283,6 +362,18 @@ fun EditProfileScreen(
                             showError = true
                         } else {
                             showError = false
+                            
+                            // Check password match
+                            if (editablePassword.isNotEmpty() && editablePassword != editableConfirmPassword) {
+                                confirmPasswordError = mismatchPasswordErr
+                                scope.launch {
+                                    scrollState.animateScrollTo(0)
+                                }
+                                return@Button
+                            } else {
+                                confirmPasswordError = null
+                            }
+
                             // Check if sensitive changes require reauth
                             if (editableEmail != (currentRecord?.email ?: "") || editablePassword.isNotEmpty()) {
                                 showReauthDialog = true
@@ -309,14 +400,19 @@ fun EditProfileScreen(
 
 @Composable
 fun ProfileSettingsContainer(
+    userId: String,
     username: String,
     onUsernameChange: (String) -> Unit,
     email: String,
     onEmailChange: (String) -> Unit,
     password: String,
     onPasswordChange: (String) -> Unit,
+    confirmPassword: String,
+    onConfirmPasswordChange: (String) -> Unit,
+    confirmPasswordError: String? = null,
     enabled: Boolean
 ) {
+    val isGuest = userId == "GUEST"
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
@@ -369,11 +465,26 @@ fun ProfileSettingsContainer(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            EditField(label = stringResource(R.string.username_label), value = username, onValueChange = onUsernameChange, icon = AppIcons.PersonOutline, enabled = enabled)
-            Spacer(modifier = Modifier.height(16.dp))
-            EditField(label = stringResource(R.string.email_label), value = email, onValueChange = onEmailChange, icon = AppIcons.Email, enabled = enabled)
-            Spacer(modifier = Modifier.height(16.dp))
-            EditField(label = "New Password", value = password, onValueChange = onPasswordChange, icon = AppIcons.Lock, isPassword = true, enabled = enabled, placeholder = "Leave blank to keep current")
+            if (!isGuest) {
+                EditField(label = stringResource(R.string.username_label), value = username, onValueChange = onUsernameChange, icon = AppIcons.PersonOutline, enabled = enabled)
+                Spacer(modifier = Modifier.height(16.dp))
+                EditField(label = stringResource(R.string.email_label), value = email, onValueChange = onEmailChange, icon = AppIcons.Email, enabled = enabled)
+                Spacer(modifier = Modifier.height(16.dp))
+                EditField(label = "New Password", value = password, onValueChange = onPasswordChange, icon = AppIcons.Lock, isPassword = true, enabled = enabled, placeholder = "Leave blank to keep current")
+                
+                if (password.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    EditField(
+                        label = stringResource(R.string.confirm_password_label),
+                        value = confirmPassword,
+                        onValueChange = onConfirmPasswordChange,
+                        icon = AppIcons.Lock,
+                        isPassword = true,
+                        enabled = enabled,
+                        error = confirmPasswordError
+                    )
+                }
+            }
         }
     }
 }
@@ -595,7 +706,8 @@ fun EditField(
     isPassword: Boolean = false,
     readOnly: Boolean = false,
     enabled: Boolean = true,
-    placeholder: String = ""
+    placeholder: String = "",
+    error: String? = null
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -631,7 +743,11 @@ fun EditField(
             singleLine = true,
             textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
             readOnly = readOnly,
-            enabled = enabled
+            enabled = enabled,
+            isError = error != null,
+            supportingText = if (error != null) {
+                { Text(text = error, color = Color.Red, fontSize = 12.sp) }
+            } else null
         )
     }
 }

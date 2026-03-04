@@ -39,10 +39,14 @@ private val PST_ZONE = ZoneId.of("GMT+8")
 
 @Composable
 fun ProgressScreen(
-    allLogs: List<FluidLog>,
+    userId: String,
+    firestoreRepository: com.example.fluidcheck.repository.FirestoreRepository,
     dailyGoal: Int,
     accountCreatedAt: Timestamp? = null
 ) {
+    val allLogsFlow = remember(userId) { firestoreRepository.getFluidLogsFlow(userId) }
+    val allLogs by allLogsFlow.collectAsState(initial = emptyList())
+    
     var selectedTab by remember { mutableStateOf("Day") }
     var navOffset by remember { mutableIntStateOf(0) }
 
@@ -64,26 +68,25 @@ fun ProgressScreen(
     val canGoNext = navOffset < 0
     val canGoPrevious = remember(selectedTab, navOffset, creationDate) {
         val today = LocalDate.now(PST_ZONE)
-        val currentTargetDate = today.plusDays(navOffset.toLong())
         
         when (selectedTab) {
             "Day" -> {
-                // Can only go back if yesterday is still on or after account creation
+                val currentTargetDate = today.plusDays(navOffset.toLong())
                 currentTargetDate.minusDays(1) >= creationDate
             }
             "Week" -> {
-                // Can go back if the start of the PREVIOUS week is >= creationDate
-                val currentWeekStart = currentTargetDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                val currentTargetWeek = today.plusWeeks(navOffset.toLong())
+                val currentWeekStart = currentTargetWeek.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
                 currentWeekStart.minusDays(1) >= creationDate
             }
             "Month" -> {
-                // Can go back if the start of the PREVIOUS month is >= creationDate
-                val currentMonthStart = currentTargetDate.with(TemporalAdjusters.firstDayOfMonth())
+                val currentTargetMonth = today.plusMonths(navOffset.toLong())
+                val currentMonthStart = currentTargetMonth.with(TemporalAdjusters.firstDayOfMonth())
                 currentMonthStart.minusDays(1) >= creationDate
             }
             "Year" -> {
-                // Can go back if the start of the PREVIOUS year is >= creationDate
-                val currentYearStart = currentTargetDate.with(TemporalAdjusters.firstDayOfYear())
+                val currentTargetYear = today.plusYears(navOffset.toLong())
+                val currentYearStart = currentTargetYear.with(TemporalAdjusters.firstDayOfYear())
                 currentYearStart.minusDays(1) >= creationDate
             }
             else -> true

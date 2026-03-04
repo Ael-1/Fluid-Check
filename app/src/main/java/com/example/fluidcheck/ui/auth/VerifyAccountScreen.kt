@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -20,11 +21,11 @@ import com.example.fluidcheck.R
 import com.example.fluidcheck.ui.theme.*
 
 @Composable
-fun SignUpScreen(
-    onSignUpSuccessWithDetails: (String, String, String) -> Unit,
-    onBackToLogin: () -> Unit,
+fun VerifyAccountScreen(
+    onVerifySuccess: (String, String, String) -> Unit,
+    onCancel: () -> Unit,
     isGoogleAvailable: Boolean = false,
-    onGoogleSignInClick: () -> Unit = {},
+    onGoogleVerifyClick: () -> Unit = {},
     isLoading: Boolean = false
 ) {
     var username by remember { mutableStateOf("") }
@@ -93,14 +94,14 @@ fun SignUpScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = stringResource(R.string.join_fluid_check),
+            text = "Verify Your Account",
             fontSize = 32.sp,
             fontWeight = FontWeight.Black,
             color = Color.White
         )
 
         Text(
-            text = stringResource(R.string.signup_subtitle),
+            text = "Secure your local data by creating a permanent account",
             fontSize = 14.sp,
             color = Color.White.copy(alpha = 0.8f)
         )
@@ -174,7 +175,6 @@ fun SignUpScreen(
                 isError = passwordError != null,
                 supportingText = {
                     if (passwordError != null) {
-                        @Suppress("DEPRECATION")
                         Text(text = passwordError!!, color = Color.White)
                     }
                 },
@@ -217,11 +217,11 @@ fun SignUpScreen(
                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(32.dp))
                 Spacer(modifier = Modifier.height(24.dp))
             } else {
-                // Create Account Button
+                // Confirm Verification Button
                 Button(
                     onClick = {
                         if (validateInputs()) {
-                            onSignUpSuccessWithDetails(username, email, password)
+                            onVerifySuccess(username, email, password)
                         }
                     },
                     modifier = Modifier
@@ -231,7 +231,7 @@ fun SignUpScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = Color.White)
                 ) {
                     Text(
-                        text = stringResource(R.string.create_account),
+                        text = "Confirm Verification",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = PrimaryBlue
@@ -240,9 +240,9 @@ fun SignUpScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Back Button
+                // Cancel Button
                 OutlinedButton(
-                    onClick = onBackToLogin,
+                    onClick = onCancel,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
@@ -250,7 +250,7 @@ fun SignUpScreen(
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
                 ) {
                     Text(
-                        text = stringResource(R.string.go_back),
+                        text = "Cancel Verification",
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
@@ -260,8 +260,8 @@ fun SignUpScreen(
 
             if (isGoogleAvailable && !isLoading) {
                 AuthGoogleSignIn(
-                    text = " or sign up with ",
-                    onGoogleSignInClick = onGoogleSignInClick
+                    text = " or verify with ",
+                    onGoogleSignInClick = onGoogleVerifyClick
                 )
             }
         }

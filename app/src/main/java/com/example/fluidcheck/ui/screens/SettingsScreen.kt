@@ -24,13 +24,16 @@ private const val ADMIN_EMAIL = "admin@fluidcheck.ai"
 
 @Composable
 fun SettingsScreen(
+    userId: String = "",
     username: String = "",
     email: String = "",
     streak: Int = 0,
     isDatabaseAdmin: Boolean = false,
     isAdminMode: Boolean = false,
+    userRole: String = "USER",
     onLogout: () -> Unit = {},
     onEditProfile: () -> Unit = {},
+    onVerifyAccount: () -> Unit = {},
     onAboutDeveloper: () -> Unit = {},
     onToggleRole: () -> Unit = {}
 ) {
@@ -79,13 +82,16 @@ fun SettingsScreen(
         if (isAdminMode) {
             AdminProfileHeader(
                 username = username,
+                userRole = userRole,
                 onEditProfile = onEditProfile
             )
         } else {
             ProfileHeader(
+                userId = userId,
                 username = username,
                 streak = streak,
-                onEditProfile = onEditProfile
+                onEditProfile = onEditProfile,
+                onVerifyAccount = onVerifyAccount
             )
         }
 
@@ -145,9 +151,10 @@ fun SettingsScreen(
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
+                val switchText = if (isAdminMode) "Switch to User Mode" else if (userRole == "MODERATOR") "Switch to Moderator Mode" else "Switch to Admin Mode"
                 @Suppress("DEPRECATION")
                 Text(
-                    text = if (isAdminMode) "Switch to User Mode" else "Switch to Admin Mode",
+                    text = switchText,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp
                 )
@@ -192,11 +199,14 @@ fun SettingsScreen(
 
 @Composable
 fun ProfileHeader(
+    userId: String,
     username: String,
     streak: Int,
-    onEditProfile: () -> Unit
+    onEditProfile: () -> Unit,
+    onVerifyAccount: () -> Unit
 ) {
     val displayName = username.ifEmpty { "User" }.replaceFirstChar { it.uppercase() }
+    val isGuest = userId.equals("GUEST", ignoreCase = true) || username.equals("Guest", ignoreCase = true)
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -246,7 +256,7 @@ fun ProfileHeader(
                 }
             }
             
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(24.dp)
@@ -266,6 +276,24 @@ fun ProfileHeader(
                         fontWeight = FontWeight.Medium
                     )
                 }
+
+                if (isGuest) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = onVerifyAccount,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                    ) {
+                        Text(
+                            text = "Verify Account",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
     }
@@ -274,6 +302,7 @@ fun ProfileHeader(
 @Composable
 fun AdminProfileHeader(
     username: String,
+    userRole: String = "ADMIN",
     onEditProfile: () -> Unit
 ) {
     val displayName = username.ifEmpty { "Admin" }.replaceFirstChar { it.uppercase() }
@@ -326,8 +355,9 @@ fun AdminProfileHeader(
                         color = PrimaryBlue,
                         shape = RoundedCornerShape(12.dp)
                     ) {
+                        val displayRole = if (userRole == "MODERATOR") "MODERATOR" else "ADMINISTRATOR"
                         Text(
-                            text = "ADMINISTRATOR",
+                            text = displayRole,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.ExtraBold,

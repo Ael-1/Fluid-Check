@@ -14,12 +14,14 @@
 /captures
 .externalNativeBuild
 .cxx
+compile_out.txt
+output.txt
+/.vscode/settings.json
 
 local.properties
 secrets.properties
 
 google-services.json
-
 
 TODO.md
 ANDROID_MIGRATION_SPECS.md

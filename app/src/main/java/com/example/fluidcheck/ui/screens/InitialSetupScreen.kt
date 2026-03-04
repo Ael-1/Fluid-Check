@@ -1,5 +1,6 @@
 package com.example.fluidcheck.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -12,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -54,10 +56,18 @@ fun InitialSetupScreen(
     val weatherOptions = listOf("Sunny", "Cloudy", "Rainy", "Humid", "Hot", "Cold", "Dry")
     val scrollState = rememberScrollState()
 
+    val context = LocalContext.current
     val coach = remember { GeminiCoach(BuildConfig.GEMINI_API_KEY) }
     val scope = rememberCoroutineScope()
     var isLoadingGoal by remember { mutableStateOf(false) }
     var showGoalDialog by remember { mutableStateOf<String?>(null) }
+
+    fun isInternetAvailable(): Boolean {
+        val connectivityManager = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
 
     if (showGoalDialog != null) {
         AlertDialog(
@@ -242,13 +252,19 @@ fun InitialSetupScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
+                    val isFormFull = weight.isNotBlank() && height.isNotBlank() && age.isNotBlank() && 
+                                     sex != selectionPlaceholder && activity != selectionPlaceholder && environment != selectionPlaceholder
+                    
+                    val isFormEmpty = weight.isBlank() && height.isBlank() && age.isBlank() && 
+                                      sex == selectionPlaceholder && activity == selectionPlaceholder && environment == selectionPlaceholder
+
                     Button(
                         onClick = {
-                            if (weight.isBlank() || height.isBlank() || age.isBlank() || 
-                                sex == selectionPlaceholder || activity == selectionPlaceholder || environment == selectionPlaceholder) {
-                                showError = true
-                                errorMessage = "Please fill in all fields and selections."
-                            } else {
+                            if (isFormFull) {
+                                if (!isInternetAvailable()) {
+                                    Toast.makeText(context, "Internet connection required for AI recommendations", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
                                 showError = false
                                 isLoadingGoal = true
                                 scope.launch {
@@ -279,11 +295,48 @@ fun InitialSetupScreen(
                             .height(60.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                        enabled = !isLoadingGoal
+                        enabled = !isLoadingGoal && isFormFull
                     ) {
                         if (isLoadingGoal) {
                             CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                         } else {
+                            Icon(
+                                imageVector = AppIcons.AICoach,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = if (isFormFull) Color.White else Color.White.copy(alpha = 0.5f)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("AI Personalized Goal", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        }
+                    }
+                    
+                    // Show Finish Setup whenever ANY data is entered
+                    if (!isFormEmpty) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = {
+                                onComplete(
+                                    UserRecord(
+                                        weight = weight, 
+                                        height = height, 
+                                        age = age, 
+                                        sex = if (sex == selectionPlaceholder) "" else sex, 
+                                        activity = if (activity == selectionPlaceholder) "" else activity, 
+                                        environment = if (environment == selectionPlaceholder) "" else environment, 
+                                        setupCompleted = true,
+                                        quickAddConfig = DEFAULT_QUICK_ADD_CONFIGS
+                                    ),
+                                    3000
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            border = androidx.compose.foundation.BorderStroke(2.dp, PrimaryBlue),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryBlue)
+                        ) {
                             Text(stringResource(R.string.finish_setup), fontWeight = FontWeight.Bold, fontSize = 18.sp)
                         }
                     }
@@ -292,6 +345,10 @@ fun InitialSetupScreen(
                     
                     TextButton(
                         onClick = {
+                            // Skip for now should still proceed with default, 
+                            // but we can decide if it saves current inputs.
+                            // Based on Turn 285, "if there are inputs... it is stored" applied to the finish path.
+                            // We'll keep Skip for now as the pure default path.
                             onComplete(UserRecord(setupCompleted = true, quickAddConfig = DEFAULT_QUICK_ADD_CONFIGS), 3000)
                         },
                         modifier = Modifier.fillMaxWidth()

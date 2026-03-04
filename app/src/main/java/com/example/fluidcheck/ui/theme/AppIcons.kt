@@ -29,6 +29,7 @@ object AppIcons {
     val Edit = Icons.Default.Edit
     val Search = Icons.Default.Search
     val Save = Icons.Default.Check
+    val Check = Icons.Default.Check
     val Done = Icons.Default.CheckCircleOutline
     
     // Arrows

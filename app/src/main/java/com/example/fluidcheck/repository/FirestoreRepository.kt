@@ -10,17 +10,25 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import android.content.Context
 import java.text.SimpleDateFormat
 import java.util.*
 
-class FirestoreRepository {
+class FirestoreRepository(private val context: Context? = null) {
     private val db = FirebaseFirestore.getInstance()
     private val usersCollection = db.collection("users")
     private val usernamesCollection = db.collection("usernames")
+    
+    // Delegate for guest operations
+    private val guestRepository: GuestRepository? = context?.let { GuestRepository(it) }
 
     suspend fun saveUserRecord(uid: String, record: UserRecord): Result<Unit> {
         return try {
             if (uid.isEmpty()) return Result.failure(Exception("UID cannot be empty"))
+            if (uid == "GUEST") {
+                guestRepository?.saveUserRecord(record)
+                return Result.success(Unit)
+            }
             
             db.runBatch { batch ->
                 // 1. Write username mapping
@@ -44,6 +52,16 @@ class FirestoreRepository {
         return try {
             if (oldUsername == newUsername) return Result.success(Unit)
             
+            // Guest username update handled by saveUserRecord delegation if needed, 
+            // but for explicitly updating username:
+            if (uid == "GUEST") {
+                val currentRecord = getUserRecord(uid)
+                if (currentRecord != null) {
+                    saveUserRecord(uid, currentRecord.copy(username = newUsername))
+                }
+                return Result.success(Unit)
+            }
+
             // Check if new username is available
             val newUsernameDoc = usernamesCollection.document(newUsername).get().await()
             if (newUsernameDoc.exists()) {
@@ -76,6 +94,7 @@ class FirestoreRepository {
     }
 
     suspend fun getEmailFromUsername(username: String): String? {
+        if (username == "Guest") return null
         return try {
             val usernameDoc = usernamesCollection.document(username).get().await()
             val uid = usernameDoc.getString("uid") ?: return null
@@ -100,7 +119,11 @@ class FirestoreRepository {
         }
     }
 
-    fun getUserRecordFlow(uid: String): Flow<UserRecord?> = callbackFlow {
+    fun getUserRecordFlow(uid: String): Flow<UserRecord?> {
+        if (uid == "GUEST") {
+            return guestRepository?.guestUserRecordFlow ?: kotlinx.coroutines.flow.flowOf(null)
+        }
+        return callbackFlow {
         val docRef = usersCollection.document(uid)
         val registration = docRef.addSnapshotListener { document, error ->
             if (error != null) {
@@ -115,6 +138,7 @@ class FirestoreRepository {
             }
         }
         awaitClose { registration.remove() }
+        }
     }
 
     fun getAllUsersFlow(): Flow<List<UserRecord>> = callbackFlow {
@@ -153,7 +177,7 @@ class FirestoreRepository {
             environment = document.getString("environment") ?: "",
             setupCompleted = document.getBoolean("setupCompleted") ?: false,
             role = document.getString("role") ?: "USER",
-            isDeleted = document.getBoolean("isDeleted") ?: false,
+            deleted = (document.getBoolean("deleted") ?: document.getBoolean("isDeleted")) ?: false,
             fcmToken = document.getString("fcmToken") ?: "",
             quickAddConfig = quickAddConfig,
             notificationsEnabled = document.getBoolean("notificationsEnabled") ?: true,
@@ -168,6 +192,9 @@ class FirestoreRepository {
     }
 
     suspend fun getUserRecord(uid: String): UserRecord? {
+        if (uid == "GUEST") {
+            return guestRepository?.guestUserRecord
+        }
         return try {
             val document = usersCollection.document(uid).get().await()
             if (document.exists()) {
@@ -181,6 +208,10 @@ class FirestoreRepository {
     }
 
     suspend fun saveDailyGoal(uid: String, goal: Int?): Result<Unit> {
+        if (uid == "GUEST") {
+            guestRepository?.saveDailyGoal(goal)
+            return Result.success(Unit)
+        }
         return try {
             usersCollection.document(uid).update("dailyGoal", goal).await()
             Result.success(Unit)
@@ -204,6 +235,10 @@ class FirestoreRepository {
     }
 
     suspend fun saveFluidLog(uid: String, log: FluidLog): Result<Unit> {
+        if (uid == "GUEST") {
+            guestRepository?.saveFluidLog(log)
+            return Result.success(Unit)
+        }
         return try {
             db.runTransaction { transaction ->
                 val userRef = usersCollection.document(uid)
@@ -222,6 +257,10 @@ class FirestoreRepository {
     }
 
     suspend fun updateFluidLog(uid: String, oldLog: FluidLog, newLog: FluidLog): Result<Unit> {
+        if (uid == "GUEST") {
+            guestRepository?.updateFluidLog(oldLog, newLog)
+            return Result.success(Unit)
+        }
         return try {
             db.runTransaction { transaction ->
                 val userRef = usersCollection.document(uid)
@@ -241,6 +280,10 @@ class FirestoreRepository {
     }
 
     suspend fun deleteFluidLog(uid: String, log: FluidLog): Result<Unit> {
+        if (uid == "GUEST") {
+            guestRepository?.deleteFluidLog(log)
+            return Result.success(Unit)
+        }
         return try {
             db.runTransaction { transaction ->
                 val userRef = usersCollection.document(uid)
@@ -258,7 +301,11 @@ class FirestoreRepository {
         }
     }
 
-    fun getFluidLogsFlow(uid: String): Flow<List<FluidLog>> = callbackFlow {
+    fun getFluidLogsFlow(uid: String): Flow<List<FluidLog>> {
+        if (uid == "GUEST") {
+            return guestRepository?.guestLogsFlow ?: kotlinx.coroutines.flow.flowOf(emptyList())
+        }
+        return callbackFlow {
         val registration = usersCollection.document(uid)
             .collection("fluid_logs")
             .orderBy("id")
@@ -272,6 +319,7 @@ class FirestoreRepository {
                 }
             }
         awaitClose { registration.remove() }
+        }
     }
 
     suspend fun getFluidLogs(uid: String): List<FluidLog> {
@@ -286,10 +334,14 @@ class FirestoreRepository {
         }
     }
 
-    fun getTodayFluidLogsFlow(uid: String): Flow<List<FluidLog>> = callbackFlow {
+    fun getTodayFluidLogsFlow(uid: String): Flow<List<FluidLog>> {
+        if (uid == "GUEST") {
+            return guestRepository?.getTodayFluidLogsFlow() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+        }
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("GMT+8")
         }.format(Date())
+        return callbackFlow {
         val registration = usersCollection.document(uid)
             .collection("fluid_logs")
             .whereEqualTo("date", today)
@@ -303,6 +355,7 @@ class FirestoreRepository {
                 }
             }
         awaitClose { registration.remove() }
+        }
     }
 
     suspend fun getTodayFluidLogs(uid: String): List<FluidLog> {
@@ -321,6 +374,10 @@ class FirestoreRepository {
     }
 
     suspend fun updateQuickAddConfig(uid: String, config: List<QuickAddConfig>): Result<Unit> {
+        if (uid == "GUEST") {
+            guestRepository?.updateQuickAddConfig(config)
+            return Result.success(Unit)
+        }
         return try {
             usersCollection.document(uid).update("quickAddConfig", config).await()
             Result.success(Unit)
@@ -329,20 +386,41 @@ class FirestoreRepository {
         }
     }
 
-    suspend fun updateStreak(uid: String, streak: Int, lastRingClosedDate: String): Result<Unit> {
+    suspend fun markGoalAchievedToday(uid: String, todayDate: String, yesterdayDate: String): Result<Unit> {
+        if (uid == "GUEST") {
+            val success = guestRepository?.markGoalAchievedToday(todayDate, yesterdayDate) ?: false
+            return if (success) Result.success(Unit) else Result.failure(Exception("Already achieved today or GuestRepository missing"))
+        }
+
         return try {
             db.runTransaction { transaction ->
                 val userRef = usersCollection.document(uid)
                 val userDoc = transaction.get(userRef)
+                
+                val currentLastRingDate = userDoc.getString("lastRingClosedDate")
+                if (currentLastRingDate == todayDate) {
+                    // Already closed today, avoid redundant write by exiting transaction
+                    return@runTransaction
+                }
+                
+                val currentStreak = (userDoc.getLong("streak") ?: 0L).toInt()
                 val highestStreak = (userDoc.getLong("highestStreak") ?: 0L).toInt()
+                val currentTotal = userDoc.getLong("totalRingsClosed") ?: 0L
+                
+                val newStreak = if (currentLastRingDate == yesterdayDate) {
+                    currentStreak + 1
+                } else {
+                    1
+                }
                 
                 val updates = mutableMapOf<String, Any>(
-                    "streak" to streak,
-                    "lastRingClosedDate" to lastRingClosedDate
+                    "streak" to newStreak,
+                    "lastRingClosedDate" to todayDate,
+                    "totalRingsClosed" to currentTotal + 1
                 )
                 
-                if (streak > highestStreak) {
-                    updates["highestStreak"] = streak
+                if (newStreak > highestStreak) {
+                    updates["highestStreak"] = newStreak
                 }
                 
                 transaction.update(userRef, updates)
@@ -371,23 +449,26 @@ class FirestoreRepository {
         }
     }
 
-    suspend fun incrementTotalRingsClosed(uid: String): Result<Unit> {
+    // Removed incrementTotalRingsClosed: Logic moved to markGoalAchievedToday.
+
+    suspend fun softDeleteUser(uid: String): Result<Unit> {
         return try {
-            db.runTransaction { transaction ->
-                val userRef = usersCollection.document(uid)
-                val userDoc = transaction.get(userRef)
-                val currentTotal = userDoc.getLong("totalRingsClosed") ?: 0L
-                transaction.update(userRef, "totalRingsClosed", currentTotal + 1)
-            }.await()
+            usersCollection.document(uid).update("deleted", true).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    suspend fun softDeleteUser(uid: String): Result<Unit> {
+    suspend fun softDeleteUsers(uids: Set<String>): Result<Unit> {
+        if (uids.isEmpty()) return Result.success(Unit)
         return try {
-            usersCollection.document(uid).update("isDeleted", true).await()
+            val batch = db.batch()
+            uids.forEach { uid ->
+                val userRef = usersCollection.document(uid)
+                batch.update(userRef, "deleted", true)
+            }
+            batch.commit().await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -400,6 +481,47 @@ class FirestoreRepository {
             !doc.exists()
         } catch (e: Exception) {
             false
+        }
+    }
+
+    suspend fun createAccountWithGuestData(newUid: String, newRecord: UserRecord): Result<Unit> {
+        return try {
+            if (guestRepository == null) return Result.failure(Exception("Guest repository not initialized"))
+            
+            val guestLogs = guestRepository.getFluidLogs()
+            val guestRecord = guestRepository.guestUserRecord
+            
+            // Create an atomic batch write
+            val batch = db.batch()
+            val userRef = usersCollection.document(newUid)
+            
+            // Merge guest stats into the permanent record
+            val finalRecord = newRecord.copy(
+                streak = guestRecord?.streak ?: 0,
+                highestStreak = guestRecord?.highestStreak ?: 0,
+                totalRingsClosed = guestRecord?.totalRingsClosed ?: 0,
+                lastRingClosedDate = guestRecord?.lastRingClosedDate ?: "",
+                totalFluidDrankAllTime = guestLogs.sumOf { it.amount }
+            )
+            
+            // 1. Save the new user document
+            batch.set(userRef, finalRecord)
+            
+            // 2. Add all their previous logs to the new collection
+            guestLogs.forEach { log ->
+                val logRef = userRef.collection("fluid_logs").document(log.id.toString())
+                batch.set(logRef, log)
+            }
+            
+            // Commit all changes simultaneously
+            batch.commit().await()
+            
+            // Clear local guest cache ONLY after the cloud says success
+            guestRepository.clearGuestData()
+            
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }
