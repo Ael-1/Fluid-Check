@@ -46,6 +46,7 @@ import com.example.fluidcheck.ui.theme.AppBackground
 import com.example.fluidcheck.ui.theme.AppIcons
 import com.example.fluidcheck.ui.theme.PrimaryBlue
 import com.example.fluidcheck.ui.theme.TextDark
+import com.example.fluidcheck.util.NetworkMonitor
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -65,6 +66,8 @@ fun MainScreen(
     isAuthInProgress: Boolean = false,
     isGoogleAvailable: Boolean = false,
     onGoogleSignInClick: () -> Unit = {},
+    hasNotificationPermission: Boolean = true,
+    onRequestNotificationPermission: () -> Unit = {},
     firestoreRepository: FirestoreRepository = run {
         val context = LocalContext.current
         remember(context) { FirestoreRepository(context) }
@@ -90,17 +93,45 @@ fun MainScreen(
     val isPrimaryAdmin = userRecord?.email?.equals(ADMIN_EMAIL, ignoreCase = true) == true
     
     // Last session's mode from DataStore
-    // We pass isDatabaseAdmin as default, but we'll wait for the actual value if user is an admin
-    val savedAdminMode by repository.isAdminMode(userId, isDatabaseAdmin).collectAsState(initial = null)
+    val adminModePrefFlow = remember(userId) { repository.getAdminModeFlow(userId) }
+    val adminModeState by adminModePrefFlow.collectAsState(initial = "LOADING")
     
     // Determine if we are still waiting for critical data
-    // We wait for userRecord ALWAYS, and if it's an admin, we wait for savedAdminMode to load
-    val isLoading = (userRecord == null || (isDatabaseAdmin && savedAdminMode == null)) && userId.isNotEmpty()
+    val isLoading = userRecord == null || adminModeState == "LOADING" || userId.isEmpty()
+
+    // Notification states
+    // Default to system permission status if user hasn't made an explicit choice yet.
+    val notificationsEnabled = userRecord?.notificationsEnabled ?: hasNotificationPermission
+    val reminderFrequency = userRecord?.reminderFrequency ?: "60"
+
+    // Sync WorkManager when settings change
+    LaunchedEffect(notificationsEnabled, reminderFrequency, hasNotificationPermission, userId) {
+        if (notificationsEnabled && hasNotificationPermission) {
+            val freqInt = reminderFrequency.toIntOrNull() ?: 60
+            com.example.fluidcheck.util.NotificationScheduler.scheduleReminders(context, userId, freqInt)
+            com.example.fluidcheck.util.NotificationScheduler.scheduleSmartReminders(context, userId)
+            
+            // Also sync to local repository for worker offline access
+            scope.launch {
+                repository.setNotificationsEnabled(userId, true)
+                repository.setReminderFrequency(userId, reminderFrequency)
+            }
+        } else {
+            com.example.fluidcheck.util.NotificationScheduler.cancelAllReminders(context)
+            // If explicitly disabled, sync to local repo
+            if (!notificationsEnabled && userId.isNotEmpty()) {
+                scope.launch {
+                    repository.setNotificationsEnabled(userId, false)
+                }
+            }
+        }
+    }
 
     // UI state for switching between User and Admin views
     // Initialized ONLY when loading is done to prevent flicker
-    var isAdminMode by rememberSaveable(userId, isPrimaryAdmin, savedAdminMode) { 
-        mutableStateOf(if (isPrimaryAdmin) true else savedAdminMode ?: false) 
+    var isAdminMode by rememberSaveable(userId, isPrimaryAdmin, isDatabaseAdmin, adminModeState) { 
+        val prefValue = adminModeState as? Boolean
+        mutableStateOf(if (isPrimaryAdmin) true else prefValue ?: isDatabaseAdmin) 
     }
     
     val todayLogsFlow = remember(userId) { firestoreRepository.getTodayFluidLogsFlow(userId) }
@@ -110,6 +141,24 @@ fun MainScreen(
     val totalIntake = todayLogs.sumOf { it.amount }
     val currentStreak = userRecord?.streak ?: 0
     val quickAddConfigs = userRecord?.quickAddConfig ?: emptyList()
+
+    // Network and sync state for System Status section
+    val networkMonitor = remember { NetworkMonitor(context) }
+    val isConnected by networkMonitor.isConnected.collectAsState(initial = true)
+    val hasPendingWritesFlow = remember(userId) { firestoreRepository.hasPendingWritesFlow(userId) }
+    val hasPendingWrites by hasPendingWritesFlow.collectAsState(initial = true)
+
+    // Background Profile Photo Sync
+    val hasPendingUpload by repository.hasPendingPhotoUpload(userId).collectAsState(initial = false)
+    LaunchedEffect(isConnected, hasPendingUpload) {
+        if (isConnected && hasPendingUpload) {
+            val result = firestoreRepository.syncPendingProfilePhoto(userId)
+            if (result.isSuccess) {
+                repository.setPendingPhotoUpload(userId, false)
+                android.widget.Toast.makeText(context, "Profile photo synced to cloud!", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     // Handle Streak and Logic
     LaunchedEffect(totalIntake, currentGoal) {
@@ -303,6 +352,7 @@ fun MainScreen(
                     composable(NavRoutes.AICoach.route) { 
                         AICoachScreen(
                             userRecord = userRecord,
+                            isConnected = isConnected,
                             onSetGoal = { newGoal ->
                                 scope.launch {
                                     repository.saveDailyGoal(userId, newGoal)
@@ -314,29 +364,76 @@ fun MainScreen(
                             }
                         )
                     }
-                    composable(NavRoutes.Settings.route) { 
-                        SettingsScreen(
-                            userId = userId,
-                            username = userRecord?.username ?: username,
-                            email = userRecord?.email ?: "",
-                            streak = userRecord?.streak ?: 0,
-                            isDatabaseAdmin = isDatabaseAdmin,
-                            isAdminMode = isAdminMode,
-                            userRole = userRole,
-                            onLogout = onLogout,
-                            onEditProfile = { navController.navigate(NavRoutes.EditProfile.route) },
-                            onVerifyAccount = { navController.navigate(NavRoutes.VerifyAccount.route) },
-                            onAboutDeveloper = { navController.navigate(NavRoutes.AboutDeveloper.route) },
-                            onToggleRole = {
-                                isAdminMode = !isAdminMode
-                                scope.launch {
-                                    repository.setAdminMode(userId, isAdminMode)
-                                }
-                                navController.navigate(if (isAdminMode) NavRoutes.Admin.route else NavRoutes.Home.route) {
-                                    popUpTo(0) { inclusive = true }
+                    composable(NavRoutes.Settings.route) {
+                            val displayProfilePhoto = remember(userRecord?.profilePictureUrl, hasPendingUpload) {
+                                if (hasPendingUpload && userId != "GUEST") {
+                                    val localFile = com.example.fluidcheck.util.ProfilePhotoManager.getLocalPhotoFile(context)
+                                    if (localFile != null && localFile.exists()) {
+                                        localFile.absolutePath
+                                    } else {
+                                        userRecord?.profilePictureUrl ?: ""
+                                    }
+                                } else {
+                                    userRecord?.profilePictureUrl ?: ""
                                 }
                             }
-                        )
+                            SettingsScreen(
+                                userId = userId,
+                                username = userRecord?.username ?: username,
+                                email = userRecord?.email ?: "",
+                                streak = userRecord?.streak ?: 0,
+                                isDatabaseAdmin = isDatabaseAdmin,
+                                isAdminMode = isAdminMode,
+                                userRole = userRole,
+                                isConnected = isConnected,
+                                hasPendingWrites = hasPendingWrites,
+                                onLogout = onLogout,
+                                onEditProfile = { navController.navigate(NavRoutes.EditProfile.route) },
+                                onVerifyAccount = { navController.navigate(NavRoutes.VerifyAccount.route) },
+                                onAboutDeveloper = { navController.navigate(NavRoutes.AboutDeveloper.route) },
+                                notificationsEnabled = notificationsEnabled,
+                                reminderFrequency = when (reminderFrequency) {
+                                    "30" -> "Every 30 mins"
+                                    "120" -> "Every 2 hours"
+                                    "240" -> "Every 4 hours"
+                                    else -> "Every 1 hour"
+                                },
+                                 onToggleNotifications = { enabled ->
+                                    // Optimistically update the state so the toggle visually stays ON
+                                    // while the permission dialog is showing.
+                                    scope.launch {
+                                        firestoreRepository.updateNotificationsEnabled(userId, enabled)
+                                        repository.setNotificationsEnabled(userId, enabled)
+                                    }
+                                    
+                                    // Request permission if not already granted and trying to enable
+                                    if (enabled && !hasNotificationPermission) {
+                                        onRequestNotificationPermission()
+                                    }
+                                },
+                                onFrequencyChanged = { freqLabel ->
+                                    val freqValue = when (freqLabel) {
+                                        "Every 30 mins" -> "30"
+                                        "Every 2 hours" -> "120"
+                                        "Every 4 hours" -> "240"
+                                        else -> "60"
+                                    }
+                                    scope.launch {
+                                        firestoreRepository.updateReminderFrequency(userId, freqValue)
+                                        repository.setReminderFrequency(userId, freqValue)
+                                    }
+                                },
+                                onToggleRole = {
+                                    isAdminMode = !isAdminMode
+                                    scope.launch {
+                                        repository.setAdminMode(userId, isAdminMode)
+                                    }
+                                    navController.navigate(if (isAdminMode) NavRoutes.Admin.route else NavRoutes.Home.route) {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                },
+                                profilePictureUrl = displayProfilePhoto
+                            )
                     }
                     composable(NavRoutes.EditProfile.route) {
                         EditProfileScreen(

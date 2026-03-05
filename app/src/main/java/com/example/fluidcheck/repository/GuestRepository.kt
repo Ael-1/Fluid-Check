@@ -26,7 +26,9 @@ class GuestRepository(private val context: Context) {
             username = "Guest",
             email = "",
             role = "USER",
-            setupCompleted = false
+            setupCompleted = false,
+            notificationsEnabled = null,
+            reminderFrequency = "60"
         )
     )
     val guestUserRecordFlow: Flow<UserRecord?> = _guestUserRecordFlow
@@ -60,6 +62,8 @@ class GuestRepository(private val context: Context) {
                     activity = json.optString("activity", ""),
                     environment = json.optString("environment", ""),
                     setupCompleted = json.optBoolean("setupCompleted", false),
+                    notificationsEnabled = if (json.has("notificationsEnabled")) json.optBoolean("notificationsEnabled") else null,
+                    reminderFrequency = json.optString("reminderFrequency", "60"),
                     quickAddConfig = parseQuickAddConfig(json.optJSONArray("quickAddConfig")) ?: com.example.fluidcheck.model.DEFAULT_QUICK_ADD_CONFIGS
                 )
             }
@@ -121,6 +125,8 @@ class GuestRepository(private val context: Context) {
             json.put("activity", record.activity)
             json.put("environment", record.environment)
             json.put("setupCompleted", record.setupCompleted)
+            json.put("notificationsEnabled", record.notificationsEnabled)
+            json.put("reminderFrequency", record.reminderFrequency)
             
             if (record.quickAddConfig != null) {
                 val qaArray = JSONArray()
@@ -184,7 +190,7 @@ class GuestRepository(private val context: Context) {
         }
     }
 
-    private fun saveGuestLogsToPrefs() {
+    fun saveGuestLogsToPrefs() {
         try {
             val logs = _guestLogsFlow.value
             val jsonArray = JSONArray()
@@ -200,6 +206,22 @@ class GuestRepository(private val context: Context) {
             prefs.edit().putString(guestLogsProviderName, jsonArray.toString()).apply()
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    fun updateNotificationsEnabled(enabled: Boolean) {
+        val record = _guestUserRecordFlow.value
+        if (record != null) {
+            _guestUserRecordFlow.value = record.copy(notificationsEnabled = enabled)
+            saveGuestRecordToPrefs()
+        }
+    }
+
+    fun updateReminderFrequency(frequency: String) {
+        val record = _guestUserRecordFlow.value
+        if (record != null) {
+            _guestUserRecordFlow.value = record.copy(reminderFrequency = frequency)
+            saveGuestRecordToPrefs()
         }
     }
 
@@ -259,7 +281,9 @@ class GuestRepository(private val context: Context) {
             username = "Guest",
             email = "",
             role = "USER",
-            setupCompleted = false
+            setupCompleted = false,
+            notificationsEnabled = null,
+            reminderFrequency = "60"
         )
     }
 }

@@ -1,12 +1,16 @@
 # FluidCheck Development Plan
 
-## 1. Application wide feature
+## 1. Application wide feature \*\*DONE
 
-1. Offline Support: Your plan relies heavily on Firestore. What happens if the user logs a drink while their phone is offline? The app should gracefully handle this by storing the log locally on the device. When the internet connection is restored, it can then automatically sync the offline data with Firestore. \*\*NOT DONE
-2. With task 1 implemented, ensure that the whole application handles the storing of data when offline in the local device and synchronize them to firestore if connection is restored. \*\*NOT DONE
-3. With task 1 implemented, ensure that in System Status in settings, the auto sync data will turn red if there is no connection to the database. Green if there is a connection. \*\*NOT DONE
-4. Cloud back up is 'enabled' if all user data is backed up in the database. Disabled if not (This is default for the Guest user since their user data is not stored in the database) \*\*NOT DONE
-5. Ensure that all offline features will be handled accordingly. If you are woking in this task, ask me some questions or give me suggestions if I'm missing something or any implementation for the offline feature beside from the one we've work on so far. \*\*NOT DONE
+1. Offline Support & Quota Optimization: Refactor all `runTransaction` operations in `FirestoreRepository` to use `WriteBatch` and `FieldValue.increment()`. This enables offline writes and eliminates unnecessary read operations currently used to calculate totals, directly addressing the "Read quota exceeded" issue. \*\*DONE
+2. Real-time Connectivity Tracking: Implement a `NetworkMonitor` utility to provide a reactive `StateFlow<Boolean>` for internet availability across the UI. \*\*DONE
+3. Smart System Status (Settings): Enhance "Auto Sync Data" logic. It should turn red if offline or if the Firestore persistence layer detects sync errors. Green only when a stable connection to the database is verified. \*\*DONE
+4. Dynamic Cloud Backup Indicator (Settings):
+   - For Guest Users: Permanently "Disabled".
+   - For Cloud Users: Display "Syncing..." while Firestore has `hasPendingWrites = true`, and "Enabled" only once synchronization is complete. \*\*DONE
+5. Global Offline Consistency: Ensure all app roles (Admin, Moderator, User) can interact with cached data (logs, profiles, streaks) when disconnected, with automatic background reconciliation when re-established. \*\*DONE
+
+Ensure that the offline feature applies across all features and roles (admin, moderator, and user) of the application.
 
 ## 2. Home screen \*\*DONE
 
@@ -83,8 +87,8 @@
 
 1. Create a button continue as guest. this user is a 'GUEST' this type of user is not stored in the database. Any data and information from these users are stored only on their device. For every device, there is 1 guest user created. Regardless of how many users (from database) that are being logged in on a device that has a guest user, the guest user can still be logged in as long as user from that device will press continue as guest \*\*DONE
 
-## 10. Notification Feature
+## 10. Notification Feature \*\*DONE
 
-1. Add a notification feature for the app (works regardless if there is internet connection or not), though it should fetch the field value from the database if notifications are enabled or not.
-2. According to the dropdown list options from the reminder frequency, the user can choose from every 30 min, 1 hr, 2 hrs, and 4 hrs. Picking an option should also be stored in the database (if there is no internet connection, when choosing, store locally until there is connection in the database, store it.)
-3. Add random notifications for the app too. Like reminders that they haven't finished their progress ring, or their streak is about to break, etc. (Add more notification that is relevant for the user).
+1. Add a notification feature for the app (works regardless if there is internet connection or not), though it should fetch the field value from the database if notifications are enabled or not. \*\*DONE
+2. According to the dropdown list options from the reminder frequency, the user can choose from every 30 min, 1 hr, 2 hrs, and 4 hrs. Picking an option should also be stored in the database (if there is no internet connection, when choosing, store locally until there is connection in the database, store it.) \*\*DONE
+3. Add random notifications for the app too. Like reminders that they haven't finished their progress ring, or their streak is about to break, etc. (Add more notification that is relevant for the user). \*\*DONE

@@ -49,7 +49,8 @@ data class UserRecord(
     val deleted: Boolean = false,
     val fcmToken: String = "",
     val quickAddConfig: List<QuickAddConfig>? = null, // Changed to nullable to distinguish between missing and empty
-    val notificationsEnabled: Boolean = true,
+    val notificationsEnabled: Boolean? = null,
+    val reminderFrequency: String = "60", // minutes
     val lastRingClosedDate: String = "",
     val streak: Int = 0,
     val highestStreak: Int = 0,

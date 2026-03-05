@@ -46,6 +46,7 @@ object AppIcons {
     val Visibility = Icons.Default.Visibility
     val VisibilityOff = Icons.Default.VisibilityOff
     val Camera = Icons.Default.CameraAlt
+    val Image = Icons.Default.Image
     val AccountCircle = Icons.Default.AccountCircle
     val Badge = Icons.Outlined.Badge
     

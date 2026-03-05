@@ -4,13 +4,21 @@ import com.example.fluidcheck.model.FluidLog
 import com.example.fluidcheck.model.QuickAddConfig
 import com.example.fluidcheck.model.UserRecord
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import android.content.Context
+import android.net.Uri
+import android.util.Base64
+import android.util.Log
+import com.example.fluidcheck.util.ImageUploadService
+import com.example.fluidcheck.util.ImageUtils
+import com.example.fluidcheck.util.ProfilePhotoManager
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -180,7 +188,8 @@ class FirestoreRepository(private val context: Context? = null) {
             deleted = (document.getBoolean("deleted") ?: document.getBoolean("isDeleted")) ?: false,
             fcmToken = document.getString("fcmToken") ?: "",
             quickAddConfig = quickAddConfig,
-            notificationsEnabled = document.getBoolean("notificationsEnabled") ?: true,
+            notificationsEnabled = document.getBoolean("notificationsEnabled"),
+            reminderFrequency = document.getString("reminderFrequency") ?: "60",
             lastRingClosedDate = document.getString("lastRingClosedDate") ?: "",
             streak = (document.getLong("streak") ?: 0L).toInt(),
             highestStreak = (document.getLong("highestStreak") ?: 0L).toInt(),
@@ -240,16 +249,14 @@ class FirestoreRepository(private val context: Context? = null) {
             return Result.success(Unit)
         }
         return try {
-            db.runTransaction { transaction ->
-                val userRef = usersCollection.document(uid)
-                val userDoc = transaction.get(userRef)
-                val currentTotal = userDoc.getLong("totalFluidDrankAllTime") ?: 0L
-                
-                transaction.update(userRef, "totalFluidDrankAllTime", currentTotal + log.amount)
-                
-                val logRef = userRef.collection("fluid_logs").document(log.id.toString())
-                transaction.set(logRef, log)
-            }.await()
+            val batch = db.batch()
+            val userRef = usersCollection.document(uid)
+            val logRef = userRef.collection("fluid_logs").document(log.id.toString())
+            
+            batch.update(userRef, "totalFluidDrankAllTime", FieldValue.increment(log.amount.toLong()))
+            batch.set(logRef, log)
+            
+            batch.commit().await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -262,17 +269,15 @@ class FirestoreRepository(private val context: Context? = null) {
             return Result.success(Unit)
         }
         return try {
-            db.runTransaction { transaction ->
-                val userRef = usersCollection.document(uid)
-                val userDoc = transaction.get(userRef)
-                val currentTotal = userDoc.getLong("totalFluidDrankAllTime") ?: 0L
-                
-                val amountDiff = newLog.amount - oldLog.amount
-                transaction.update(userRef, "totalFluidDrankAllTime", currentTotal + amountDiff)
-                
-                val logRef = userRef.collection("fluid_logs").document(newLog.id.toString())
-                transaction.set(logRef, newLog)
-            }.await()
+            val amountDiff = (newLog.amount - oldLog.amount).toLong()
+            val batch = db.batch()
+            val userRef = usersCollection.document(uid)
+            val logRef = userRef.collection("fluid_logs").document(newLog.id.toString())
+            
+            batch.update(userRef, "totalFluidDrankAllTime", FieldValue.increment(amountDiff))
+            batch.set(logRef, newLog)
+            
+            batch.commit().await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -285,16 +290,14 @@ class FirestoreRepository(private val context: Context? = null) {
             return Result.success(Unit)
         }
         return try {
-            db.runTransaction { transaction ->
-                val userRef = usersCollection.document(uid)
-                val userDoc = transaction.get(userRef)
-                val currentTotal = userDoc.getLong("totalFluidDrankAllTime") ?: 0L
-                
-                transaction.update(userRef, "totalFluidDrankAllTime", (currentTotal - log.amount).coerceAtLeast(0))
-                
-                val logRef = userRef.collection("fluid_logs").document(log.id.toString())
-                transaction.delete(logRef)
-            }.await()
+            val batch = db.batch()
+            val userRef = usersCollection.document(uid)
+            val logRef = userRef.collection("fluid_logs").document(log.id.toString())
+            
+            batch.update(userRef, "totalFluidDrankAllTime", FieldValue.increment(-log.amount.toLong()))
+            batch.delete(logRef)
+            
+            batch.commit().await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -393,38 +396,37 @@ class FirestoreRepository(private val context: Context? = null) {
         }
 
         return try {
-            db.runTransaction { transaction ->
-                val userRef = usersCollection.document(uid)
-                val userDoc = transaction.get(userRef)
-                
-                val currentLastRingDate = userDoc.getString("lastRingClosedDate")
-                if (currentLastRingDate == todayDate) {
-                    // Already closed today, avoid redundant write by exiting transaction
-                    return@runTransaction
-                }
-                
-                val currentStreak = (userDoc.getLong("streak") ?: 0L).toInt()
-                val highestStreak = (userDoc.getLong("highestStreak") ?: 0L).toInt()
-                val currentTotal = userDoc.getLong("totalRingsClosed") ?: 0L
-                
-                val newStreak = if (currentLastRingDate == yesterdayDate) {
-                    currentStreak + 1
-                } else {
-                    1
-                }
-                
-                val updates = mutableMapOf<String, Any>(
-                    "streak" to newStreak,
-                    "lastRingClosedDate" to todayDate,
-                    "totalRingsClosed" to currentTotal + 1
-                )
-                
-                if (newStreak > highestStreak) {
-                    updates["highestStreak"] = newStreak
-                }
-                
-                transaction.update(userRef, updates)
-            }.await()
+            // Use a read first to determine streak logic, then a batch write.
+            // The read will come from cache if offline, and the write will queue.
+            val userRef = usersCollection.document(uid)
+            val userDoc = userRef.get().await()
+            
+            val currentLastRingDate = userDoc.getString("lastRingClosedDate")
+            if (currentLastRingDate == todayDate) {
+                // Already closed today, avoid redundant write
+                return Result.success(Unit)
+            }
+            
+            val currentStreak = (userDoc.getLong("streak") ?: 0L).toInt()
+            val highestStreak = (userDoc.getLong("highestStreak") ?: 0L).toInt()
+            
+            val newStreak = if (currentLastRingDate == yesterdayDate) {
+                currentStreak + 1
+            } else {
+                1
+            }
+            
+            val updates = mutableMapOf<String, Any>(
+                "streak" to newStreak,
+                "lastRingClosedDate" to todayDate,
+                "totalRingsClosed" to FieldValue.increment(1)
+            )
+            
+            if (newStreak > highestStreak) {
+                updates["highestStreak"] = newStreak
+            }
+            
+            userRef.update(updates).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -441,8 +443,25 @@ class FirestoreRepository(private val context: Context? = null) {
     }
 
     suspend fun updateNotificationsEnabled(uid: String, enabled: Boolean): Result<Unit> {
+        if (uid == "GUEST") {
+            guestRepository?.updateNotificationsEnabled(enabled)
+            return Result.success(Unit)
+        }
         return try {
             usersCollection.document(uid).update("notificationsEnabled", enabled).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateReminderFrequency(uid: String, frequency: String): Result<Unit> {
+        if (uid == "GUEST") {
+            guestRepository?.updateReminderFrequency(frequency)
+            return Result.success(Unit)
+        }
+        return try {
+            usersCollection.document(uid).update("reminderFrequency", frequency).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -519,6 +538,165 @@ class FirestoreRepository(private val context: Context? = null) {
             // Clear local guest cache ONLY after the cloud says success
             guestRepository.clearGuestData()
             
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Provides a Flow that tracks whether Firestore has pending writes for a given user.
+     * True = data is waiting to be synced to the cloud.
+     * False = all data is fully synced.
+     */
+    fun hasPendingWritesFlow(uid: String): Flow<Boolean> {
+        if (uid == "GUEST") {
+            return kotlinx.coroutines.flow.flowOf(false)
+        }
+        return callbackFlow {
+            val registration = usersCollection.document(uid)
+                .addSnapshotListener(MetadataChanges.INCLUDE) { snapshot, error ->
+                    if (error != null) {
+                        // If we can't connect to verify sync status (e.g. quota exceeded),
+                        // it is safer to assume sync is pending/stuck rather than successful.
+                        trySend(true)
+                        return@addSnapshotListener
+                    }
+                    trySend(snapshot?.metadata?.hasPendingWrites() == true)
+                }
+            awaitClose { registration.remove() }
+        }
+    }
+
+    /**
+     * Uploads a profile picture: compresses, saves locally, and uploads to ImgBB if online.
+     * Returns the display URL (ImgBB HTTPS URL) or the local file path for offline display.
+     */
+    suspend fun uploadProfilePicture(uid: String, uri: Uri, isOnline: Boolean = true): Result<String> {
+        return try {
+            if (context == null) return Result.failure(Exception("Context is required for image processing"))
+
+            // 1. Get image bytes — handle both file:// URIs (from uCrop) and content:// URIs
+            val imageBytes = if (uri.scheme == "file") {
+                // uCrop outputs file:// URIs — already cropped & compressed, just read bytes
+                val file = java.io.File(uri.path!!)
+                if (file.exists()) file.readBytes() else null
+            } else {
+                // content:// URI — needs processing
+                ImageUtils.uriToCompressedByteArray(context, uri, 256)
+            } ?: return Result.failure(Exception("Failed to process image"))
+
+            // 2. Save locally for immediate display
+            val localFile = ProfilePhotoManager.savePhotoLocally(context, imageBytes)
+                ?: return Result.failure(Exception("Failed to save photo locally"))
+
+            if (!isOnline) {
+                // Offline: return local file path for UI display
+                Log.d("FirestoreRepository", "Offline — photo saved locally, pending upload")
+                return Result.success(localFile.absolutePath)
+            }
+
+            // 3. Online: upload to ImgBB
+            val base64ForApi = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+            val uploadResult = ImageUploadService.uploadToImgBB(base64ForApi)
+
+            if (uploadResult.isFailure) {
+                // Upload failed but local copy exists — return local path as fallback
+                Log.e("FirestoreRepository", "ImgBB upload failed, using local copy")
+                return Result.success(localFile.absolutePath)
+            }
+
+            val imageUrl = uploadResult.getOrThrow()
+
+            // 4. Store the HTTPS URL in Firestore
+            if (uid != "GUEST") {
+                usersCollection.document(uid).update("profilePictureUrl", imageUrl).await()
+            }
+
+            // 5. Clean up local file since we have the cloud URL now
+            ProfilePhotoManager.deleteLocalPhoto(context)
+
+            Log.d("FirestoreRepository", "Profile picture uploaded: $imageUrl")
+            Result.success(imageUrl)
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "Error uploading profile picture: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Syncs a pending local profile photo to ImgBB when connectivity is restored.
+     * Called by the UI layer when network becomes available and a pending upload exists.
+     */
+    suspend fun syncPendingProfilePhoto(uid: String): Result<String> {
+        return try {
+            if (context == null) return Result.failure(Exception("Context is required"))
+
+            val localFile = ProfilePhotoManager.getLocalPhotoFile(context)
+                ?: return Result.failure(Exception("No local photo found to sync"))
+
+            val imageBytes = localFile.readBytes()
+            val base64ForApi = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+
+            val uploadResult = ImageUploadService.uploadToImgBB(base64ForApi)
+            if (uploadResult.isFailure) {
+                return Result.failure(uploadResult.exceptionOrNull() ?: Exception("Upload failed"))
+            }
+
+            val imageUrl = uploadResult.getOrThrow()
+
+            if (uid != "GUEST") {
+                usersCollection.document(uid).update("profilePictureUrl", imageUrl).await()
+            }
+
+            // Clean up local file
+            ProfilePhotoManager.deleteLocalPhoto(context)
+
+            Log.d("FirestoreRepository", "Pending photo synced: $imageUrl")
+            Result.success(imageUrl)
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "Error syncing pending photo: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Queues an offline update for non-critical user profile fields (including profile picture removal).
+     * This uses a fire-and-forget .update() which instantly writes to Firestore's local cache,
+     * triggering local UI updates, and pushes to the cloud once connectivity is restored.
+     */
+    fun queueOfflineUserRecordUpdate(uid: String, record: UserRecord) {
+        if (uid == "GUEST" || uid.isEmpty()) return
+        
+        val userRef = usersCollection.document(uid)
+        val updates = mutableMapOf<String, Any>(
+            "weight" to record.weight,
+            "height" to record.height,
+            "age" to record.age,
+            "sex" to record.sex,
+            "activity" to record.activity,
+            "environment" to record.environment
+        )
+        
+        // If the photo was explicitly removed offline, we should queue the empty URL to Firestore.
+        // We DO NOT sync a local file:// path, as that shouldn't go to the cloud.
+        if (record.profilePictureUrl.isEmpty()) {
+            updates["profilePictureUrl"] = ""
+        }
+        
+        // Fire and forget: Firestore offline persistence handles the queuing and immediate local cache update.
+        userRef.update(updates)
+    }
+
+    suspend fun removeProfilePicture(uid: String): Result<Unit> {
+        return try {
+            // Clean up local cached photo
+            context?.let { ProfilePhotoManager.deleteLocalPhoto(it) }
+
+            if (uid == "GUEST") {
+                return Result.success(Unit)
+            }
+            usersCollection.document(uid).update("profilePictureUrl", "").await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

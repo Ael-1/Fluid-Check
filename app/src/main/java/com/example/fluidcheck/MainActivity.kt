@@ -22,6 +22,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.fluidcheck.model.UserRecord
+import android.os.Build
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import com.example.fluidcheck.repository.AuthRepository
 import com.example.fluidcheck.repository.FirestoreRepository
 import com.example.fluidcheck.ui.MainScreen
@@ -31,6 +35,7 @@ import com.example.fluidcheck.ui.screens.InitialSetupScreen
 import com.example.fluidcheck.ui.theme.AppIcons
 import com.example.fluidcheck.ui.theme.FluidCheckTheme
 import com.example.fluidcheck.ui.theme.PrimaryBlue
+import com.example.fluidcheck.util.NotificationHelper
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -44,15 +49,113 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        
+        // Initialize Notification Channel
+        NotificationHelper.createNotificationChannel(this)
+
         enableEdgeToEdge()
         setContent {
+            val context = LocalContext.current
+
+            var hasNotificationPermission by remember {
+                mutableStateOf(
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        ContextCompat.checkSelfPermission(
+                            this@MainActivity,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) == PackageManager.PERMISSION_GRANTED
+                    } else true
+                )
+            }
+
             FluidCheckTheme {
-                val context = LocalContext.current
                 val authRepository = remember { AuthRepository() }
                 val firestoreRepository = remember { FirestoreRepository(context) }
                 val scope = rememberCoroutineScope()
 
+                // Auth status derived from repository
                 var isLoggedIn by rememberSaveable { mutableStateOf(authRepository.isUserLoggedIn()) }
+                val currentUserId = if (isLoggedIn && authRepository.currentUser == null) "GUEST" else authRepository.currentUser?.uid ?: ""
+
+                val permissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission(),
+                    onResult = { isGranted ->
+                        hasNotificationPermission = isGranted
+                        if (currentUserId.isNotEmpty()) {
+                            scope.launch {
+                                firestoreRepository.updateNotificationsEnabled(currentUserId, isGranted)
+                            }
+                        }
+                    }
+                )
+
+                var showPermissionDeniedDialog by remember { mutableStateOf(false) }
+
+                val explicitPermissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission(),
+                    onResult = { isGranted ->
+                        hasNotificationPermission = isGranted
+                        if (currentUserId.isNotEmpty()) {
+                            scope.launch {
+                                firestoreRepository.updateNotificationsEnabled(currentUserId, isGranted)
+                            }
+                        }
+                        if (!isGranted) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                val shouldShowRationale = androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(
+                                    this@MainActivity,
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                )
+                                // If false here, it means the permission framework won't show a dialog anymore
+                                if (!shouldShowRationale) {
+                                    showPermissionDeniedDialog = true
+                                }
+                            }
+                        }
+                    }
+                )
+
+                if (showPermissionDeniedDialog) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { showPermissionDeniedDialog = false },
+                        title = { androidx.compose.material3.Text("Permission Required") },
+                        text = { androidx.compose.material3.Text("Smart Reminders require notification permission. Since it was previously denied, please open device settings to enable notifications for Fluid Check.") },
+                        confirmButton = {
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    showPermissionDeniedDialog = false
+                                    val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = android.net.Uri.fromParts("package", packageName, null)
+                                    }
+                                    startActivity(intent)
+                                }
+                            ) {
+                                androidx.compose.material3.Text("Open Settings")
+                            }
+                        },
+                        dismissButton = {
+                            androidx.compose.material3.TextButton(
+                                onClick = { showPermissionDeniedDialog = false }
+                            ) {
+                                androidx.compose.material3.Text("Cancel")
+                            }
+                        }
+                    )
+                }
+
+                // Request permission on fresh download / first launch
+                LaunchedEffect(Unit) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        if (ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.POST_NOTIFICATIONS
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }
+                }
+
                 var currentUsername by rememberSaveable { mutableStateOf("") }
                 var currentAuthScreen by rememberSaveable { mutableStateOf("login") }
                 
@@ -61,9 +164,6 @@ class MainActivity : ComponentActivity() {
                 var isCheckingSetup by remember(isLoggedIn) { mutableStateOf(isLoggedIn) }
                 var isAuthInProgress by remember { mutableStateOf(false) }
                 var pendingVerificationGuestRecord by remember { mutableStateOf<UserRecord?>(null) }
-
-                // The actual runtime user ID handling guests
-                val currentUserId = if (isLoggedIn && authRepository.currentUser == null) "GUEST" else authRepository.currentUser?.uid ?: ""
 
                 // Auth Status Dialog State
                 var showAuthStatusDialog by remember { mutableStateOf(false) }
@@ -415,6 +515,12 @@ class MainActivity : ComponentActivity() {
                         isAuthInProgress = isAuthInProgress,
                         isGoogleAvailable = isGoogleAvailable,
                         onGoogleSignInClick = triggerGoogleSignIn,
+                        hasNotificationPermission = hasNotificationPermission,
+                        onRequestNotificationPermission = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                explicitPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        },
                         onGoogleVerifyAccount = { guestRecord ->
                             pendingVerificationGuestRecord = guestRecord
                             triggerGoogleSignIn()
@@ -425,6 +531,9 @@ class MainActivity : ComponentActivity() {
                                 val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
                                 GoogleSignIn.getClient(this@MainActivity, gso).signOut()
                             }
+                            // Cancel all scheduled reminders on logout
+                            com.example.fluidcheck.util.NotificationScheduler.cancelAllReminders(this@MainActivity)
+                            
                             isLoggedIn = false
                             currentUsername = ""
                             currentAuthScreen = "login"

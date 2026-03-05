@@ -98,6 +98,8 @@
     <string name="auto_sync">Auto-Sync Data</string>
     <string name="cloud_backup">Cloud Backup</string>
     <string name="enabled">Enabled</string>
+    <string name="disabled">Disabled</string>
+    <string name="syncing">Syncing</string>
     <string name="rights_reserved">Fluid Check All Rights Reserved</string>
     <string name="profile_title">Profile</string>
     <string name="personal_records_title">Personal Records</string>

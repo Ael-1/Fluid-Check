@@ -25,6 +25,9 @@ class UserPreferencesRepository(private val context: Context) {
         fun dailyGoalKey(userId: String) = intPreferencesKey(sanitize("${userId}_daily_goal"))
         fun setupCompleteKey(userId: String) = booleanPreferencesKey(sanitize("${userId}_setup_complete"))
         fun adminModeKey(userId: String) = booleanPreferencesKey(sanitize("${userId}_admin_mode"))
+        fun notificationsEnabledKey(userId: String) = booleanPreferencesKey(sanitize("${userId}_notifications_enabled"))
+        fun reminderFrequencyKey(userId: String) = stringPreferencesKey(sanitize("${userId}_reminder_frequency"))
+        fun pendingPhotoUploadKey(userId: String) = booleanPreferencesKey(sanitize("${userId}_pending_photo_upload"))
     }
 
     fun getUserRecord(userId: String): Flow<UserRecord> = context.dataStore.data.map { preferences ->
@@ -36,7 +39,9 @@ class UserPreferencesRepository(private val context: Context) {
             sex = preferences[PreferencesKeys.sexKey(userId)] ?: "",
             activity = preferences[PreferencesKeys.activityKey(userId)] ?: "",
             environment = preferences[PreferencesKeys.environmentKey(userId)] ?: "",
-            setupCompleted = preferences[PreferencesKeys.setupCompleteKey(userId)] ?: false
+            setupCompleted = preferences[PreferencesKeys.setupCompleteKey(userId)] ?: false,
+            notificationsEnabled = preferences[PreferencesKeys.notificationsEnabledKey(userId)],
+            reminderFrequency = preferences[PreferencesKeys.reminderFrequencyKey(userId)] ?: "60"
         )
     }
 
@@ -49,6 +54,12 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.activityKey(userId)] = record.activity
             preferences[PreferencesKeys.environmentKey(userId)] = record.environment
             preferences[PreferencesKeys.setupCompleteKey(userId)] = record.setupCompleted
+            if (record.notificationsEnabled != null) {
+                preferences[PreferencesKeys.notificationsEnabledKey(userId)] = record.notificationsEnabled
+            } else {
+                preferences.remove(PreferencesKeys.notificationsEnabledKey(userId))
+            }
+            preferences[PreferencesKeys.reminderFrequencyKey(userId)] = record.reminderFrequency
         }
     }
 
@@ -76,9 +87,43 @@ class UserPreferencesRepository(private val context: Context) {
         preferences[PreferencesKeys.adminModeKey(userId)] ?: defaultValue
     }
 
+    fun getAdminModeFlow(userId: String): Flow<Boolean?> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.adminModeKey(userId)]
+    }
+
     suspend fun setAdminMode(userId: String, isAdminMode: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.adminModeKey(userId)] = isAdminMode
+        }
+    }
+
+    fun getNotificationsEnabled(userId: String): Flow<Boolean?> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.notificationsEnabledKey(userId)]
+    }
+
+    suspend fun setNotificationsEnabled(userId: String, enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.notificationsEnabledKey(userId)] = enabled
+        }
+    }
+
+    fun getReminderFrequency(userId: String): Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.reminderFrequencyKey(userId)] ?: "60"
+    }
+
+    suspend fun setReminderFrequency(userId: String, frequency: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.reminderFrequencyKey(userId)] = frequency
+        }
+    }
+
+    fun hasPendingPhotoUpload(userId: String): Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.pendingPhotoUploadKey(userId)] ?: false
+    }
+
+    suspend fun setPendingPhotoUpload(userId: String, pending: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.pendingPhotoUploadKey(userId)] = pending
         }
     }
 }
