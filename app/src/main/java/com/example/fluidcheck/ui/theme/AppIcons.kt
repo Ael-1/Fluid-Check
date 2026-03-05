@@ -29,6 +29,7 @@ object AppIcons {
     val Edit = Icons.Default.Edit
     val Search = Icons.Default.Search
     val Save = Icons.Default.Check
+    val Check = Icons.Default.Check
     val Done = Icons.Default.CheckCircleOutline
     
     // Arrows
@@ -45,6 +46,7 @@ object AppIcons {
     val Visibility = Icons.Default.Visibility
     val VisibilityOff = Icons.Default.VisibilityOff
     val Camera = Icons.Default.CameraAlt
+    val Image = Icons.Default.Image
     val AccountCircle = Icons.Default.AccountCircle
     val Badge = Icons.Outlined.Badge
     

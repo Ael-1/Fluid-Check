@@ -17,7 +17,8 @@ data class UserCredentials(
  */
 data class QuickAddConfig(
     val amount: Int = 0,
-    val type: String = "Water"
+    val type: String = "Water",
+    val id: String = java.util.UUID.randomUUID().toString()
 )
 
 val DEFAULT_QUICK_ADD_CONFIGS = listOf(
@@ -45,10 +46,11 @@ data class UserRecord(
     val dailyGoal: Int? = 3000,
     
     // New fields from section 7 of TODO.md
-    val isDeleted: Boolean = false,
+    val deleted: Boolean = false,
     val fcmToken: String = "",
     val quickAddConfig: List<QuickAddConfig>? = null, // Changed to nullable to distinguish between missing and empty
-    val notificationsEnabled: Boolean = true,
+    val notificationsEnabled: Boolean? = null,
+    val reminderFrequency: String = "60", // minutes
     val lastRingClosedDate: String = "",
     val streak: Int = 0,
     val highestStreak: Int = 0,

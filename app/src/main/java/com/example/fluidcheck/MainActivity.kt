@@ -16,13 +16,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.fluidcheck.model.UserRecord
+import android.os.Build
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import com.example.fluidcheck.repository.AuthRepository
 import com.example.fluidcheck.repository.FirestoreRepository
 import com.example.fluidcheck.ui.MainScreen
@@ -32,6 +35,7 @@ import com.example.fluidcheck.ui.screens.InitialSetupScreen
 import com.example.fluidcheck.ui.theme.AppIcons
 import com.example.fluidcheck.ui.theme.FluidCheckTheme
 import com.example.fluidcheck.ui.theme.PrimaryBlue
+import com.example.fluidcheck.util.NotificationHelper
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -45,15 +49,113 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        
+        // Initialize Notification Channel
+        NotificationHelper.createNotificationChannel(this)
+
         enableEdgeToEdge()
         setContent {
+            val context = LocalContext.current
+
+            var hasNotificationPermission by remember {
+                mutableStateOf(
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        ContextCompat.checkSelfPermission(
+                            this@MainActivity,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) == PackageManager.PERMISSION_GRANTED
+                    } else true
+                )
+            }
+
             FluidCheckTheme {
-                val context = LocalContext.current
                 val authRepository = remember { AuthRepository() }
-                val firestoreRepository = remember { FirestoreRepository() }
+                val firestoreRepository = remember { FirestoreRepository(context) }
                 val scope = rememberCoroutineScope()
 
+                // Auth status derived from repository
                 var isLoggedIn by rememberSaveable { mutableStateOf(authRepository.isUserLoggedIn()) }
+                val currentUserId = if (isLoggedIn && authRepository.currentUser == null) "GUEST" else authRepository.currentUser?.uid ?: ""
+
+                val permissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission(),
+                    onResult = { isGranted ->
+                        hasNotificationPermission = isGranted
+                        if (currentUserId.isNotEmpty()) {
+                            scope.launch {
+                                firestoreRepository.updateNotificationsEnabled(currentUserId, isGranted)
+                            }
+                        }
+                    }
+                )
+
+                var showPermissionDeniedDialog by remember { mutableStateOf(false) }
+
+                val explicitPermissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission(),
+                    onResult = { isGranted ->
+                        hasNotificationPermission = isGranted
+                        if (currentUserId.isNotEmpty()) {
+                            scope.launch {
+                                firestoreRepository.updateNotificationsEnabled(currentUserId, isGranted)
+                            }
+                        }
+                        if (!isGranted) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                val shouldShowRationale = androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(
+                                    this@MainActivity,
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                )
+                                // If false here, it means the permission framework won't show a dialog anymore
+                                if (!shouldShowRationale) {
+                                    showPermissionDeniedDialog = true
+                                }
+                            }
+                        }
+                    }
+                )
+
+                if (showPermissionDeniedDialog) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { showPermissionDeniedDialog = false },
+                        title = { androidx.compose.material3.Text("Permission Required") },
+                        text = { androidx.compose.material3.Text("Smart Reminders require notification permission. Since it was previously denied, please open device settings to enable notifications for Fluid Check.") },
+                        confirmButton = {
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    showPermissionDeniedDialog = false
+                                    val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = android.net.Uri.fromParts("package", packageName, null)
+                                    }
+                                    startActivity(intent)
+                                }
+                            ) {
+                                androidx.compose.material3.Text("Open Settings")
+                            }
+                        },
+                        dismissButton = {
+                            androidx.compose.material3.TextButton(
+                                onClick = { showPermissionDeniedDialog = false }
+                            ) {
+                                androidx.compose.material3.Text("Cancel")
+                            }
+                        }
+                    )
+                }
+
+                // Request permission on fresh download / first launch
+                LaunchedEffect(Unit) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        if (ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.POST_NOTIFICATIONS
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }
+                }
+
                 var currentUsername by rememberSaveable { mutableStateOf("") }
                 var currentAuthScreen by rememberSaveable { mutableStateOf("login") }
                 
@@ -61,6 +163,7 @@ class MainActivity : ComponentActivity() {
                 // Use remember(isLoggedIn) to ensure isCheckingSetup is reset to true whenever isLoggedIn changes to true
                 var isCheckingSetup by remember(isLoggedIn) { mutableStateOf(isLoggedIn) }
                 var isAuthInProgress by remember { mutableStateOf(false) }
+                var pendingVerificationGuestRecord by remember { mutableStateOf<UserRecord?>(null) }
 
                 // Auth Status Dialog State
                 var showAuthStatusDialog by remember { mutableStateOf(false) }
@@ -104,6 +207,30 @@ class MainActivity : ComponentActivity() {
                                     }
                                     currentUsername = username
                                     isLoggedIn = true
+
+                                    // IF we were verifying, transfer data
+                                    if (pendingVerificationGuestRecord != null) {
+                                        val guestRecord = pendingVerificationGuestRecord!!
+                                        val newRecord = guestRecord.copy(
+                                            uid = userId,
+                                            username = username,
+                                            email = email,
+                                            setupCompleted = true,
+                                            createdAt = Timestamp.now()
+                                        )
+                                        firestoreRepository.createAccountWithGuestData(userId, newRecord)
+                                        
+                                        authStatusTitle = "Account Verified!"
+                                        authStatusMessage = "Welcome, $username! Your Google account is now synced."
+                                        isAuthSuccess = true
+                                        pendingActionAfterDialog = {
+                                            isLoggedIn = false
+                                            isSetupComplete = false
+                                            isLoggedIn = true
+                                        }
+                                        showAuthStatusDialog = true
+                                        pendingVerificationGuestRecord = null
+                                    }
                                 } else {
                                     authStatusTitle = "Sign In Failed"
                                     authStatusMessage = "Firebase Google Auth Failed"
@@ -128,7 +255,7 @@ class MainActivity : ComponentActivity() {
                     if (isLoggedIn) {
                         isCheckingSetup = true
                         val currentUser = authRepository.currentUser
-                        val userId = currentUser?.uid ?: ""
+                        val userId = if (currentUser == null) "GUEST" else currentUser.uid
                         val email = currentUser?.email ?: ""
                         
                         // Fetch the full record to check setup status
@@ -155,7 +282,22 @@ class MainActivity : ComponentActivity() {
                             currentUsername = record.username
                             isSetupComplete = record.setupCompleted
                         } else {
-                            isSetupComplete = false
+                            if (userId == "GUEST") {
+                                // Guest exists in memory/prefs flow handled by FirestoreRepository 
+                                // We just need to check if they completed setup before.
+                                // If not found at all, create an empty guest record to trigger setup.
+                                firestoreRepository.saveUserRecord(userId, UserRecord(
+                                    uid = "GUEST",
+                                    username = "Guest",
+                                    email = "",
+                                    role = "USER",
+                                    setupCompleted = false
+                                ))
+                                currentUsername = "Guest"
+                                isSetupComplete = false
+                            } else {
+                                isSetupComplete = false
+                            }
                         }
                         
                         isCheckingSetup = false
@@ -258,6 +400,10 @@ class MainActivity : ComponentActivity() {
                                 val googleSignInClient = GoogleSignIn.getClient(this@MainActivity, gso)
                                 googleSignInLauncher.launch(googleSignInClient.signInIntent)
                             },
+                            onGuestClick = {
+                                currentUsername = "Guest"
+                                isLoggedIn = true
+                            },
                             isGoogleAvailable = isGoogleAvailable,
                             isLoading = isAuthInProgress
                         )
@@ -266,10 +412,12 @@ class MainActivity : ComponentActivity() {
                                 scope.launch {
                                     isAuthInProgress = true
                                     try {
-                                        if (email != ADMIN_EMAIL && !firestoreRepository.isUsernameAvailable(username)) {
+                                        val normalizedEmail = email.trim().lowercase()
+                                        if (!normalizedEmail.equals(ADMIN_EMAIL, ignoreCase = true) && !firestoreRepository.isUsernameAvailable(username)) {
                                             authStatusTitle = getString(R.string.error_username_taken_title)
                                             authStatusMessage = getString(R.string.error_username_taken_msg)
                                             isAuthSuccess = false
+                                            isAuthInProgress = false
                                             showAuthStatusDialog = true
                                             return@launch
                                         }
@@ -329,13 +477,13 @@ class MainActivity : ComponentActivity() {
                         onComplete = { record, dailyGoal ->
                             scope.launch {
                                 try {
-                                    val userId = authRepository.currentUser?.uid ?: ""
+                                    val userId = if (authRepository.currentUser == null && isLoggedIn) "GUEST" else authRepository.currentUser?.uid ?: ""
                                     if (userId.isNotEmpty()) {
                                         val currentRecord = firestoreRepository.getUserRecord(userId)
                                         val finalRecord = record.copy(
                                             uid = userId,
                                             username = currentRecord?.username ?: currentUsername,
-                                            email = authRepository.currentUser?.email ?: "",
+                                            email = if (userId == "GUEST") "" else (authRepository.currentUser?.email ?: ""),
                                             createdAt = currentRecord?.createdAt ?: Timestamp.now(),
                                             setupCompleted = true,
                                             dailyGoal = dailyGoal ?: currentRecord?.dailyGoal ?: 3000
@@ -350,18 +498,102 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     )
-                } else {
+                } else if (isLoggedIn) {
+                    val triggerGoogleSignIn = {
+                        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                            .requestIdToken(getString(R.string.default_web_client_id))
+                            .requestEmail()
+                            .build()
+                        val googleSignInClient = GoogleSignIn.getClient(this@MainActivity, gso)
+                        googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                    }
+
                     MainScreen(
-                        userId = authRepository.currentUser?.uid ?: "",
+                        userId = currentUserId,
                         username = currentUsername,
+                        firestoreRepository = firestoreRepository,
+                        isAuthInProgress = isAuthInProgress,
+                        isGoogleAvailable = isGoogleAvailable,
+                        onGoogleSignInClick = triggerGoogleSignIn,
+                        hasNotificationPermission = hasNotificationPermission,
+                        onRequestNotificationPermission = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                explicitPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        },
+                        onGoogleVerifyAccount = { guestRecord ->
+                            pendingVerificationGuestRecord = guestRecord
+                            triggerGoogleSignIn()
+                        },
                         onLogout = { 
-                            authRepository.signOut()
-                            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
-                            GoogleSignIn.getClient(this@MainActivity, gso).signOut()
+                            if (currentUserId != "GUEST") {
+                                authRepository.signOut()
+                                val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
+                                GoogleSignIn.getClient(this@MainActivity, gso).signOut()
+                            }
+                            // Cancel all scheduled reminders on logout
+                            com.example.fluidcheck.util.NotificationScheduler.cancelAllReminders(this@MainActivity)
+                            
                             isLoggedIn = false
                             currentUsername = ""
                             currentAuthScreen = "login"
                             isSetupComplete = false
+                        },
+                        onVerifyAccount = { guestRecord: UserRecord, u, e, p ->
+                            scope.launch {
+                                isAuthInProgress = true
+                                
+                                // Check if username is available first
+                                val normalizedEmail = e.trim().lowercase()
+                                if (!normalizedEmail.equals(ADMIN_EMAIL, ignoreCase = true) && !firestoreRepository.isUsernameAvailable(u)) {
+                                    authStatusTitle = getString(R.string.error_username_taken_title)
+                                    authStatusMessage = getString(R.string.error_username_taken_msg)
+                                    isAuthSuccess = false
+                                    isAuthInProgress = false
+                                    showAuthStatusDialog = true
+                                    return@launch
+                                }
+
+                                val result = authRepository.signUp(e, p)
+                                if (result.isSuccess) {
+                                    val newUid = authRepository.currentUser?.uid ?: run {
+                                        isAuthInProgress = false
+                                        return@launch
+                                    }
+                                    
+                                    // Prepare the new permanent record from guest data
+                                    val newRecord = guestRecord.copy(
+                                        uid = newUid,
+                                        username = u,
+                                        email = e,
+                                        setupCompleted = true,
+                                        createdAt = Timestamp.now()
+                                    )
+                                    // 1 & 2. Automically Save Profile and Transfer Logs/Stats in a single Batch
+                                    firestoreRepository.createAccountWithGuestData(newUid, newRecord)
+                                    
+                                    // 3. Update local state - Prepare for reset AFTER user confirms the dialog
+                                    // Keep isLoggedIn = true for now so the background screen stays as VerifyAccount
+                                    
+                                    authStatusTitle = "Account Verified!"
+                                    authStatusMessage = "Welcome, $u! Your data has been synced."
+                                    isAuthSuccess = true
+                                    pendingActionAfterDialog = {
+                                        // Now we reset to force the "fresh open" re-check logic
+                                        isLoggedIn = false
+                                        isSetupComplete = false
+                                        // Set back to true to trigger the LaunchedEffect in MainActivity
+                                        isLoggedIn = true
+                                    }
+                                    showAuthStatusDialog = true
+                                } else {
+                                    authStatusTitle = "Verification Failed"
+                                    authStatusMessage = result.exceptionOrNull()?.message ?: "Unknown error"
+                                    isAuthSuccess = false
+                                    showAuthStatusDialog = true
+                                }
+                                isAuthInProgress = false
+                            }
                         }
                     )
                 }

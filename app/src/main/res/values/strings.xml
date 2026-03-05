@@ -11,10 +11,12 @@
     <string name="remaining">remaining</string>
 
     <!-- Auth -->
-    <string name="login_welcome">Welcome Back</string>
+    <string name="login_welcome">Welcome!</string>
     <string name="login_subtitle">Login with your credentials</string>
     <string name="username_label">Username</string>
     <string name="password_label">Password</string>
+    <string name="confirm_password_label">Confirm Password</string>
+    <string name="error_password_mismatch">Passwords do not match</string>
     <string name="email_label">Email Address</string>
     <string name="display_name_label">Display Name</string>
     <string name="sign_in">Sign In</string>
@@ -96,6 +98,8 @@
     <string name="auto_sync">Auto-Sync Data</string>
     <string name="cloud_backup">Cloud Backup</string>
     <string name="enabled">Enabled</string>
+    <string name="disabled">Disabled</string>
+    <string name="syncing">Syncing</string>
     <string name="rights_reserved">Fluid Check All Rights Reserved</string>
     <string name="profile_title">Profile</string>
     <string name="personal_records_title">Personal Records</string>

@@ -30,6 +30,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
         buildConfigField("String", "GEMINI_API_KEY", "\"${secretsProperties.getProperty("GEMINI_API_KEY") ?: ""}\"")
+        buildConfigField("String", "IMGBB_API_KEY", "\"${secretsProperties.getProperty("IMGBB_API_KEY") ?: ""}\"")
     }
 
     buildTypes {
@@ -82,6 +83,16 @@ dependencies {
 
     // DataStore
     implementation(libs.androidx.datastore.preferences)
+    
+    // Coil for image loading
+    implementation(libs.coil.compose)
+    implementation(libs.androidx.exifinterface)
+
+    // uCrop
+    implementation("com.github.yalantis:ucrop:2.2.10")
+
+    // WorkManager for background notification scheduling
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
     
     // Gemini AI
     implementation(libs.generativeai)

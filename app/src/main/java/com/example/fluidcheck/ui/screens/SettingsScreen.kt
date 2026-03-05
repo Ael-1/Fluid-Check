@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clip
 import com.example.fluidcheck.R
 import com.example.fluidcheck.ui.theme.*
 
@@ -24,15 +25,25 @@ private const val ADMIN_EMAIL = "admin@fluidcheck.ai"
 
 @Composable
 fun SettingsScreen(
+    userId: String = "",
     username: String = "",
     email: String = "",
     streak: Int = 0,
     isDatabaseAdmin: Boolean = false,
     isAdminMode: Boolean = false,
+    userRole: String = "USER",
+    isConnected: Boolean = true,
+    hasPendingWrites: Boolean = false,
     onLogout: () -> Unit = {},
     onEditProfile: () -> Unit = {},
+    onVerifyAccount: () -> Unit = {},
     onAboutDeveloper: () -> Unit = {},
-    onToggleRole: () -> Unit = {}
+    onToggleRole: () -> Unit = {},
+    notificationsEnabled: Boolean = false,
+    reminderFrequency: String = "Every 1 hour",
+    onToggleNotifications: (Boolean) -> Unit = {},
+    onFrequencyChanged: (String) -> Unit = {},
+    profilePictureUrl: String = ""
 ) {
     val scrollState = rememberScrollState()
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -79,13 +90,18 @@ fun SettingsScreen(
         if (isAdminMode) {
             AdminProfileHeader(
                 username = username,
+                userRole = userRole,
+                profilePictureUrl = profilePictureUrl,
                 onEditProfile = onEditProfile
             )
         } else {
             ProfileHeader(
+                userId = userId,
                 username = username,
                 streak = streak,
-                onEditProfile = onEditProfile
+                profilePictureUrl = profilePictureUrl,
+                onEditProfile = onEditProfile,
+                onVerifyAccount = onVerifyAccount
             )
         }
 
@@ -93,13 +109,22 @@ fun SettingsScreen(
 
         if (!isAdminMode) {
             // Smart Reminders Section
-            SmartRemindersSection()
+            SmartRemindersSection(
+                notificationsEnabled = notificationsEnabled,
+                frequency = reminderFrequency,
+                onToggleNotifications = onToggleNotifications,
+                onFrequencyChanged = onFrequencyChanged
+            )
             
             Spacer(modifier = Modifier.height(24.dp))
         }
 
         // System Status Section
-        SystemStatusSection()
+        SystemStatusSection(
+            isConnected = isConnected,
+            hasPendingWrites = hasPendingWrites,
+            isGuest = userId == "GUEST"
+        )
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -145,9 +170,10 @@ fun SettingsScreen(
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
+                val switchText = if (isAdminMode) "Switch to User Mode" else if (userRole == "MODERATOR") "Switch to Moderator Mode" else "Switch to Admin Mode"
                 @Suppress("DEPRECATION")
                 Text(
-                    text = if (isAdminMode) "Switch to User Mode" else "Switch to Admin Mode",
+                    text = switchText,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp
                 )
@@ -192,11 +218,15 @@ fun SettingsScreen(
 
 @Composable
 fun ProfileHeader(
+    userId: String,
     username: String,
     streak: Int,
-    onEditProfile: () -> Unit
+    profilePictureUrl: String = "",
+    onEditProfile: () -> Unit,
+    onVerifyAccount: () -> Unit
 ) {
     val displayName = username.ifEmpty { "User" }.replaceFirstChar { it.uppercase() }
+    val isGuest = userId.equals("GUEST", ignoreCase = true) || username.equals("Guest", ignoreCase = true)
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -221,12 +251,29 @@ fun ProfileHeader(
                         shadowElevation = 8.dp
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = AppIcons.PersonOutline,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = PrimaryBlue
-                            )
+                            val photoModel = remember(profilePictureUrl) {
+                                when {
+                                    profilePictureUrl.startsWith("http") -> profilePictureUrl
+                                    profilePictureUrl.isNotEmpty() && !profilePictureUrl.startsWith("data:") -> java.io.File(profilePictureUrl)
+                                    else -> null
+                                }
+                            }
+
+                            if (photoModel != null) {
+                                coil.compose.AsyncImage(
+                                    model = photoModel,
+                                    contentDescription = "Profile Photo",
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = AppIcons.PersonOutline,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = PrimaryBlue
+                                )
+                            }
                         }
                     }
                     
@@ -246,7 +293,7 @@ fun ProfileHeader(
                 }
             }
             
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(24.dp)
@@ -266,6 +313,24 @@ fun ProfileHeader(
                         fontWeight = FontWeight.Medium
                     )
                 }
+
+                if (isGuest) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = onVerifyAccount,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                    ) {
+                        Text(
+                            text = "Verify Account",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
     }
@@ -274,6 +339,8 @@ fun ProfileHeader(
 @Composable
 fun AdminProfileHeader(
     username: String,
+    userRole: String = "ADMIN",
+    profilePictureUrl: String = "",
     onEditProfile: () -> Unit
 ) {
     val displayName = username.ifEmpty { "Admin" }.replaceFirstChar { it.uppercase() }
@@ -301,12 +368,29 @@ fun AdminProfileHeader(
                         shadowElevation = 8.dp
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = AppIcons.Badge,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = PrimaryBlue
-                            )
+                            val photoModel = remember(profilePictureUrl) {
+                                when {
+                                    profilePictureUrl.startsWith("http") -> profilePictureUrl
+                                    profilePictureUrl.isNotEmpty() && !profilePictureUrl.startsWith("data:") -> java.io.File(profilePictureUrl)
+                                    else -> null
+                                }
+                            }
+
+                            if (photoModel != null) {
+                                coil.compose.AsyncImage(
+                                    model = photoModel,
+                                    contentDescription = "Profile Photo",
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = AppIcons.Badge,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = PrimaryBlue
+                                )
+                            }
                         }
                     }
                     
@@ -326,8 +410,9 @@ fun AdminProfileHeader(
                         color = PrimaryBlue,
                         shape = RoundedCornerShape(12.dp)
                     ) {
+                        val displayRole = if (userRole == "MODERATOR") "MODERATOR" else "ADMINISTRATOR"
                         Text(
-                            text = "ADMINISTRATOR",
+                            text = displayRole,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.ExtraBold,
@@ -403,9 +488,12 @@ fun StreakBadge(streak: Int) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SmartRemindersSection() {
-    var remindersEnabled by remember { mutableStateOf(false) }
-    var frequency by remember { mutableStateOf("Every 1 hour") }
+fun SmartRemindersSection(
+    notificationsEnabled: Boolean,
+    frequency: String,
+    onToggleNotifications: (Boolean) -> Unit,
+    onFrequencyChanged: (String) -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
 
     Surface(
@@ -459,8 +547,8 @@ fun SmartRemindersSection() {
                         modifier = Modifier.weight(1f)
                     )
                     Switch(
-                        checked = remindersEnabled,
-                        onCheckedChange = { remindersEnabled = it },
+                        checked = notificationsEnabled,
+                        onCheckedChange = { onToggleNotifications(it) },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
                             checkedTrackColor = PrimaryBlue,
@@ -511,7 +599,7 @@ fun SmartRemindersSection() {
                         DropdownMenuItem(
                             text = { Text(option) },
                             onClick = {
-                                frequency = option
+                                onFrequencyChanged(option)
                                 expanded = false
                             }
                         )
@@ -523,7 +611,35 @@ fun SmartRemindersSection() {
 }
 
 @Composable
-fun SystemStatusSection() {
+fun SystemStatusSection(
+    isConnected: Boolean = true,
+    hasPendingWrites: Boolean = false,
+    isGuest: Boolean = false
+) {
+    // Determine the sync indicator color.
+    // Muted: Guest user (feature inactive)
+    // Green: Connected and fully synced
+    // Amber: Connected but has pending writes (syncing/stuck)
+    // Red: Device is offline
+    val syncColor = when {
+        isGuest -> MutedForeground // Feature inactive for guests
+        !isConnected -> ErrorRed
+        hasPendingWrites -> WarningAmber
+        else -> SuccessGreen
+    }
+
+    // Determine the cloud backup status text
+    val backupStatusText = when {
+        isGuest -> stringResource(R.string.disabled)
+        hasPendingWrites -> stringResource(R.string.syncing)
+        else -> stringResource(R.string.enabled)
+    }
+    val backupStatusColor = when {
+        isGuest -> MutedForeground
+        hasPendingWrites -> WarningAmber
+        else -> MutedForeground
+    }
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
@@ -561,7 +677,7 @@ fun SystemStatusSection() {
                 Box(
                     modifier = Modifier
                         .size(8.dp)
-                        .background(SuccessGreen, CircleShape)
+                        .background(syncColor, CircleShape)
                 )
             }
 
@@ -575,7 +691,7 @@ fun SystemStatusSection() {
                 @Suppress("DEPRECATION")
                 Text(text = stringResource(R.string.cloud_backup), fontSize = 16.sp, color = TextDark)
                 @Suppress("DEPRECATION")
-                Text(text = stringResource(R.string.enabled), fontSize = 14.sp, color = MutedForeground)
+                Text(text = backupStatusText, fontSize = 14.sp, color = backupStatusColor)
             }
         }
     }

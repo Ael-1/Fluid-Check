@@ -14,12 +14,17 @@
 /captures
 .externalNativeBuild
 .cxx
+compile_out.txt
+output.txt
+/build_log.txt
+/build_output.log
+/.vscode/settings.json
 
 local.properties
 secrets.properties
 
 google-services.json
 
-
 TODO.md
 ANDROID_MIGRATION_SPECS.md
+/build_error.log

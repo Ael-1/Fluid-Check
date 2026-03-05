@@ -35,7 +35,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun AICoachScreen(
     userRecord: UserRecord?,
-    onSetGoal: (Int) -> Unit
+    onSetGoal: (Int) -> Unit,
+    isConnected: Boolean = true
 ) {
     val scrollState = rememberScrollState()
     val focusManager = LocalFocusManager.current
@@ -61,11 +62,11 @@ fun AICoachScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            SmartGoalSetterCard(coach, userRecord, onSetGoal)
+            SmartGoalSetterCard(coach, userRecord, onSetGoal, isConnected)
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            AIRecommendationsCard(coach)
+            AIRecommendationsCard(coach, isConnected)
 
             AIDisclaimer()
 
@@ -79,7 +80,8 @@ fun AICoachScreen(
 fun SmartGoalSetterCard(
     coach: GeminiCoach,
     userRecord: UserRecord?,
-    onSetGoal: (Int) -> Unit
+    onSetGoal: (Int) -> Unit,
+    isConnected: Boolean
 ) {
     var weight by remember { mutableStateOf("") }
     var height by remember { mutableStateOf("") }
@@ -115,10 +117,15 @@ fun SmartGoalSetterCard(
     val activityLevels = listOf("Sedentary", "Lightly Active", "Moderate", "Very Active", "Extra Active")
     val weatherOptions = listOf("Sunny", "Cloudy", "Rainy", "Humid", "Hot", "Cold", "Dry")
     
+    var showNoInternetDialog by remember { mutableStateOf(false) }
     var showError by remember { mutableStateOf(false) }
     
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
+
+    if (showNoInternetDialog) {
+        NoInternetDialog(onDismiss = { showNoInternetDialog = false })
+    }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -285,6 +292,10 @@ fun SmartGoalSetterCard(
 
             Button(
                 onClick = {
+                    if (!isConnected) {
+                        showNoInternetDialog = true
+                        return@Button
+                    }
                     if (weight.isBlank() || height.isBlank() || age.isBlank() || 
                         sex == selectionPlaceholder || activity == selectionPlaceholder || environment == selectionPlaceholder) {
                         showError = true
@@ -303,7 +314,9 @@ fun SmartGoalSetterCard(
                     .fillMaxWidth()
                     .height(60.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isConnected) PrimaryBlue else PrimaryBlue.copy(alpha = 0.5f)
+                )
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
@@ -318,14 +331,22 @@ fun SmartGoalSetterCard(
 }
 
 @Composable
-fun AIRecommendationsCard(coach: GeminiCoach) {
+fun AIRecommendationsCard(
+    coach: GeminiCoach,
+    isConnected: Boolean
+) {
     var preferences by remember { mutableStateOf("") }
     var habits by remember { mutableStateOf("") }
     var recommendation by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
+    var showNoInternetDialog by remember { mutableStateOf(false) }
     
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
+
+    if (showNoInternetDialog) {
+        NoInternetDialog(onDismiss = { showNoInternetDialog = false })
+    }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -405,6 +426,10 @@ fun AIRecommendationsCard(coach: GeminiCoach) {
 
             Button(
                 onClick = {
+                    if (!isConnected) {
+                        showNoInternetDialog = true
+                        return@Button
+                    }
                     focusManager.clearFocus()
                     isLoading = true
                     scope.launch {
@@ -417,7 +442,9 @@ fun AIRecommendationsCard(coach: GeminiCoach) {
                     .fillMaxWidth()
                     .height(60.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isConnected) PrimaryBlue else PrimaryBlue.copy(alpha = 0.5f)
+                )
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
@@ -589,4 +616,22 @@ fun ResponsiveDropdownField(
             }
         }
     }
+}
+@Composable
+fun NoInternetDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("No Internet Connection", fontWeight = FontWeight.Bold) },
+        text = { Text("AI Coach features require an active internet connection to process your requests. Please check your connectivity and try again.") },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+            ) {
+                Text("OK")
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(28.dp)
+    )
 }

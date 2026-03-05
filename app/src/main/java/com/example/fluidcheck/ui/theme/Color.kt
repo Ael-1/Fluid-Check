@@ -15,3 +15,5 @@ val GradientEnd = Color(0xFF0EA5E9)   // Accent
 val ButtonTextBlue = Color(0xFF3B82F6)
 val MutedForeground = Color(0xFF64748B)
 val TextDark = Color(0xFF1E293B)
+val ErrorRed = Color(0xFFEF4444)
+val WarningAmber = Color(0xFFF59E0B)

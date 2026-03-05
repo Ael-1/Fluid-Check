@@ -53,10 +53,11 @@ import kotlin.math.sin
 
 @Composable
 fun HomeScreen(
+    userId: String,
+    firestoreRepository: com.example.fluidcheck.repository.FirestoreRepository,
     dailyGoal: Int,
     totalIntake: Int,
     logs: List<FluidLog>, // Today's logs
-    allLogs: List<FluidLog>,
     streakDays: Int,
     quickAddConfigs: List<QuickAddConfig>?, // Nullable from UserRecord
     onUpdateGoal: (Int) -> Unit,
@@ -64,6 +65,9 @@ fun HomeScreen(
     onQuickAdd: (QuickAddConfig) -> Unit,
     onUpdateQuickAdd: (List<QuickAddConfig>) -> Unit
 ) {
+    val allLogsFlow = remember(userId) { firestoreRepository.getFluidLogsFlow(userId) }
+    // Note: We only collect this when needed below to save reads
+    
     var showGoalDialog by remember { mutableStateOf(false) }
     var showAchievementDialog by rememberSaveable { mutableStateOf(false) }
     var showHistoryDialog by remember { mutableStateOf(false) }
@@ -109,6 +113,7 @@ fun HomeScreen(
     }
 
     if (showHistoryDialog) {
+        val allLogs by allLogsFlow.collectAsState(initial = emptyList())
         LogHistoryDialog(
             logs = allLogs, 
             onDismiss = { showHistoryDialog = false },
@@ -284,10 +289,14 @@ fun LazyItemScope.HeroSection(
         colors = listOf(GradientStart, GradientMid, GradientEnd)
     )
 
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
+    val actualConfigs = quickAddConfigs ?: com.example.fluidcheck.model.DEFAULT_QUICK_ADD_CONFIGS
+    val hasTwoRows = actualConfigs.size > 3
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .fillParentMaxHeight(1f)
+            .wrapContentHeight()
             .background(
                 brush = gradient,
                 shape = RoundedCornerShape(bottomStart = 48.dp, bottomEnd = 48.dp)
@@ -299,17 +308,18 @@ fun LazyItemScope.HeroSection(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = 32.dp, top = 8.dp)
+                .fillMaxWidth()
+                .wrapContentHeight()
+                .padding(bottom = 48.dp, top = 16.dp)
         ) {
             val progress = if (dailyGoal > 0) totalIntake.toFloat() / dailyGoal.toFloat() else 0f
             
-            Spacer(modifier = Modifier.weight(0.15f))
+            Spacer(modifier = Modifier.height(32.dp))
 
             Box(
                 modifier = Modifier
-                    .weight(1.4f)
-                    .fillMaxWidth(),
+                    .fillMaxWidth(0.75f)
+                    .aspectRatio(1f),
                 contentAlignment = Alignment.Center
             ) {
                 HeroProgressRing(
@@ -324,15 +334,15 @@ fun LazyItemScope.HeroSection(
             
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Top,
                 modifier = Modifier
-                    .weight(1.2f)
                     .fillMaxWidth()
+                    .wrapContentHeight()
+                    .padding(top = 24.dp)
             ) {
-                Spacer(modifier = Modifier.weight(0.2f))
-
                 StreakPill(days = streakDays, onClick = { if (selectionMode) onTapBackground() })
                 
-                Spacer(modifier = Modifier.weight(0.2f))
+                Spacer(modifier = Modifier.height(24.dp))
                 
                 MetricsGrid(
                     remaining = (dailyGoal - totalIntake).coerceAtLeast(0), 
@@ -340,7 +350,7 @@ fun LazyItemScope.HeroSection(
                     onTapBackground = onTapBackground
                 )
                 
-                Spacer(modifier = Modifier.weight(0.3f))
+                Spacer(modifier = Modifier.height(16.dp))
                 
                 HeroQuickAdd(
                     configs = quickAddConfigs,
@@ -352,8 +362,6 @@ fun LazyItemScope.HeroSection(
                     onUpdateQuickAdd = onUpdateQuickAdd,
                     onAddClick = onAddClick
                 )
-                
-                Spacer(modifier = Modifier.weight(0.15f))
             }
         }
     }
@@ -762,7 +770,7 @@ fun HeroProgressRing(
             )
 
             val lap1Color = Color(0xFFACE6FD)
-            val lap2Color = Color(0xFF40E6FD)
+            val lap2Color = Color(0xFF0369A1) // Darker Sky Blue for 2nd lap
 
             val numFullLaps = animatedProgress.toInt()
             val currentLapProgress = animatedProgress % 1f
@@ -1155,7 +1163,7 @@ fun MetricsGrid(remaining: Int, isClosed: Boolean, onTapBackground: () -> Unit =
             value = if (isClosed) "0" else "%,d".format(remaining),
             unit = stringResource(R.string.ml_unit),
             isHighlighted = isClosed,
-            modifier = Modifier.fillMaxWidth(0.4f)
+            modifier = Modifier.fillMaxWidth(0.6f)
         )
     }
 }
