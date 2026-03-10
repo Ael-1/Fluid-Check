@@ -31,3 +31,6 @@ google-services.json
 TODO.md
 ANDROID_MIGRATION_SPECS.md
 
+/errors.log
+/compile_out_worker.txt
+/utf8.txt
