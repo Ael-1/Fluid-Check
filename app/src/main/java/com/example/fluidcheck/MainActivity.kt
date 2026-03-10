@@ -42,8 +42,7 @@ import com.google.android.gms.common.api.ApiException
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.launch
 
-private const val ADMIN_EMAIL = "admin@fluidcheck.ai"
-private const val ADMIN_USERNAME = "admin"
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,6 +51,9 @@ class MainActivity : ComponentActivity() {
         
         // Initialize Notification Channel
         NotificationHelper.createNotificationChannel(this)
+        
+        // Schedule Midnight Reset (Task 1.12)
+        com.example.fluidcheck.util.MidnightResetWorker.schedule(this)
 
         enableEdgeToEdge()
         setContent {
@@ -73,6 +75,10 @@ class MainActivity : ComponentActivity() {
                 val firestoreRepository = remember { FirestoreRepository(context) }
                 val scope = rememberCoroutineScope()
 
+                // Network connectivity tracking
+                val networkMonitor = remember { com.example.fluidcheck.util.NetworkMonitor(context) }
+                val isConnected by networkMonitor.isConnected.collectAsState(initial = true)
+
                 // Auth status derived from repository
                 var isLoggedIn by rememberSaveable { mutableStateOf(authRepository.isUserLoggedIn()) }
                 val currentUserId = if (isLoggedIn && authRepository.currentUser == null) "GUEST" else authRepository.currentUser?.uid ?: ""
@@ -83,7 +89,11 @@ class MainActivity : ComponentActivity() {
                         hasNotificationPermission = isGranted
                         if (currentUserId.isNotEmpty()) {
                             scope.launch {
-                                firestoreRepository.updateNotificationsEnabled(currentUserId, isGranted)
+                                try {
+                                    firestoreRepository.updateNotificationsEnabled(currentUserId, isGranted)
+                                } catch (e: Exception) {
+                                    android.widget.Toast.makeText(context, "Cloud sync failed.", android.widget.Toast.LENGTH_SHORT).show()
+                                }
                             }
                         }
                     }
@@ -97,7 +107,11 @@ class MainActivity : ComponentActivity() {
                         hasNotificationPermission = isGranted
                         if (currentUserId.isNotEmpty()) {
                             scope.launch {
-                                firestoreRepository.updateNotificationsEnabled(currentUserId, isGranted)
+                                try {
+                                    firestoreRepository.updateNotificationsEnabled(currentUserId, isGranted)
+                                } catch (e: Exception) {
+                                    android.widget.Toast.makeText(context, "Cloud sync failed.", android.widget.Toast.LENGTH_SHORT).show()
+                                }
                             }
                         }
                         if (!isGranted) {
@@ -188,56 +202,64 @@ class MainActivity : ComponentActivity() {
                         val idToken = account?.idToken
                         if (idToken != null) {
                             scope.launch {
-                                isAuthInProgress = true
-                                val authResult = authRepository.signInWithGoogle(idToken)
-                                if (authResult.isSuccess) {
-                                    val userId = authRepository.currentUser?.uid ?: return@launch
-                                    val email = authRepository.currentUser?.email ?: ""
-                                    
-                                    var username = firestoreRepository.getUsernameFromUid(userId)
-                                    if (username == null) {
-                                        username = email.split("@")[0]
-                                        val userRecord = UserRecord(
-                                            uid = userId,
-                                            username = username,
-                                            email = email,
-                                            createdAt = Timestamp.now()
-                                        )
-                                        firestoreRepository.saveUserRecord(userId, userRecord)
-                                    }
-                                    currentUsername = username
-                                    isLoggedIn = true
-
-                                    // IF we were verifying, transfer data
-                                    if (pendingVerificationGuestRecord != null) {
-                                        val guestRecord = pendingVerificationGuestRecord!!
-                                        val newRecord = guestRecord.copy(
-                                            uid = userId,
-                                            username = username,
-                                            email = email,
-                                            setupCompleted = true,
-                                            createdAt = Timestamp.now()
-                                        )
-                                        firestoreRepository.createAccountWithGuestData(userId, newRecord)
+                                try {
+                                    isAuthInProgress = true
+                                    val authResult = authRepository.signInWithGoogle(idToken)
+                                    if (authResult.isSuccess) {
+                                        val userId = authRepository.currentUser?.uid ?: return@launch
+                                        val email = authRepository.currentUser?.email ?: ""
                                         
-                                        authStatusTitle = "Account Verified!"
-                                        authStatusMessage = "Welcome, $username! Your Google account is now synced."
-                                        isAuthSuccess = true
-                                        pendingActionAfterDialog = {
-                                            isLoggedIn = false
-                                            isSetupComplete = false
-                                            isLoggedIn = true
+                                        var username = firestoreRepository.getUsernameFromUid(userId)
+                                        if (username == null) {
+                                            username = email.split("@")[0]
+                                            val userRecord = UserRecord(
+                                                uid = userId,
+                                                username = username,
+                                                email = email,
+                                                createdAt = Timestamp.now()
+                                            )
+                                            firestoreRepository.saveUserRecord(userId, userRecord)
                                         }
+                                        currentUsername = username
+                                        isLoggedIn = true
+
+                                        // IF we were verifying, transfer data
+                                        if (pendingVerificationGuestRecord != null) {
+                                            val guestRecord = pendingVerificationGuestRecord!!
+                                            val newRecord = guestRecord.copy(
+                                                uid = userId,
+                                                username = username,
+                                                email = email,
+                                                setupCompleted = true,
+                                                createdAt = Timestamp.now()
+                                            )
+                                            firestoreRepository.createAccountWithGuestData(userId, newRecord)
+                                            
+                                            authStatusTitle = "Account Verified!"
+                                            authStatusMessage = "Welcome, $username! Your Google account is now synced."
+                                            isAuthSuccess = true
+                                            pendingActionAfterDialog = {
+                                                isLoggedIn = false
+                                                isSetupComplete = false
+                                                isLoggedIn = true
+                                            }
+                                            showAuthStatusDialog = true
+                                            pendingVerificationGuestRecord = null
+                                        }
+                                    } else {
+                                        authStatusTitle = "Sign In Failed"
+                                        authStatusMessage = "Firebase Google Auth Failed"
+                                        isAuthSuccess = false
                                         showAuthStatusDialog = true
-                                        pendingVerificationGuestRecord = null
                                     }
-                                } else {
-                                    authStatusTitle = "Sign In Failed"
-                                    authStatusMessage = "Firebase Google Auth Failed"
+                                } catch (e: Exception) {
+                                    authStatusTitle = "Unexpected Auth Error"
+                                    authStatusMessage = e.message ?: "Unknown error occurred."
                                     isAuthSuccess = false
                                     showAuthStatusDialog = true
+                                } finally {
+                                    isAuthInProgress = false
                                 }
-                                isAuthInProgress = false
                             }
                         }
                     } catch (e: ApiException) {
@@ -261,22 +283,7 @@ class MainActivity : ComponentActivity() {
                         // Fetch the full record to check setup status
                         var record = firestoreRepository.getUserRecord(userId)
                         
-                        // Special handling for Admin - check email case-insensitively
-                        if (email.equals(ADMIN_EMAIL, ignoreCase = true)) {
-                            if (record == null || record.role != "ADMIN" || !record.setupCompleted || record.dailyGoal != null) {
-                                val adminRecord = (record ?: UserRecord()).copy(
-                                    uid = userId,
-                                    username = ADMIN_USERNAME,
-                                    email = ADMIN_EMAIL,
-                                    role = "ADMIN",
-                                    setupCompleted = true,
-                                    createdAt = record?.createdAt ?: Timestamp.now(),
-                                    dailyGoal = null // Admin has no daily goal
-                                )
-                                firestoreRepository.saveUserRecord(userId, adminRecord)
-                                record = adminRecord
-                            }
-                        }
+
 
                         if (record != null) {
                             currentUsername = record.username
@@ -362,32 +369,45 @@ class MainActivity : ComponentActivity() {
                     when (currentAuthScreen) {
                         "login" -> LoginScreen(
                             onSignInClick = { identifier, password ->
+                                if (!isConnected) {
+                                    authStatusTitle = "Internet Connection Required"
+                                    authStatusMessage = "An active internet connection is required to sign in to your account. Please check your network and try again."
+                                    isAuthSuccess = false
+                                    showAuthStatusDialog = true
+                                    return@LoginScreen
+                                }
                                 scope.launch {
-                                    isAuthInProgress = true
-                                    val email = if (identifier.equals(ADMIN_USERNAME, ignoreCase = true) || identifier.equals(ADMIN_EMAIL, ignoreCase = true)) {
-                                        ADMIN_EMAIL
-                                    } else if (identifier.contains("@")) {
-                                        identifier
-                                    } else {
-                                        firestoreRepository.getEmailFromUsername(identifier)
-                                    }
-
-                                    if (email == null) {
-                                        authStatusTitle = getString(R.string.error_user_not_found_title)
-                                        authStatusMessage = getString(R.string.error_user_not_found_msg)
-                                        isAuthSuccess = false
-                                        showAuthStatusDialog = true
-                                    } else {
-                                        val result = authRepository.signIn(email, password)
-                                        if (result.isSuccess) {
-                                            isLoggedIn = true
-                                            isAuthInProgress = false 
+                                    try {
+                                        isAuthInProgress = true
+                                        val email = if (identifier.contains("@")) {
+                                            identifier
                                         } else {
-                                            authStatusTitle = getString(R.string.error_invalid_credentials_title)
-                                            authStatusMessage = getString(R.string.error_invalid_credentials_msg)
+                                            firestoreRepository.getEmailFromUsername(identifier)
+                                        }
+
+                                        if (email == null) {
+                                            authStatusTitle = getString(R.string.error_user_not_found_title)
+                                            authStatusMessage = getString(R.string.error_user_not_found_msg)
                                             isAuthSuccess = false
                                             showAuthStatusDialog = true
+                                        } else {
+                                            val result = authRepository.signIn(email, password)
+                                            if (result.isSuccess) {
+                                                isLoggedIn = true
+                                            } else {
+                                                authStatusTitle = getString(R.string.error_invalid_credentials_title)
+                                                authStatusMessage = getString(R.string.error_invalid_credentials_msg)
+                                                isAuthSuccess = false
+                                                showAuthStatusDialog = true
+                                            }
                                         }
+                                    } catch (e: Exception) {
+                                        authStatusTitle = "Sign In Error"
+                                        authStatusMessage = e.message ?: "An unexpected error occurred."
+                                        isAuthSuccess = false
+                                        showAuthStatusDialog = true
+                                    } finally {
+                                        isAuthInProgress = false
                                     }
                                 }
                             },
@@ -409,15 +429,21 @@ class MainActivity : ComponentActivity() {
                         )
                         "signup" -> SignUpScreen(
                             onSignUpSuccessWithDetails = { username, email, password ->
+                                if (!isConnected) {
+                                    authStatusTitle = "Internet Connection Required"
+                                    authStatusMessage = "An active internet connection is required to create a new account. Please check your network and try again."
+                                    isAuthSuccess = false
+                                    showAuthStatusDialog = true
+                                    return@SignUpScreen
+                                }
                                 scope.launch {
-                                    isAuthInProgress = true
                                     try {
+                                        isAuthInProgress = true
                                         val normalizedEmail = email.trim().lowercase()
-                                        if (!normalizedEmail.equals(ADMIN_EMAIL, ignoreCase = true) && !firestoreRepository.isUsernameAvailable(username)) {
+                                        if (!firestoreRepository.isUsernameAvailable(username)) {
                                             authStatusTitle = getString(R.string.error_username_taken_title)
                                             authStatusMessage = getString(R.string.error_username_taken_msg)
                                             isAuthSuccess = false
-                                            isAuthInProgress = false
                                             showAuthStatusDialog = true
                                             return@launch
                                         }
@@ -427,12 +453,12 @@ class MainActivity : ComponentActivity() {
                                             val userId = authRepository.currentUser?.uid ?: return@launch
                                             val userRecord = UserRecord(
                                                 uid = userId,
-                                                username = if (email.equals(ADMIN_EMAIL, ignoreCase = true)) ADMIN_USERNAME else username,
+                                                username = username,
                                                 email = email,
-                                                role = if (email.equals(ADMIN_EMAIL, ignoreCase = true)) "ADMIN" else "USER",
-                                                setupCompleted = email.equals(ADMIN_EMAIL, ignoreCase = true),
+                                                role = "USER",
+                                                setupCompleted = false,
                                                 createdAt = Timestamp.now(),
-                                                dailyGoal = if (email.equals(ADMIN_EMAIL, ignoreCase = true)) null else 3000
+                                                dailyGoal = 3000
                                             )
                                             val saveResult = firestoreRepository.saveUserRecord(userId, userRecord)
                                             
@@ -461,11 +487,15 @@ class MainActivity : ComponentActivity() {
                                         authStatusMessage = "An unexpected error occurred."
                                         isAuthSuccess = false
                                         showAuthStatusDialog = true
+                                    } finally {
+                                        isAuthInProgress = false
                                     }
                                 }
                             },
                             onBackToLogin = { currentAuthScreen = "login" },
-                            isLoading = isAuthInProgress
+                            isLoading = isAuthInProgress,
+                            isGoogleAvailable = isGoogleAvailable,
+                            firestoreRepository = firestoreRepository
                         )
                     }
                 } else if (isCheckingSetup) {
@@ -494,6 +524,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 } catch (e: Exception) {
                                     Log.e("MainActivity", "Setup completion error", e)
+                                    android.widget.Toast.makeText(context, "Error saving setup. Please try again.", android.widget.Toast.LENGTH_SHORT).show()
                                 }
                             }
                         }
@@ -541,58 +572,66 @@ class MainActivity : ComponentActivity() {
                         },
                         onVerifyAccount = { guestRecord: UserRecord, u, e, p ->
                             scope.launch {
-                                isAuthInProgress = true
-                                
-                                // Check if username is available first
-                                val normalizedEmail = e.trim().lowercase()
-                                if (!normalizedEmail.equals(ADMIN_EMAIL, ignoreCase = true) && !firestoreRepository.isUsernameAvailable(u)) {
-                                    authStatusTitle = getString(R.string.error_username_taken_title)
-                                    authStatusMessage = getString(R.string.error_username_taken_msg)
-                                    isAuthSuccess = false
-                                    isAuthInProgress = false
-                                    showAuthStatusDialog = true
-                                    return@launch
-                                }
-
-                                val result = authRepository.signUp(e, p)
-                                if (result.isSuccess) {
-                                    val newUid = authRepository.currentUser?.uid ?: run {
+                                try {
+                                    isAuthInProgress = true
+                                    
+                                    // Check if username is available first
+                                    val normalizedEmail = e.trim().lowercase()
+                                    if (!firestoreRepository.isUsernameAvailable(u)) {
+                                        authStatusTitle = getString(R.string.error_username_taken_title)
+                                        authStatusMessage = getString(R.string.error_username_taken_msg)
+                                        isAuthSuccess = false
                                         isAuthInProgress = false
+                                        showAuthStatusDialog = true
                                         return@launch
                                     }
-                                    
-                                    // Prepare the new permanent record from guest data
-                                    val newRecord = guestRecord.copy(
-                                        uid = newUid,
-                                        username = u,
-                                        email = e,
-                                        setupCompleted = true,
-                                        createdAt = Timestamp.now()
-                                    )
-                                    // 1 & 2. Automically Save Profile and Transfer Logs/Stats in a single Batch
-                                    firestoreRepository.createAccountWithGuestData(newUid, newRecord)
-                                    
-                                    // 3. Update local state - Prepare for reset AFTER user confirms the dialog
-                                    // Keep isLoggedIn = true for now so the background screen stays as VerifyAccount
-                                    
-                                    authStatusTitle = "Account Verified!"
-                                    authStatusMessage = "Welcome, $u! Your data has been synced."
-                                    isAuthSuccess = true
-                                    pendingActionAfterDialog = {
-                                        // Now we reset to force the "fresh open" re-check logic
-                                        isLoggedIn = false
-                                        isSetupComplete = false
-                                        // Set back to true to trigger the LaunchedEffect in MainActivity
-                                        isLoggedIn = true
+
+                                    val result = authRepository.signUp(e, p)
+                                    if (result.isSuccess) {
+                                        val newUid = authRepository.currentUser?.uid ?: run {
+                                            isAuthInProgress = false
+                                            return@launch
+                                        }
+                                        
+                                        // Prepare the new permanent record from guest data
+                                        val newRecord = guestRecord.copy(
+                                            uid = newUid,
+                                            username = u,
+                                            email = e,
+                                            setupCompleted = true,
+                                            createdAt = Timestamp.now()
+                                        )
+                                        // 1 & 2. Automically Save Profile and Transfer Logs/Stats in a single Batch
+                                        firestoreRepository.createAccountWithGuestData(newUid, newRecord)
+                                        
+                                        // 3. Update local state - Prepare for reset AFTER user confirms the dialog
+                                        // Keep isLoggedIn = true for now so the background screen stays as VerifyAccount
+                                        
+                                        authStatusTitle = "Account Verified!"
+                                        authStatusMessage = "Welcome, $u! Your data has been synced."
+                                        isAuthSuccess = true
+                                        pendingActionAfterDialog = {
+                                            // Now we reset to force the "fresh open" re-check logic
+                                            isLoggedIn = false
+                                            isSetupComplete = false
+                                            // Set back to true to trigger the LaunchedEffect in MainActivity
+                                            isLoggedIn = true
+                                        }
+                                        showAuthStatusDialog = true
+                                    } else {
+                                        authStatusTitle = "Verification Failed"
+                                        authStatusMessage = result.exceptionOrNull()?.message ?: "Unknown error"
+                                        isAuthSuccess = false
+                                        showAuthStatusDialog = true
                                     }
-                                    showAuthStatusDialog = true
-                                } else {
-                                    authStatusTitle = "Verification Failed"
-                                    authStatusMessage = result.exceptionOrNull()?.message ?: "Unknown error"
+                                } catch (ex: Exception) {
+                                    authStatusTitle = "Verification Error"
+                                    authStatusMessage = ex.message ?: "An unexpected error occurred."
                                     isAuthSuccess = false
                                     showAuthStatusDialog = true
+                                } finally {
+                                    isAuthInProgress = false
                                 }
-                                isAuthInProgress = false
                             }
                         }
                     )

@@ -4,9 +4,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,8 +18,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -47,11 +53,17 @@ import com.example.fluidcheck.ui.theme.AppIcons
 import com.example.fluidcheck.ui.theme.PrimaryBlue
 import com.example.fluidcheck.ui.theme.TextDark
 import com.example.fluidcheck.util.NetworkMonitor
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import kotlinx.coroutines.flow.first
 
-private const val ADMIN_EMAIL = "admin@fluidcheck.ai"
+
 
 @Composable
 fun MainScreen(
@@ -82,6 +94,7 @@ fun MainScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val repository = remember { UserPreferencesRepository(context) }
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
     // Use userId (UID) for synchronization as document ID
     val userRecordFlow = remember(userId) { firestoreRepository.getUserRecordFlow(userId) }
@@ -90,7 +103,7 @@ fun MainScreen(
     // Core administrative check from database - Now includes MODERATOR
     val userRole = userRecord?.role ?: "USER"
     val isDatabaseAdmin = userRole == "ADMIN" || userRole == "MODERATOR"
-    val isPrimaryAdmin = userRecord?.email?.equals(ADMIN_EMAIL, ignoreCase = true) == true
+    val isPrimaryAdmin = userRole == "ADMIN"
     
     // Last session's mode from DataStore
     val adminModePrefFlow = remember(userId) { repository.getAdminModeFlow(userId) }
@@ -98,6 +111,40 @@ fun MainScreen(
     
     // Determine if we are still waiting for critical data
     val isLoading = userRecord == null || adminModeState == "LOADING" || userId.isEmpty()
+
+    // UI state for switching between User and Admin views
+    // Initialized ONLY when loading is done to prevent flicker
+    var isAdminMode by rememberSaveable(userId, isPrimaryAdmin, isDatabaseAdmin, adminModeState) { 
+        val prefValue = adminModeState as? Boolean
+        mutableStateOf(if (isPrimaryAdmin) true else prefValue ?: isDatabaseAdmin) 
+    }
+
+    // Role Reconciliation (Supports Cold Start via DataStore and Live Sync)
+    var showRoleChangeDialog by remember { mutableStateOf(false) }
+    var oldRoleName by remember { mutableStateOf("") }
+    var newRoleName by remember { mutableStateOf("") }
+    
+    LaunchedEffect(userRole, isLoading) {
+        if (!isLoading && userId.isNotEmpty()) {
+            val lastStoredRole = repository.getStoredRole(userId).first()
+            
+            if (lastStoredRole.isNotEmpty() && lastStoredRole != userRole) {
+                oldRoleName = lastStoredRole
+                newRoleName = userRole
+                showRoleChangeDialog = true
+                
+                // Auto-switch if demoted from Admin/Moderator to User
+                val isPromoted = (userRole == "ADMIN" || userRole == "MODERATOR")
+                if (!isPromoted && isAdminMode) {
+                    isAdminMode = false
+                    navController.navigate(NavRoutes.Home.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            }
+            repository.saveStoredRole(userId, userRole)
+        }
+    }
 
     // Notification states
     // Default to system permission status if user hasn't made an explicit choice yet.
@@ -113,28 +160,47 @@ fun MainScreen(
             
             // Also sync to local repository for worker offline access
             scope.launch {
-                repository.setNotificationsEnabled(userId, true)
-                repository.setReminderFrequency(userId, reminderFrequency)
+                try {
+                    repository.setNotificationsEnabled(userId, true)
+                    repository.setReminderFrequency(userId, reminderFrequency)
+                } catch (e: Exception) {
+                    // Silently fail or log for local pref sync
+                }
             }
         } else {
             com.example.fluidcheck.util.NotificationScheduler.cancelAllReminders(context)
             // If explicitly disabled, sync to local repo
             if (!notificationsEnabled && userId.isNotEmpty()) {
                 scope.launch {
-                    repository.setNotificationsEnabled(userId, false)
+                    try {
+                        repository.setNotificationsEnabled(userId, false)
+                    } catch (e: Exception) {
+                        // Silently fail
+                    }
                 }
             }
         }
     }
 
-    // UI state for switching between User and Admin views
-    // Initialized ONLY when loading is done to prevent flicker
-    var isAdminMode by rememberSaveable(userId, isPrimaryAdmin, isDatabaseAdmin, adminModeState) { 
-        val prefValue = adminModeState as? Boolean
-        mutableStateOf(if (isPrimaryAdmin) true else prefValue ?: isDatabaseAdmin) 
+    // Foreground date tracking for auto-refresh (Task 1.12)
+    val todayDate = remember {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("GMT+8") }
+        MutableStateFlow(sdf.format(Date()))
     }
+    val currentTodayDate by todayDate.collectAsState()
     
-    val todayLogsFlow = remember(userId) { firestoreRepository.getTodayFluidLogsFlow(userId) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("GMT+8") }
+            val now = sdf.format(Date())
+            if (now != todayDate.value) {
+                todayDate.value = now
+            }
+            kotlinx.coroutines.delay(30000) // Check every 30 seconds
+        }
+    }
+
+    val todayLogsFlow = remember(userId, currentTodayDate) { firestoreRepository.getTodayFluidLogsFlow(userId, currentTodayDate) }
     val todayLogs by todayLogsFlow.collectAsState(initial = emptyList())
     
     val currentGoal = userRecord?.dailyGoal ?: 3000
@@ -178,29 +244,57 @@ fun MainScreen(
         }
     }
 
+    // Streak Catch-up (Task 1.12)
+    LaunchedEffect(userRecord, currentTodayDate) {
+        val lastDate = userRecord?.lastRingClosedDate ?: ""
+        if (lastDate.isNotEmpty() && !isAdminMode) {
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("GMT+8") }
+            val calendar = Calendar.getInstance(TimeZone.getTimeZone("GMT+8"))
+            calendar.add(Calendar.DAY_OF_YEAR, -1)
+            val yesterday = sdf.format(calendar.time)
+            
+            if (lastDate != currentTodayDate && lastDate != yesterday) {
+                // Missed more than 1 day, reset streak
+                firestoreRepository.resetStreak(userId)
+            }
+        }
+    }
+
     if (showLogSheet) {
         LogNewDrinkSheet(
             onDismiss = { showLogSheet = false },
             onConfirm = { type, amount ->
                 scope.launch {
-                    val sdfTime = SimpleDateFormat("h:mm a", Locale.getDefault()).apply {
-                        timeZone = TimeZone.getTimeZone("GMT+8")
-                    }
-                    val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
-                        timeZone = TimeZone.getTimeZone("GMT+8")
-                    }
-                    val now = Date()
-                    val time = sdfTime.format(now)
-                    val date = sdfDate.format(now)
-                    
-                    val newLog = FluidLog(type = type, time = time, amount = amount, date = date)
-                    
-                    val result = firestoreRepository.saveFluidLog(userId, newLog)
-                    if (result.isSuccess) {
-                        showLogSheet = false
-                        snackbarHostState.showSnackbar("Logged $amount ml of $type")
-                    } else {
-                        snackbarHostState.showSnackbar("Error logging drink")
+                    try {
+                        val sdfTime = SimpleDateFormat("h:mm a", Locale.getDefault()).apply {
+                            timeZone = TimeZone.getTimeZone("GMT+8")
+                        }
+                        val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+                            timeZone = TimeZone.getTimeZone("GMT+8")
+                        }
+                        val now = Date()
+                        val time = sdfTime.format(now)
+                        val date = sdfDate.format(now)
+                        
+                        val newLog = FluidLog(type = type, time = time, amount = amount, date = date)
+                        
+                        val result = firestoreRepository.saveFluidLog(userId, newLog)
+                        if (result.isSuccess) {
+                            showLogSheet = false
+                            // Direct check instead of relying on StateFlow flow emission delay
+                            val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                            val activeNet = cm.activeNetwork
+                            val caps = cm.getNetworkCapabilities(activeNet)
+                            val isActuallyConnected = caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+                            
+                            val msg = if (isActuallyConnected) "Logged $amount ml of $type" else "Saved locally. Will sync once online."
+                            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            val msg = if (isConnected) "Error logging drink" else "Error saving locally"
+                            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "Unexpected error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -208,33 +302,85 @@ fun MainScreen(
     }
 
     if (logToEdit != null) {
-        EditLogSheet(
+        EditLogDialog(
             log = logToEdit!!,
             onDismiss = { logToEdit = null },
             onSave = { updatedLog ->
                 scope.launch {
-                    val result = firestoreRepository.updateFluidLog(userId, logToEdit!!, updatedLog)
-                    if (result.isSuccess) {
-                        logToEdit = null
-                        snackbarHostState.showSnackbar("Log updated")
-                    } else {
-                        snackbarHostState.showSnackbar("Error updating log")
+                    try {
+                        val result = firestoreRepository.updateFluidLog(userId, logToEdit!!, updatedLog)
+                        if (result.isSuccess) {
+                            logToEdit = null
+                            val msg = if (isConnected) "Log updated" else "Saved locally. Will sync once online."
+                            snackbarHostState.showSnackbar(msg)
+                        } else {
+                            val msg = if (isConnected) "Error updating log" else "Saved locally. Will sync once online."
+                            snackbarHostState.showSnackbar(msg)
+                        }
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "Update failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
             },
             onDelete = { _ ->
                 scope.launch {
-                    logToEdit?.let { log ->
-                        val result = firestoreRepository.deleteFluidLog(userId, log)
-                        if (result.isSuccess) {
-                            logToEdit = null
-                            snackbarHostState.showSnackbar("Log deleted")
-                        } else {
-                            snackbarHostState.showSnackbar("Error deleting log")
+                    try {
+                        logToEdit?.let { log ->
+                            val result = firestoreRepository.deleteFluidLog(userId, log)
+                            if (result.isSuccess) {
+                                logToEdit = null
+                                snackbarHostState.showSnackbar("Log deleted")
+                            } else {
+                                snackbarHostState.showSnackbar("Error deleting log")
+                            }
                         }
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "Delete failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
             }
+        )
+    }
+
+
+    // Role Change Dialog
+    if (showRoleChangeDialog) {
+        AlertDialog(
+            onDismissRequest = { showRoleChangeDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(AppIcons.Info, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Role Updated", fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Text(
+                    buildAnnotatedString {
+                        append("Your account role has been updated from ")
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = PrimaryBlue)) {
+                            append(oldRoleName)
+                        }
+                        append(" to ")
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = PrimaryBlue)) {
+                            append(newRoleName)
+                        }
+                        append(". Some features may have been added or removed.")
+                    },
+                    color = TextDark
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showRoleChangeDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Got it")
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(28.dp)
         )
     }
 
@@ -287,6 +433,9 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .background(AppBackground)
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { focusManager.clearFocus() })
+                }
         ) {
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -308,35 +457,63 @@ fun MainScreen(
                             quickAddConfigs = quickAddConfigs,
                             onUpdateGoal = { newGoal ->
                                 scope.launch {
-                                    repository.saveDailyGoal(userId, newGoal)
-                                    firestoreRepository.saveDailyGoal(userId, newGoal)
+                                    try {
+                                        repository.saveDailyGoal(userId, newGoal)
+                                        val result = firestoreRepository.saveDailyGoal(userId, newGoal)
+                                        if (result.isFailure) {
+                                            android.widget.Toast.makeText(context, "Error saving goal to cloud", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    } catch (e: Exception) {
+                                        android.widget.Toast.makeText(context, "Unexpected error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             },
                             onEditLog = { log ->
                                 logToEdit = log
                             },
                             onQuickAdd = { config ->
-                                scope.launch {
-                                    val sdfTime = SimpleDateFormat("h:mm a", Locale.getDefault()).apply {
-                                        timeZone = TimeZone.getTimeZone("GMT+8")
-                                    }
-                                    val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
-                                        timeZone = TimeZone.getTimeZone("GMT+8")
-                                    }
-                                    val now = Date()
-                                    val time = sdfTime.format(now)
-                                    val date = sdfDate.format(now)
-                                    
-                                    val newLog = FluidLog(type = config.type, time = time, amount = config.amount, date = date)
-                                    val result = firestoreRepository.saveFluidLog(userId, newLog)
-                                    if (result.isSuccess) {
-                                        snackbarHostState.showSnackbar("Logged ${config.amount} ml of ${config.type}")
+                                 scope.launch {
+                                    try {
+                                        val sdfTime = SimpleDateFormat("h:mm a", Locale.getDefault()).apply {
+                                            timeZone = TimeZone.getTimeZone("GMT+8")
+                                        }
+                                        val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+                                            timeZone = TimeZone.getTimeZone("GMT+8")
+                                        }
+                                        val now = Date()
+                                        val time = sdfTime.format(now)
+                                        val date = sdfDate.format(now)
+                                        
+                                        val newLog = FluidLog(type = config.type, time = time, amount = config.amount, date = date)
+                                        val result = firestoreRepository.saveFluidLog(userId, newLog)
+                                        if (result.isSuccess) {
+                                            // Direct check for accurate feedback string
+                                            val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                                            val activeNet = cm.activeNetwork
+                                            val caps = cm.getNetworkCapabilities(activeNet)
+                                            val isActuallyConnected = caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+                                            
+                                            val msg = if (isActuallyConnected) "Logged ${config.amount} ml of ${config.type}" else "Saved locally. Will sync once online."
+                                            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            val msg = if (isConnected) "Error logging drink" else "Error saving locally"
+                                            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    } catch (e: Exception) {
+                                        android.widget.Toast.makeText(context, "Unexpected error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             },
                             onUpdateQuickAdd = { newConfigs ->
                                 scope.launch {
-                                    firestoreRepository.updateQuickAddConfig(userId, newConfigs)
+                                    try {
+                                        val result = firestoreRepository.updateQuickAddConfig(userId, newConfigs)
+                                        if (result.isFailure) {
+                                            android.widget.Toast.makeText(context, "Error updating Quick Add settings", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    } catch (e: Exception) {
+                                        android.widget.Toast.makeText(context, "Unexpected error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             }
                         )
@@ -355,10 +532,16 @@ fun MainScreen(
                             isConnected = isConnected,
                             onSetGoal = { newGoal ->
                                 scope.launch {
-                                    repository.saveDailyGoal(userId, newGoal)
-                                    val result = firestoreRepository.saveDailyGoal(userId, newGoal)
-                                    if (result.isSuccess) {
-                                        snackbarHostState.showSnackbar("Daily goal updated to ${newGoal}ml")
+                                    try {
+                                        repository.saveDailyGoal(userId, newGoal)
+                                        val result = firestoreRepository.saveDailyGoal(userId, newGoal)
+                                        if (result.isSuccess) {
+                                            snackbarHostState.showSnackbar("Daily goal updated to ${newGoal}ml")
+                                        } else {
+                                            snackbarHostState.showSnackbar("Error updating goal")
+                                        }
+                                    } catch (e: Exception) {
+                                        android.widget.Toast.makeText(context, "Unexpected error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }
@@ -402,8 +585,15 @@ fun MainScreen(
                                     // Optimistically update the state so the toggle visually stays ON
                                     // while the permission dialog is showing.
                                     scope.launch {
-                                        firestoreRepository.updateNotificationsEnabled(userId, enabled)
-                                        repository.setNotificationsEnabled(userId, enabled)
+                                        try {
+                                            val result = firestoreRepository.updateNotificationsEnabled(userId, enabled)
+                                            if (result.isFailure) {
+                                                android.widget.Toast.makeText(context, "Error syncing notification status", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                            repository.setNotificationsEnabled(userId, enabled)
+                                        } catch (e: Exception) {
+                                            android.widget.Toast.makeText(context, "Unexpected error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
                                     }
                                     
                                     // Request permission if not already granted and trying to enable
@@ -419,14 +609,25 @@ fun MainScreen(
                                         else -> "60"
                                     }
                                     scope.launch {
-                                        firestoreRepository.updateReminderFrequency(userId, freqValue)
-                                        repository.setReminderFrequency(userId, freqValue)
+                                        try {
+                                            val result = firestoreRepository.updateReminderFrequency(userId, freqValue)
+                                            if (result.isFailure) {
+                                                android.widget.Toast.makeText(context, "Error syncing frequency", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                            repository.setReminderFrequency(userId, freqValue)
+                                        } catch (e: Exception) {
+                                            android.widget.Toast.makeText(context, "Unexpected error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
                                     }
                                 },
                                 onToggleRole = {
                                     isAdminMode = !isAdminMode
                                     scope.launch {
-                                        repository.setAdminMode(userId, isAdminMode)
+                                        try {
+                                            repository.setAdminMode(userId, isAdminMode)
+                                        } catch (e: Exception) {
+                                            // Handle local pref error
+                                        }
                                     }
                                     navController.navigate(if (isAdminMode) NavRoutes.Admin.route else NavRoutes.Home.route) {
                                         popUpTo(0) { inclusive = true }
@@ -465,7 +666,8 @@ fun MainScreen(
                     composable(NavRoutes.Admin.route) {
                         AdminDashboard(
                             firestoreRepository = firestoreRepository,
-                            currentUserRole = userRole
+                            currentUserRole = userRole,
+                            currentUserId = userId
                         )
                     }
                 }
@@ -625,7 +827,15 @@ fun LogNewDrinkSheet(
                 onValueChange = { if (it.all { char -> char.isDigit() }) amountText = it },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 placeholder = { Text("Please input...", fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = {
+                    if (amountText.isBlank()) {
+                        showError = true
+                    } else {
+                        showError = false
+                        onConfirm(selectedType, amountText.trim().toIntOrNull() ?: 0)
+                    }
+                }),
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = PrimaryBlue,
@@ -645,7 +855,7 @@ fun LogNewDrinkSheet(
                         showError = true
                     } else {
                         showError = false
-                        val amount = amountText.toIntOrNull() ?: 0
+                        val amount = amountText.trim().toIntOrNull() ?: 0
                         onConfirm(selectedType, amount)
                     }
                 },
@@ -673,19 +883,21 @@ fun LogNewDrinkSheet(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditLogSheet(
+fun EditLogDialog(
     log: FluidLog,
     onDismiss: () -> Unit,
     onSave: (FluidLog) -> Unit,
     onDelete: (Long) -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedType by remember { mutableStateOf(log.type) }
     var amountText by remember { mutableStateOf(log.amount.toString()) }
     var timeText by remember { mutableStateOf(log.time) }
     var isExpanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showError by remember { mutableStateOf(false) }
+    
+    val timeFocus = remember { FocusRequester() }
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -713,19 +925,11 @@ fun EditLogSheet(
         )
     }
 
-    ModalBottomSheet(
+    AlertDialog(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = Color.White,
-        dragHandle = null
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp)
-                .padding(bottom = 32.dp)
-        ) {
+        confirmButton = {},
+        dismissButton = {},
+        title = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -747,50 +951,154 @@ fun EditLogSheet(
                     Icon(AppIcons.Close, contentDescription = stringResource(R.string.close), tint = Color.Gray)
                 }
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            if (showError) {
-                @Suppress("DEPRECATION")
-                Text(
-                    text = "Please fill in all fields.",
-                    color = Color.Red,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
-
-            @Suppress("DEPRECATION")
-            Text(
-                text = stringResource(R.string.fluid_type),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.Gray,
-                modifier = Modifier.padding(bottom = 8.dp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            ExposedDropdownMenuBox(
-                expanded = isExpanded,
-                onExpandedChange = { isExpanded = it },
+        },
+        text = {
+            Column(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                val icon = getIconForFluidType(selectedType)
+                if (showError) {
+                    @Suppress("DEPRECATION")
+                    Text(
+                        text = "Please fill in all fields.",
+                        color = Color.Red,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+
+                @Suppress("DEPRECATION")
+                Text(
+                    text = stringResource(R.string.fluid_type),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                ExposedDropdownMenuBox(
+                    expanded = isExpanded,
+                    onExpandedChange = { isExpanded = it },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val icon = getIconForFluidType(selectedType)
+                    OutlinedTextField(
+                        value = selectedType,
+                        onValueChange = {},
+                        readOnly = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .menuAnchor(),
+                        leadingIcon = {
+                            Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
+                        },
+                        trailingIcon = {
+                            Icon(AppIcons.ArrowDown, contentDescription = null)
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryBlue,
+                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                        ),
+                        textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
+                        singleLine = true
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = isExpanded,
+                        onDismissRequest = { isExpanded = false },
+                        modifier = Modifier
+                            .exposedDropdownSize()
+                            .heightIn(max = 280.dp)
+                    ) {
+                        val fluidTypes = ALL_FLUID_TYPES
+                        fluidTypes.forEach { type ->
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            type.icon,
+                                            contentDescription = null,
+                                            tint = PrimaryBlue,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text(
+                                            text = type.name,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    selectedType = type.name
+                                    isExpanded = false
+                                },
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                @Suppress("DEPRECATION")
+                Text(
+                    text = stringResource(R.string.amount_ml),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
                 OutlinedTextField(
-                    value = selectedType,
-                    onValueChange = {},
-                    readOnly = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .menuAnchor(),
-                    leadingIcon = {
-                        Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
-                    },
-                    trailingIcon = {
-                        Icon(AppIcons.ArrowDown, contentDescription = null)
-                    },
+                    value = amountText,
+                    onValueChange = { if (it.all { char -> char.isDigit() }) amountText = it },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    placeholder = { Text("Please input...", fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(onNext = { timeFocus.requestFocus() }),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryBlue,
+                        unfocusedBorderColor = Color.LightGray.copy(alpha = 0.3f)
+                    ),
+                    textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                @Suppress("DEPRECATION")
+                Text(
+                    text = stringResource(R.string.time_label),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                OutlinedTextField(
+                    value = timeText,
+                    onValueChange = { timeText = it },
+                    modifier = Modifier.fillMaxWidth().height(56.dp).focusRequester(timeFocus),
+                    placeholder = { Text("Please input...", fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        if (amountText.isBlank() || timeText.isBlank()) {
+                            showError = true
+                        } else {
+                            showError = false
+                            val amount = amountText.trim().toIntOrNull() ?: log.amount
+                            onSave(log.copy(type = selectedType, amount = amount, time = timeText.trim()))
+                        }
+                    }),
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = PrimaryBlue,
@@ -800,124 +1108,36 @@ fun EditLogSheet(
                     singleLine = true
                 )
 
-                ExposedDropdownMenu(
-                    expanded = isExpanded,
-                    onDismissRequest = { isExpanded = false },
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Button(
+                    onClick = {
+                        if (amountText.isBlank() || timeText.isBlank()) {
+                            showError = true
+                        } else {
+                            showError = false
+                            val amount = amountText.trim().toIntOrNull() ?: log.amount
+                            onSave(log.copy(type = selectedType, amount = amount, time = timeText.trim()))
+                        }
+                    },
                     modifier = Modifier
-                        .exposedDropdownSize()
-                        .heightIn(max = 280.dp)
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
                 ) {
-                    val fluidTypes = ALL_FLUID_TYPES
-                    fluidTypes.forEach { type ->
-                        DropdownMenuItem(
-                            text = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        type.icon,
-                                        contentDescription = null,
-                                        tint = PrimaryBlue,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = type.name,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            },
-                            onClick = {
-                                selectedType = type.name
-                                isExpanded = false
-                            },
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
+                    @Suppress("DEPRECATION")
+                    Text(
+                        text = stringResource(R.string.save_changes),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            @Suppress("DEPRECATION")
-            Text(
-                text = stringResource(R.string.amount_ml),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.Gray,
-                modifier = Modifier.padding(bottom = 8.dp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            OutlinedTextField(
-                value = amountText,
-                onValueChange = { if (it.all { char -> char.isDigit() }) amountText = it },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                placeholder = { Text("Please input...", fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PrimaryBlue,
-                    unfocusedBorderColor = Color.LightGray.copy(alpha = 0.3f)
-                ),
-                textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            @Suppress("DEPRECATION")
-            Text(
-                text = stringResource(R.string.time_label),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.Gray,
-                modifier = Modifier.padding(bottom = 8.dp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            OutlinedTextField(
-                value = timeText,
-                onValueChange = { timeText = it },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                placeholder = { Text("Please input...", fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PrimaryBlue,
-                    unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
-                ),
-                textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Button(
-                onClick = {
-                    if (amountText.isBlank() || timeText.isBlank()) {
-                        showError = true
-                    } else {
-                        showError = false
-                        val amount = amountText.toIntOrNull() ?: log.amount
-                        onSave(log.copy(type = selectedType, amount = amount, time = timeText))
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
-            ) {
-                @Suppress("DEPRECATION")
-                Text(
-                    text = stringResource(R.string.save_changes),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-            }
-        }
-    }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(24.dp)
+    )
 }
 
 @Composable

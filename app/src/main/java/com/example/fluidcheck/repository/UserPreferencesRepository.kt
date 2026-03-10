@@ -14,8 +14,10 @@ class UserPreferencesRepository(private val context: Context) {
     
     private object PreferencesKeys {
         // Sanitize keys to ensure they only contain alphanumeric characters and underscores
-        private fun sanitize(key: String): String = key.replace(Regex("[^a-zA-Z0-9_]"), "_")
+        fun sanitize(key: String): String = key.replace(Regex("[^a-zA-Z0-9_]"), "_")
 
+        fun usernameKey(userId: String) = stringPreferencesKey(sanitize("${userId}_username"))
+        fun emailKey(userId: String) = stringPreferencesKey(sanitize("${userId}_email"))
         fun weightKey(userId: String) = stringPreferencesKey(sanitize("${userId}_weight"))
         fun heightKey(userId: String) = stringPreferencesKey(sanitize("${userId}_height"))
         fun ageKey(userId: String) = stringPreferencesKey(sanitize("${userId}_age"))
@@ -28,11 +30,14 @@ class UserPreferencesRepository(private val context: Context) {
         fun notificationsEnabledKey(userId: String) = booleanPreferencesKey(sanitize("${userId}_notifications_enabled"))
         fun reminderFrequencyKey(userId: String) = stringPreferencesKey(sanitize("${userId}_reminder_frequency"))
         fun pendingPhotoUploadKey(userId: String) = booleanPreferencesKey(sanitize("${userId}_pending_photo_upload"))
+        fun roleKey(userId: String) = stringPreferencesKey(sanitize("${userId}_role"))
     }
 
     fun getUserRecord(userId: String): Flow<UserRecord> = context.dataStore.data.map { preferences ->
         UserRecord(
             uid = userId,
+            username = preferences[PreferencesKeys.usernameKey(userId)] ?: "",
+            email = preferences[PreferencesKeys.emailKey(userId)] ?: "",
             weight = preferences[PreferencesKeys.weightKey(userId)] ?: "",
             height = preferences[PreferencesKeys.heightKey(userId)] ?: "",
             age = preferences[PreferencesKeys.ageKey(userId)] ?: "",
@@ -41,12 +46,15 @@ class UserPreferencesRepository(private val context: Context) {
             environment = preferences[PreferencesKeys.environmentKey(userId)] ?: "",
             setupCompleted = preferences[PreferencesKeys.setupCompleteKey(userId)] ?: false,
             notificationsEnabled = preferences[PreferencesKeys.notificationsEnabledKey(userId)],
-            reminderFrequency = preferences[PreferencesKeys.reminderFrequencyKey(userId)] ?: "60"
+            reminderFrequency = preferences[PreferencesKeys.reminderFrequencyKey(userId)] ?: "60",
+            role = preferences[PreferencesKeys.roleKey(userId)] ?: "USER"
         )
     }
 
     suspend fun saveUserRecord(userId: String, record: UserRecord) {
         context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.usernameKey(userId)] = record.username
+            preferences[PreferencesKeys.emailKey(userId)] = record.email
             preferences[PreferencesKeys.weightKey(userId)] = record.weight
             preferences[PreferencesKeys.heightKey(userId)] = record.height
             preferences[PreferencesKeys.ageKey(userId)] = record.age
@@ -60,6 +68,7 @@ class UserPreferencesRepository(private val context: Context) {
                 preferences.remove(PreferencesKeys.notificationsEnabledKey(userId))
             }
             preferences[PreferencesKeys.reminderFrequencyKey(userId)] = record.reminderFrequency
+            preferences[PreferencesKeys.roleKey(userId)] = record.role
         }
     }
 
@@ -124,6 +133,16 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setPendingPhotoUpload(userId: String, pending: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.pendingPhotoUploadKey(userId)] = pending
+        }
+    }
+
+    fun getStoredRole(userId: String): Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.roleKey(userId)] ?: "USER"
+    }
+
+    suspend fun saveStoredRole(userId: String, role: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.roleKey(userId)] = role
         }
     }
 }

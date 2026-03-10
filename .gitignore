@@ -19,6 +19,9 @@ output.txt
 /build_log.txt
 /build_output.log
 /.vscode/settings.json
+/build_error.log
+build_output.txt
+/build.log
 
 local.properties
 secrets.properties
@@ -27,4 +30,4 @@ google-services.json
 
 TODO.md
 ANDROID_MIGRATION_SPECS.md
-/build_error.log
+

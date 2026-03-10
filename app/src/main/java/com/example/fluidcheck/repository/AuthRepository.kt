@@ -48,9 +48,18 @@ class AuthRepository {
         return auth.currentUser != null
     }
 
-    suspend fun updateEmail(newEmail: String): Result<Unit> {
+    suspend fun sendEmailVerification(): Result<Unit> {
         return try {
-            auth.currentUser?.updateEmail(newEmail)?.await()
+            auth.currentUser?.sendEmailVerification()?.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun verifyBeforeUpdateEmail(newEmail: String): Result<Unit> {
+        return try {
+            auth.currentUser?.verifyBeforeUpdateEmail(newEmail)?.await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

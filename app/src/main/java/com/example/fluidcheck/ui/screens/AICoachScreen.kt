@@ -16,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -121,7 +123,14 @@ fun SmartGoalSetterCard(
     var showError by remember { mutableStateOf(false) }
     
     val focusManager = LocalFocusManager.current
+    
+    // Task 11.8: Custom Focus Requesters
+    val weightFocus = remember { FocusRequester() }
+    val heightFocus = remember { FocusRequester() }
+    val ageFocus = remember { FocusRequester() }
+    
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     if (showNoInternetDialog) {
         NoInternetDialog(onDismiss = { showNoInternetDialog = false })
@@ -179,6 +188,7 @@ fun SmartGoalSetterCard(
                         onValueChange = { weight = it }, 
                         label = stringResource(R.string.weight_label), 
                         placeholder = inputPlaceholder,
+                        modifier = Modifier.focusRequester(weightFocus),
                         imeAction = ImeAction.Next,
                         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Right) })
                     )
@@ -190,8 +200,9 @@ fun SmartGoalSetterCard(
                         onValueChange = { height = it }, 
                         label = stringResource(R.string.height_label), 
                         placeholder = inputPlaceholder,
+                        modifier = Modifier.focusRequester(heightFocus),
                         imeAction = ImeAction.Next,
-                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
+                        keyboardActions = KeyboardActions(onNext = { ageFocus.requestFocus() })
                     )
                 }
             }
@@ -203,6 +214,7 @@ fun SmartGoalSetterCard(
                         onValueChange = { age = it }, 
                         label = stringResource(R.string.age_label), 
                         placeholder = inputPlaceholder,
+                        modifier = Modifier.focusRequester(ageFocus),
                         imeAction = ImeAction.Next,
                         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Right) })
                     )
@@ -304,9 +316,15 @@ fun SmartGoalSetterCard(
                         focusManager.clearFocus()
                         isLoading = true
                         scope.launch {
-                            val result = coach.calculateHydrationGoal(weight, height, age, sex, activity, environment)
-                            resultMl = result ?: "Could not calculate."
-                            isLoading = false
+                            try {
+                                val result = coach.calculateHydrationGoal(weight.trim(), height.trim(), age.trim(), sex, activity, environment)
+                                resultMl = result ?: "Could not calculate."
+                            } catch (e: Exception) {
+                                resultMl = null
+                                android.widget.Toast.makeText(context, "Error calculating goal: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                            } finally {
+                                isLoading = false
+                            }
                         }
                     }
                 },
@@ -343,6 +361,7 @@ fun AIRecommendationsCard(
     
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     if (showNoInternetDialog) {
         NoInternetDialog(onDismiss = { showNoInternetDialog = false })
@@ -433,9 +452,15 @@ fun AIRecommendationsCard(
                     focusManager.clearFocus()
                     isLoading = true
                     scope.launch {
-                        val result = coach.getRecommendation(preferences, habits)
-                        recommendation = result ?: "Could not get recommendation."
-                        isLoading = false
+                        try {
+                            val result = coach.getRecommendation(preferences.trim(), habits.trim())
+                            recommendation = result ?: "Could not get recommendation."
+                        } catch (e: Exception) {
+                            recommendation = null
+                            android.widget.Toast.makeText(context, "Error getting recommendation: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                        } finally {
+                            isLoading = false
+                        }
                     }
                 },
                 modifier = Modifier

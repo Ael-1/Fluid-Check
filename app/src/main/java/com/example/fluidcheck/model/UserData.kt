@@ -56,7 +56,8 @@ data class UserRecord(
     val highestStreak: Int = 0,
     val totalFluidDrankAllTime: Int = 0,
     val totalRingsClosed: Int = 0,
-    val createdAt: Timestamp? = null
+    val createdAt: Timestamp? = null,
+    val emailVerified: Boolean = false
 ) {
     fun isEmpty(): Boolean {
         return weight.isEmpty() && height.isEmpty() && age.isEmpty() && 

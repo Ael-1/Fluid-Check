@@ -39,9 +39,9 @@ class FirestoreRepository(private val context: Context? = null) {
             }
             
             db.runBatch { batch ->
-                // 1. Write username mapping
+                // Write username mapping (Case-insensitive)
                 if (record.username.isNotEmpty()) {
-                    val usernameRef = usernamesCollection.document(record.username)
+                    val usernameRef = usernamesCollection.document(record.username.lowercase())
                     batch.set(usernameRef, mapOf("uid" to uid))
                 }
                 
@@ -70,19 +70,22 @@ class FirestoreRepository(private val context: Context? = null) {
                 return Result.success(Unit)
             }
 
-            // Check if new username is available
-            val newUsernameDoc = usernamesCollection.document(newUsername).get().await()
-            if (newUsernameDoc.exists()) {
+            // Check if new username is available (allow if already assigned to this UID)
+            val lowerNew = newUsername.lowercase()
+            val lowerOld = oldUsername.lowercase()
+            
+            val newUsernameDoc = usernamesCollection.document(lowerNew).get().await()
+            if (newUsernameDoc.exists() && newUsernameDoc.getString("uid") != uid) {
                 return Result.failure(Exception("Username already taken"))
             }
 
             db.runBatch { batch ->
-                // Delete old username mapping
-                if (oldUsername.isNotEmpty()) {
-                    batch.delete(usernamesCollection.document(oldUsername))
+                // Delete old username mapping (Case-insensitive)
+                if (lowerOld.isNotEmpty()) {
+                    batch.delete(usernamesCollection.document(lowerOld))
                 }
-                // Add new username mapping
-                batch.set(usernamesCollection.document(newUsername), mapOf("uid" to uid))
+                // Add new username mapping (Case-insensitive)
+                batch.set(usernamesCollection.document(lowerNew), mapOf("uid" to uid))
                 // Update user record
                 batch.update(usersCollection.document(uid), "username", newUsername)
             }.await()
@@ -102,9 +105,9 @@ class FirestoreRepository(private val context: Context? = null) {
     }
 
     suspend fun getEmailFromUsername(username: String): String? {
-        if (username == "Guest") return null
+        if (username.equals("Guest", ignoreCase = true)) return null
         return try {
-            val usernameDoc = usernamesCollection.document(username).get().await()
+            val usernameDoc = usernamesCollection.document(username.lowercase()).get().await()
             val uid = usernameDoc.getString("uid") ?: return null
             
             val userDoc = usersCollection.document(uid).get().await()
@@ -196,7 +199,8 @@ class FirestoreRepository(private val context: Context? = null) {
             totalFluidDrankAllTime = (document.getLong("totalFluidDrankAllTime") ?: 0L).toInt(),
             totalRingsClosed = (document.getLong("totalRingsClosed") ?: 0L).toInt(),
             createdAt = document.getTimestamp("createdAt"),
-            dailyGoal = document.getLong("dailyGoal")?.toInt()
+            dailyGoal = document.getLong("dailyGoal")?.toInt(),
+            emailVerified = document.getBoolean("emailVerified") ?: false
         )
     }
 
@@ -337,17 +341,18 @@ class FirestoreRepository(private val context: Context? = null) {
         }
     }
 
-    fun getTodayFluidLogsFlow(uid: String): Flow<List<FluidLog>> {
+    fun getTodayFluidLogsFlow(uid: String, specificDate: String? = null): Flow<List<FluidLog>> {
         if (uid == "GUEST") {
-            return guestRepository?.getTodayFluidLogsFlow() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+            return guestRepository?.getTodayFluidLogsFlow(specificDate) ?: kotlinx.coroutines.flow.flowOf(emptyList())
         }
-        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+        val dateToQuery = specificDate ?: SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("GMT+8")
         }.format(Date())
+        
         return callbackFlow {
         val registration = usersCollection.document(uid)
             .collection("fluid_logs")
-            .whereEqualTo("date", today)
+            .whereEqualTo("date", dateToQuery)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
@@ -433,6 +438,42 @@ class FirestoreRepository(private val context: Context? = null) {
         }
     }
 
+    /**
+     * Resets streak to 0 if the user failed to close their ring yesterday.
+     */
+    suspend fun evaluateStreak(uid: String): Result<Unit> {
+        if (uid == "GUEST") {
+             guestRepository?.evaluateStreak()
+             return Result.success(Unit)
+        }
+        
+        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("GMT+8")
+        }.format(Date())
+        
+        val calendar = Calendar.getInstance(TimeZone.getTimeZone("GMT+8"))
+        calendar.add(Calendar.DAY_OF_YEAR, -1)
+        val yesterdayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("GMT+8")
+        }.format(calendar.time)
+
+        return try {
+            val userRef = usersCollection.document(uid)
+            val userDoc = userRef.get().await()
+            if (!userDoc.exists()) return Result.success(Unit)
+            
+            val lastRingDate = userDoc.getString("lastRingClosedDate") ?: ""
+            
+            // If the last ring was NOT closed yesterday AND not today, reset streak to 0
+            if (lastRingDate != yesterdayStr && lastRingDate != todayStr) {
+                 userRef.update("streak", 0).await()
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun updateFcmToken(uid: String, token: String): Result<Unit> {
         return try {
             usersCollection.document(uid).update("fcmToken", token).await()
@@ -472,7 +513,16 @@ class FirestoreRepository(private val context: Context? = null) {
 
     suspend fun softDeleteUser(uid: String): Result<Unit> {
         return try {
-            usersCollection.document(uid).update("deleted", true).await()
+            val userDoc = usersCollection.document(uid).get().await()
+            val username = userDoc.getString("username")
+            
+            db.runBatch { batch ->
+                batch.update(usersCollection.document(uid), "deleted", true) // Changed "isDeleted" to "deleted" for consistency
+                // Remove username mapping so it can be reused if desired, or at least clean up
+                if (!username.isNullOrEmpty()) {
+                    batch.delete(usernamesCollection.document(username.lowercase()))
+                }
+            }.await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -496,7 +546,7 @@ class FirestoreRepository(private val context: Context? = null) {
 
     suspend fun isUsernameAvailable(username: String): Boolean {
         return try {
-            val doc = usernamesCollection.document(username).get().await()
+            val doc = usernamesCollection.document(username.lowercase()).get().await()
             !doc.exists()
         } catch (e: Exception) {
             false
@@ -697,6 +747,19 @@ class FirestoreRepository(private val context: Context? = null) {
                 return Result.success(Unit)
             }
             usersCollection.document(uid).update("profilePictureUrl", "").await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun resetStreak(uid: String): Result<Unit> {
+        if (uid == "GUEST") {
+            guestRepository?.resetStreak()
+            return Result.success(Unit)
+        }
+        return try {
+            usersCollection.document(uid).update("streak", 0).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
