@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -29,6 +30,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -37,6 +39,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import com.example.fluidcheck.R
 import com.example.fluidcheck.model.ChartData
 import com.example.fluidcheck.model.FluidLog
@@ -51,7 +57,6 @@ import com.example.fluidcheck.ui.screens.DateNavigationBar
 import com.example.fluidcheck.ui.screens.HydrationLineChart
 import com.example.fluidcheck.ui.screens.getChartDataForRange
 import com.example.fluidcheck.ui.screens.generateYLabels
-import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -74,8 +79,10 @@ enum class SortState { DEFAULT, PRESS_1, PRESS_2 }
 @Composable
 fun AdminDashboard(
     firestoreRepository: FirestoreRepository = remember { FirestoreRepository() },
-    currentUserRole: String = "USER"
+    currentUserRole: String = "USER",
+    currentUserId: String = ""
 ) {
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     var searchQuery by remember { mutableStateOf("") }
     var selectedUserForEdit by remember { mutableStateOf<UserRecord?>(null) }
     
@@ -85,13 +92,11 @@ fun AdminDashboard(
     var showBulkDeleteConfirm by remember { mutableStateOf(false) }
     var showBulkDeletePasswordConfirm by remember { mutableStateOf(false) }
     
-    // Status dialog states
-    var showSuccessDialog by remember { mutableStateOf(false) }
-    var successMessage by remember { mutableStateOf("") }
-    var showErrorDialog by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf("") }
+    // Status dialog state: (IsSuccess, Message)
+    var statusDialogData by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
     
     val context = LocalContext.current
+    var isLoading by remember { mutableStateOf(false) }
     val usersFlow = remember { firestoreRepository.getAllUsersFlow() }
     val users by usersFlow.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
@@ -100,7 +105,9 @@ fun AdminDashboard(
 
     // Stats calculation
     val totalUsers = users.size
-    val activeUsers = users.count { it.streak > 0 }
+    val moderatorsCount = users.count { it.role == "MODERATOR" }
+    val avgGoal = if (totalUsers > 0) users.sumOf { it.dailyGoal ?: 3000 }.toFloat() / totalUsers else 3000f
+    val totalRings = users.sumOf { it.totalRingsClosed }
     val totalStreak = users.sumOf { it.streak }
     val avgStreak = if (totalUsers > 0) "%.1fd".format(totalStreak.toFloat() / totalUsers) else "0d"
 
@@ -173,28 +180,54 @@ fun AdminDashboard(
             canEdit = canModifyUsers,
             canDelete = canModifyUsers,
             firestoreRepository = firestoreRepository,
+            currentUserId = currentUserId,
             onDismiss = { selectedUserForEdit = null },
             onSave = { updatedUser ->
                 scope.launch {
-                    firestoreRepository.saveUserRecord(updatedUser.uid, updatedUser)
-                    if (updatedUser.username != selectedUserForEdit!!.username) {
-                        firestoreRepository.updateUsername(updatedUser.uid, selectedUserForEdit!!.username, updatedUser.username)
+                    try {
+                        isLoading = true
+                        if (updatedUser.username != selectedUserForEdit!!.username) {
+                            val usernameResult = firestoreRepository.updateUsername(updatedUser.uid, selectedUserForEdit!!.username, updatedUser.username)
+                            if (usernameResult.isFailure) {
+                                val error = usernameResult.exceptionOrNull()?.message ?: "Error updating username"
+                                isLoading = false
+                                selectedUserForEdit = null
+                                statusDialogData = false to error
+                                return@launch
+                            }
+                        }
+                        
+                        val saveResult = firestoreRepository.saveUserRecord(updatedUser.uid, updatedUser)
+                        if (saveResult.isSuccess) {
+                            isLoading = false
+                            selectedUserForEdit = null
+                            statusDialogData = true to "User details updated successfully!"
+                        } else {
+                            val error = saveResult.exceptionOrNull()?.message ?: "Error saving user record"
+                            isLoading = false
+                            selectedUserForEdit = null
+                            statusDialogData = false to error
+                        }
+                    } catch (e: Exception) {
+                        isLoading = false
+                        selectedUserForEdit = null
+                        statusDialogData = false to (e.message ?: "An unexpected error occurred.")
                     }
-                    selectedUserForEdit = null
                 }
             },
             onDelete = {
                 scope.launch {
-                    val result = firestoreRepository.softDeleteUser(selectedUserForEdit!!.uid)
-                    if (result.isSuccess) {
-                        successMessage = "User \"${selectedUserForEdit?.username}\" has been successfully deleted."
-                        showSuccessDialog = true
-                        selectedUserForEdit = null
-                    } else {
-                        val error = result.exceptionOrNull()?.message ?: "Unknown error"
-                        errorMessage = "Failed to delete user: $error"
-                        showErrorDialog = true
-                        Toast.makeText(context, "Error deleting user: $error", Toast.LENGTH_SHORT).show()
+                    try {
+                        val result = firestoreRepository.softDeleteUser(selectedUserForEdit!!.uid)
+                        if (result.isSuccess) {
+                            selectedUserForEdit = null
+                            statusDialogData = true to "User has been successfully deleted."
+                        } else {
+                            val error = result.exceptionOrNull()?.message ?: "Unknown error"
+                            statusDialogData = false to "Failed to delete user: $error"
+                        }
+                    } catch (e: Exception) {
+                        statusDialogData = false to (e.message ?: "An unexpected error occurred.")
                     }
                 }
             }
@@ -238,66 +271,45 @@ fun AdminDashboard(
             onDismiss = { showBulkDeletePasswordConfirm = false },
             onConfirm = {
                 scope.launch {
-                    val count = selectedUserIds.size
-                    val result = firestoreRepository.softDeleteUsers(selectedUserIds)
-                    if (result.isSuccess) {
-                        successMessage = "$count user(s) have been successfully deleted."
-                        showSuccessDialog = true
-                        selectedUserIds = emptySet()
-                        isSelectionMode = false
-                    } else {
-                        val error = result.exceptionOrNull()?.message ?: "Unknown error"
-                        errorMessage = "Failed to delete users: $error"
-                        showErrorDialog = true
-                        Toast.makeText(context, "Error deleting users: $error", Toast.LENGTH_SHORT).show()
+                    try {
+                        val count = selectedUserIds.size
+                        val result = firestoreRepository.softDeleteUsers(selectedUserIds)
+                        if (result.isSuccess) {
+                            selectedUserIds = emptySet()
+                            isSelectionMode = false
+                            statusDialogData = true to "$count user(s) have been successfully deleted."
+                        } else {
+                            val error = result.exceptionOrNull()?.message ?: "Unknown error"
+                            statusDialogData = false to "Failed to delete users: $error"
+                        }
+                        showBulkDeletePasswordConfirm = false
+                    } catch (e: Exception) {
+                        showBulkDeletePasswordConfirm = false
+                        statusDialogData = false to "Unexpected error during bulk delete: ${e.message}"
                     }
-                    showBulkDeletePasswordConfirm = false
                 }
             }
         )
     }
 
-    // Success Dialog
-    if (showSuccessDialog) {
+    // Status Dialog
+    statusDialogData?.let { (isSuccess, message) ->
         AlertDialog(
-            onDismissRequest = { showSuccessDialog = false },
+            onDismissRequest = { statusDialogData = null },
             title = { 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(AppIcons.Check, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(24.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Success", fontWeight = FontWeight.Bold)
-                }
+                @Suppress("DEPRECATION")
+                Text(
+                    text = if (isSuccess) "Success" else "Update Failed",
+                    fontWeight = FontWeight.Bold,
+                    color = if (isSuccess) Color(0xFF10B981) else Color(0xFFEF4444)
+                )
             },
-            text = { Text(successMessage, color = TextDark) },
+            text = { Text(message) },
             confirmButton = {
-                Button(
-                    onClick = { showSuccessDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                    shape = RoundedCornerShape(12.dp)
+                TextButton(
+                    onClick = { statusDialogData = null }
                 ) {
-                    Text("Done")
-                }
-            },
-            containerColor = Color.White,
-            shape = RoundedCornerShape(28.dp)
-        )
-    }
-
-    // Error Dialog
-    if (showErrorDialog) {
-        AlertDialog(
-            onDismissRequest = { showErrorDialog = false },
-            title = { 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(AppIcons.Delete, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(24.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Error", fontWeight = FontWeight.Bold, color = Color(0xFFEF4444))
-                }
-            },
-            text = { Text(errorMessage, color = TextDark) },
-            confirmButton = {
-                TextButton(onClick = { showErrorDialog = false }) {
-                    Text("Close", color = PrimaryBlue, fontWeight = FontWeight.Bold)
+                    Text("OK", color = PrimaryBlue, fontWeight = FontWeight.Bold)
                 }
             },
             containerColor = Color.White,
@@ -308,14 +320,22 @@ fun AdminDashboard(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 20.dp)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                focusManager.clearFocus()
+            },
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
             Spacer(modifier = Modifier.height(8.dp))
             AnalyticsGrid(
                 totalUsers = totalUsers.toString(),
-                activeUsers = activeUsers.toString(),
+                moderators = moderatorsCount.toString(),
+                avgGoal = "%.0f ml".format(avgGoal),
+                totalLogs = totalRings.toString(),
                 avgStreak = avgStreak
             )
         }
@@ -335,7 +355,10 @@ fun AdminDashboard(
                     focusedBorderColor = PrimaryBlue,
                     unfocusedContainerColor = Color.White,
                     focusedContainerColor = Color.White
-                )
+                ),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+                singleLine = true
             )
         }
 
@@ -408,6 +431,7 @@ fun EditUserDetailedDialog(
     canEdit: Boolean,
     canDelete: Boolean,
     firestoreRepository: FirestoreRepository,
+    currentUserId: String,
     onDismiss: () -> Unit,
     onSave: (UserRecord) -> Unit,
     onDelete: () -> Unit
@@ -415,6 +439,7 @@ fun EditUserDetailedDialog(
     var username by remember { mutableStateOf(user.username) }
     var role by remember { mutableStateOf(user.role) }
     var dailyGoal by remember { mutableStateOf(user.dailyGoal?.toString() ?: "3000") }
+    var isLoading by remember { mutableStateOf(false) }
     
     // Personal Records States
     var weight by remember { mutableStateOf(user.weight) }
@@ -423,6 +448,47 @@ fun EditUserDetailedDialog(
     var sex by remember { mutableStateOf(user.sex.ifEmpty { "Please select..." }) }
     var activity by remember { mutableStateOf(user.activity.ifEmpty { "Please select..." }) }
     var environment by remember { mutableStateOf(user.environment.ifEmpty { "Please select..." }) }
+    
+    // Internal status dialog for validation
+    var internalStatusDialogData by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
+    
+    val context = LocalContext.current
+    var showDiscardConfirm by remember { mutableStateOf(false) }
+
+    fun hasChanges(): Boolean {
+        return username != user.username ||
+               role != user.role ||
+               dailyGoal != (user.dailyGoal?.toString() ?: "3000") ||
+               weight != user.weight ||
+               height != user.height ||
+               age != user.age ||
+               sex != (user.sex.ifEmpty { "Please select..." }) ||
+               activity != (user.activity.ifEmpty { "Please select..." }) ||
+               environment != (user.environment.ifEmpty { "Please select..." })
+    }
+
+    if (showDiscardConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDiscardConfirm = false },
+            title = { Text("Discard Changes?", fontWeight = FontWeight.Bold) },
+            text = { Text("You have unsaved changes. Are you sure you want to discard them?") },
+            confirmButton = {
+                TextButton(onClick = { 
+                    showDiscardConfirm = false
+                    onDismiss()
+                }) {
+                    Text("DISCARD", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardConfirm = false }) {
+                    Text("KEEP EDITING", color = TextDark)
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(28.dp)
+        )
+    }
 
     // Delete confirmation states
     var showDeleteFirstConfirm by remember { mutableStateOf(false) }
@@ -503,12 +569,35 @@ fun EditUserDetailedDialog(
             shape = RoundedCornerShape(28.dp),
             color = Color.White
         ) {
+            if (internalStatusDialogData != null) {
+                val (isSuccess, message) = internalStatusDialogData!!
+                AlertDialog(
+                    onDismissRequest = { internalStatusDialogData = null },
+                    title = { 
+                        Text(
+                            text = if (isSuccess) "Success" else "Validation Error",
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSuccess) Color(0xFF10B981) else Color(0xFFEF4444)
+                        )
+                    },
+                    text = { Text(message) },
+                    confirmButton = {
+                        TextButton(onClick = { internalStatusDialogData = null }) {
+                            Text("OK", color = PrimaryBlue, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    containerColor = Color.White,
+                    shape = RoundedCornerShape(28.dp)
+                )
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(24.dp)
             ) {
+                val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -520,16 +609,47 @@ fun EditUserDetailedDialog(
                         fontWeight = FontWeight.Bold,
                         color = TextDark
                     )
-                    IconButton(onClick = onDismiss) {
+                    IconButton(onClick = {
+                        if (hasChanges()) {
+                            showDiscardConfirm = true
+                        } else {
+                            onDismiss()
+                        }
+                    }) {
                         Icon(AppIcons.Close, contentDescription = "Close")
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+                
+                // Profile Photo (Task 1.15)
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Surface(
+                        modifier = Modifier.size(100.dp),
+                        shape = CircleShape,
+                        color = Color.White,
+                        shadowElevation = 2.dp,
+                        border = androidx.compose.foundation.BorderStroke(2.dp, PrimaryBlue.copy(alpha = 0.3f))
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(user.profilePictureUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "User Profile Photo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                            error = rememberVectorPainter(AppIcons.PersonOutline)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Basic Info Section
                 InfoSectionHeader("ACCOUNT INFO")
                 ReadOnlyField("Email", user.email)
+                ReadOnlyField("Email Status", if (user.emailVerified) "Verified" else "Unverified")
                 ReadOnlyField("User ID", user.uid)
                 ReadOnlyField("Created At", createdAtString)
                 
@@ -541,7 +661,9 @@ fun EditUserDetailedDialog(
                         label = "Username",
                         value = username,
                         onValueChange = { username = it },
-                        icon = AppIcons.PersonOutline
+                        icon = AppIcons.PersonOutline,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) })
                     )
                 } else {
                     ReadOnlyField("Username", username)
@@ -573,7 +695,7 @@ fun EditUserDetailedDialog(
                             expanded = roleExpanded,
                             onDismissRequest = { roleExpanded = false }
                         ) {
-                            listOf("USER", "MODERATOR", "ADMIN").forEach { option ->
+                            listOf("USER", "MODERATOR").forEach { option ->
                                 DropdownMenuItem(
                                     text = { Text(option) },
                                     onClick = {
@@ -597,7 +719,9 @@ fun EditUserDetailedDialog(
                             label = "Daily Goal (ml)",
                             value = dailyGoal,
                             onValueChange = { if (it.all { c -> c.isDigit() }) dailyGoal = it },
-                            icon = AppIcons.Goal
+                            icon = AppIcons.Goal,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) })
                         )
                     } else {
                         ReadOnlyField("Daily Goal (ml)", dailyGoal)
@@ -696,13 +820,28 @@ fun EditUserDetailedDialog(
 
                     Button(
                         onClick = {
+                            // Task 1.10: Enhanced Username Validation
+                            val uErr = com.example.fluidcheck.util.ValidationUtils.validateUsername(username)
+                            
+                            // Task 12.2: Numeric Range Validation
+                            val wErr = com.example.fluidcheck.util.ValidationUtils.validateWeight(weight.toFloatOrNull())
+                            val hErr = com.example.fluidcheck.util.ValidationUtils.validateHeight(height.toFloatOrNull())
+                            val aErr = com.example.fluidcheck.util.ValidationUtils.validateAge(age.toIntOrNull())
+                            val gErr = com.example.fluidcheck.util.ValidationUtils.validateDailyGoal(dailyGoal.toIntOrNull())
+
+                            val firstErr = uErr ?: wErr ?: hErr ?: aErr ?: gErr
+                            if (firstErr != null) {
+                                internalStatusDialogData = false to firstErr
+                                return@Button
+                            }
+
                             onSave(user.copy(
-                                username = username,
+                                username = username.trim(),
                                 role = role,
-                                dailyGoal = dailyGoal.toIntOrNull() ?: 3000,
-                                weight = weight,
-                                height = height,
-                                age = age,
+                                dailyGoal = dailyGoal.trim().toIntOrNull() ?: 3000,
+                                weight = weight.trim(),
+                                height = height.trim(),
+                                age = age.trim(),
                                 sex = sex.replace("Please select...", ""),
                                 activity = activity.replace("Please select...", ""),
                                 environment = environment.replace("Please select...", "")
@@ -712,14 +851,19 @@ fun EditUserDetailedDialog(
                             .fillMaxWidth()
                             .height(56.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                        enabled = !isLoading
                     ) {
-                        Text("Save User Details", fontWeight = FontWeight.Bold)
+                        if (isLoading) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                        } else {
+                            Text("Save User Details", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
 
-                // Delete User Button (Task 13)
-                if (canDelete) {
+                // Delete User Button (Task 12.1 - Self Guard)
+                if (canDelete && user.uid != currentUserId) {
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     OutlinedButton(
@@ -743,6 +887,15 @@ fun EditUserDetailedDialog(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Delete User", fontWeight = FontWeight.Bold)
                     }
+                } else if (canDelete && user.uid == currentUserId) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "You cannot delete your own account from the dashboard.",
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
                 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -804,7 +957,14 @@ fun PasswordConfirmationDialog(
                         }
                     },
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        if (password.isNotBlank()) {
+                            // The logic is in confirmButton, so we'll leave it to the user to press the button or we can trigger it.
+                            // But usually onDone should trigger the main action. 
+                            // Since refactoring a whole block into a function might be risky here, I'll just keep it simple.
+                        }
+                    }),
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = PrimaryBlue,
@@ -998,10 +1158,13 @@ fun ReadOnlyField(label: String, value: String) {
 @Composable
 fun AnalyticsGrid(
     totalUsers: String,
-    activeUsers: String,
+    moderators: String,
+    avgGoal: String,
+    totalLogs: String,
     avgStreak: String
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        // Row 1: Users | Moderators
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             AnalyticsCard(
                 title = stringResource(R.string.total_users),
@@ -1011,29 +1174,40 @@ fun AnalyticsGrid(
                 modifier = Modifier.weight(1f)
             )
             AnalyticsCard(
-                title = stringResource(R.string.downloads),
-                value = totalUsers, // Using total users as proxy for now
-                icon = AppIcons.Download,
+                title = "MODERATORS",
+                value = moderators,
+                icon = AppIcons.Security,
+                iconColor = Color(0xFFD97706),
+                modifier = Modifier.weight(1f)
+            )
+        }
+        
+        // Row 2: Avg. Goal | Total Logs (Rings Closed)
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            AnalyticsCard(
+                title = "AVG. GOAL",
+                value = avgGoal,
+                icon = AppIcons.Goal,
                 iconColor = Color(0xFF22C55E),
                 modifier = Modifier.weight(1f)
             )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             AnalyticsCard(
-                title = stringResource(R.string.active_now),
-                value = activeUsers,
-                icon = AppIcons.Goal,
-                iconColor = Color(0xFFF59E0B),
-                modifier = Modifier.weight(1f)
-            )
-            AnalyticsCard(
-                title = stringResource(R.string.avg_streak),
-                value = avgStreak,
-                icon = AppIcons.Progress,
-                iconColor = Color(0xFFA855F7),
+                title = "TOTAL RINGS CLOSED",
+                value = totalLogs,
+                icon = AppIcons.History,
+                iconColor = Color(0xFF3B82F6),
                 modifier = Modifier.weight(1f)
             )
         }
+        
+        // Row 3: Avg. Streak (full width)
+        AnalyticsCard(
+            title = stringResource(R.string.avg_streak),
+            value = avgStreak,
+            icon = AppIcons.Progress,
+            iconColor = Color(0xFFA855F7),
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 

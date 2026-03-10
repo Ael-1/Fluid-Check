@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,6 +67,7 @@ fun HomeScreen(
     onQuickAdd: (QuickAddConfig) -> Unit,
     onUpdateQuickAdd: (List<QuickAddConfig>) -> Unit
 ) {
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val allLogsFlow = remember(userId) { firestoreRepository.getFluidLogsFlow(userId) }
     // Note: We only collect this when needed below to save reads
     
@@ -119,7 +122,6 @@ fun HomeScreen(
             onDismiss = { showHistoryDialog = false },
             onEdit = { 
                 onEditLog(it)
-                showHistoryDialog = false
             }
         )
     }
@@ -138,9 +140,10 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(selectionMode) {
-                if (selectionMode) {
-                    detectTapGestures(onTap = { dismissSelection() })
-                }
+                detectTapGestures(onTap = { 
+                    focusManager.clearFocus()
+                    if (selectionMode) dismissSelection() 
+                })
             }
     ) {
         LazyColumn(
@@ -614,7 +617,7 @@ fun AddQuickAddDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val amount = amountText.toIntOrNull() ?: 0
+                    val amount = amountText.trim().toIntOrNull() ?: 0
                     if (amount > 0) {
                         onSave(QuickAddConfig(amount, selectedType))
                     }
@@ -664,7 +667,14 @@ fun AddQuickAddDialog(
                     value = amountText,
                     onValueChange = { if (it.all { char -> char.isDigit() }) amountText = it },
                     label = { Text("Amount (ml)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        val amount = amountText.trim().toIntOrNull() ?: 0
+                        if (amount > 0) {
+                            onSave(QuickAddConfig(amount, selectedType))
+                        }
+                    }),
+                    singleLine = true
                 )
             }
         },
@@ -945,6 +955,7 @@ fun GoalAchievedDialog(onDismiss: () -> Unit) {
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LogHistoryDialog(logs: List<FluidLog>, onDismiss: () -> Unit, onEdit: (FluidLog) -> Unit) {
     AlertDialog(
@@ -966,48 +977,109 @@ fun LogHistoryDialog(logs: List<FluidLog>, onDismiss: () -> Unit, onEdit: (Fluid
             )
         },
         text = {
+            val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+            val groupedLogs = remember(logs) {
+                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).apply {
+                    timeZone = java.util.TimeZone.getTimeZone("GMT+8")
+                }
+                val now = java.util.Date()
+                val today = sdf.format(now)
+                val calendar = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("GMT+8"))
+                calendar.time = now
+                calendar.add(java.util.Calendar.DAY_OF_YEAR, -1)
+                val yesterday = sdf.format(calendar.time)
+
+                // Define order
+                val order = listOf("Today", "Yesterday", "Previous Logs")
+                
+                logs.groupBy { log ->
+                    when (log.date) {
+                        today -> "Today"
+                        yesterday -> "Yesterday"
+                        else -> "Previous Logs"
+                    }
+                }.let { groups ->
+                    order.mapNotNull { key ->
+                        groups[key]?.let { key to it }
+                    }
+                }
+            }
+
             Box(modifier = Modifier.heightIn(max = 400.dp)) {
                 if (logs.isEmpty()) {
                     Text("No logs found.", color = MutedForeground)
                 } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(logs.reversed()) { log ->
-                            Card(
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        groupedLogs.forEach { (header, logItems) ->
+                            stickyHeader {
+                                Surface(
+                                    color = Color.White,
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Icon(log.icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        @Suppress("DEPRECATION")
-                                        Text(
-                                            log.type, 
-                                            fontWeight = FontWeight.Bold, 
-                                            fontSize = 14.sp,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        @Suppress("DEPRECATION")
-                                        Text("${log.time} - ${log.date}", fontSize = 12.sp, color = MutedForeground)
-                                    }
-                                    Column(horizontalAlignment = Alignment.End) {
-                                        @Suppress("DEPRECATION")
-                                        Text(
-                                            "${log.amount}ml", 
-                                            fontWeight = FontWeight.Bold, 
-                                            color = PrimaryBlue,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Visible
-                                        )
-                                        if (log.isEditable) {
-                                            IconButton(onClick = { onEdit(log) }, modifier = Modifier.size(20.dp)) {
-                                                Icon(AppIcons.Edit, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(14.dp))
+                                    @Suppress("DEPRECATION")
+                                    Text(
+                                        text = header.uppercase(), 
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 11.sp,
+                                        color = PrimaryBlue.copy(alpha = 0.7f),
+                                        letterSpacing = 1.sp,
+                                        modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                                    )
+                                }
+                            }
+                            items(logItems.reversed()) { log ->
+                                Card(
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable(enabled = log.isEditable) { onEdit(log) }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(log.icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            @Suppress("DEPRECATION")
+                                            Text(
+                                                log.type, 
+                                                fontWeight = FontWeight.Bold, 
+                                                fontSize = 14.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            @Suppress("DEPRECATION")
+                                            val formattedDate = remember(log.date, screenWidth) {
+                                                try {
+                                                    val parser = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                                                    val date = parser.parse(log.date)
+                                                    val formatPattern = if (screenWidth < 360) "MMM d, yyyy" else "MMMM d, yyyy"
+                                                    val formatter = java.text.SimpleDateFormat(formatPattern, java.util.Locale.getDefault())
+                                                    formatter.format(date!!)
+                                                } catch (e: Exception) {
+                                                    log.date
+                                                }
                                             }
+                                            @Suppress("DEPRECATION")
+                                            Text(
+                                                if (header == "Previous Logs") "${log.time} - $formattedDate" else log.time, 
+                                                fontSize = 12.sp, 
+                                                color = MutedForeground,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            @Suppress("DEPRECATION")
+                                            Text(
+                                                "${log.amount}ml", 
+                                                fontWeight = FontWeight.Bold, 
+                                                color = PrimaryBlue,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Visible
+                                            )
                                         }
                                     }
                                 }
@@ -1108,7 +1180,15 @@ fun UpdateDailyGoalDialog(
                 },
                 placeholder = { Text("e.g. 2500", fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 modifier = Modifier.fillMaxWidth().height(64.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = {
+                    val goal = goalText.trim().toIntOrNull()
+                    if (goal != null && goal > 0) {
+                        onSave(goal)
+                    } else {
+                        showError = true
+                    }
+                }),
                 shape = RoundedCornerShape(16.dp),
                 singleLine = true,
                 textStyle = LocalTextStyle.current.copy(fontSize = 18.sp, fontWeight = FontWeight.Medium),
@@ -1122,12 +1202,11 @@ fun UpdateDailyGoalDialog(
             
             Button(
                 onClick = {
-                    if (goalText.isBlank()) {
-                        showError = true
+                    val goal = goalText.trim().toIntOrNull()
+                    if (goal != null && goal > 0) {
+                        onSave(goal)
                     } else {
-                        showError = false
-                        val newGoal = goalText.toIntOrNull() ?: currentGoal
-                        onSave(newGoal)
+                        showError = true
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -1314,7 +1393,12 @@ fun RecentLogItem(
                 if (!isInteractionEnabled) {
                     detectTapGestures(onTap = { onTapBackground() })
                 }
-            },
+            }
+            .then(
+                if (isInteractionEnabled && log.isEditable) {
+                    Modifier.clickable { onEdit() }
+                } else Modifier
+            ),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -1382,20 +1466,6 @@ fun RecentLogItem(
                     maxLines = 1,
                     overflow = TextOverflow.Visible
                 )
-                if (log.isEditable) {
-                    IconButton(
-                        onClick = onEdit, 
-                        modifier = Modifier.size(24.dp),
-                        enabled = isInteractionEnabled
-                    ) {
-                        Icon(
-                            imageVector = AppIcons.Edit,
-                            contentDescription = stringResource(R.string.edit),
-                            tint = if (isInteractionEnabled) Color(0xFFCBD5E1) else Color(0xFFCBD5E1).copy(alpha = 0.3f),
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
             }
         }
     }

@@ -3,6 +3,7 @@ package com.example.fluidcheck.ui.auth
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -12,11 +13,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
 import com.example.fluidcheck.R
 import com.example.fluidcheck.ui.theme.*
 
@@ -109,6 +113,8 @@ fun VerifyAccountScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         AuthFormCard {
+            val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+            
             // Username Field
             OutlinedTextField(
                 value = username,
@@ -125,8 +131,13 @@ fun VerifyAccountScreen(
                         Text(text = usernameError!!, color = Color.White)
                     }
                 },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }
+                ),
                 shape = RoundedCornerShape(16.dp),
                 enabled = !isLoading,
+                singleLine = true,
                 colors = authTextFieldColors()
             )
 
@@ -148,9 +159,13 @@ fun VerifyAccountScreen(
                         Text(text = emailError!!, color = Color.White)
                     }
                 },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }
+                ),
                 shape = RoundedCornerShape(16.dp),
                 enabled = !isLoading,
+                singleLine = true,
                 colors = authTextFieldColors()
             )
 
@@ -175,12 +190,25 @@ fun VerifyAccountScreen(
                 isError = passwordError != null,
                 supportingText = {
                     if (passwordError != null) {
+                        @Suppress("DEPRECATION")
                         Text(text = passwordError!!, color = Color.White)
                     }
                 },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = if (password.isEmpty()) ImeAction.Done else ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) },
+                    onDone = {
+                        if (password.isEmpty()) {
+                             focusManager.clearFocus()
+                        } else {
+                             focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down)
+                        }
+                    }
+                ),
                 shape = RoundedCornerShape(16.dp),
                 enabled = !isLoading,
+                singleLine = true,
                 colors = authTextFieldColors()
             )
 
@@ -205,8 +233,15 @@ fun VerifyAccountScreen(
                         }
                     },
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        if (validateInputs()) {
+                            onVerifySuccess(username.trim(), email.trim(), password.trim())
+                        }
+                    }),
                     shape = RoundedCornerShape(16.dp),
                     enabled = !isLoading,
+                    singleLine = true,
                     colors = authTextFieldColors()
                 )
             }
@@ -221,7 +256,7 @@ fun VerifyAccountScreen(
                 Button(
                     onClick = {
                         if (validateInputs()) {
-                            onVerifySuccess(username, email, password)
+                            onVerifySuccess(username.trim(), email.trim(), password.trim())
                         }
                     },
                     modifier = Modifier

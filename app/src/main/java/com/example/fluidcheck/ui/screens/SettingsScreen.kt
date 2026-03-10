@@ -21,7 +21,7 @@ import androidx.compose.ui.draw.clip
 import com.example.fluidcheck.R
 import com.example.fluidcheck.ui.theme.*
 
-private const val ADMIN_EMAIL = "admin@fluidcheck.ai"
+
 
 @Composable
 fun SettingsScreen(
@@ -49,7 +49,7 @@ fun SettingsScreen(
     var showLogoutDialog by remember { mutableStateOf(false) }
     
     // Check if this is the core Admin account
-    val isPrimaryAdmin = email.equals(ADMIN_EMAIL, ignoreCase = true)
+    val isPrimaryAdmin = userRole == "ADMIN"
 
     if (showLogoutDialog) {
         AlertDialog(

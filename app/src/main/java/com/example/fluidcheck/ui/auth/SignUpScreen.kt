@@ -1,8 +1,11 @@
 package com.example.fluidcheck.ui.auth
 
+import kotlinx.coroutines.delay
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -11,9 +14,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fluidcheck.R
@@ -23,9 +31,10 @@ import com.example.fluidcheck.ui.theme.*
 fun SignUpScreen(
     onSignUpSuccessWithDetails: (String, String, String) -> Unit,
     onBackToLogin: () -> Unit,
-    isGoogleAvailable: Boolean = false,
     onGoogleSignInClick: () -> Unit = {},
-    isLoading: Boolean = false
+    isLoading: Boolean = false,
+    isGoogleAvailable: Boolean = false,
+    firestoreRepository: com.example.fluidcheck.repository.FirestoreRepository? = null
 ) {
     var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -43,15 +52,31 @@ fun SignUpScreen(
     val invalidEmailErr = stringResource(R.string.error_invalid_email)
     val shortPasswordErr = stringResource(R.string.error_short_password)
     val mismatchPasswordErr = stringResource(R.string.error_password_mismatch)
+    
+    // Task 9.3: Proactive Conflict Prevention
+    var isCheckingUsername by remember { mutableStateOf(false) }
+    LaunchedEffect(username) {
+        if (username.length >= 4 && firestoreRepository != null) {
+            delay(500) // Debounce
+            isCheckingUsername = true
+            val isAvailable = firestoreRepository.isUsernameAvailable(username)
+            if (!isAvailable) {
+                usernameError = "Username is already taken."
+            } else {
+                if (usernameError == "Username is already taken.") usernameError = null
+            }
+            isCheckingUsername = false
+        }
+    }
 
+    val focusManager = LocalFocusManager.current
+    
     fun validateInputs(): Boolean {
         var isValid = true
 
-        if (username.isBlank()) {
-            usernameError = emptyUsernameErr
+        usernameError = com.example.fluidcheck.util.ValidationUtils.validateUsername(username)
+        if (usernameError != null) {
             isValid = false
-        } else {
-            usernameError = null
         }
 
         val emailPattern = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
@@ -126,6 +151,11 @@ fun SignUpScreen(
                 },
                 shape = RoundedCornerShape(16.dp),
                 enabled = !isLoading,
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                ),
                 colors = authTextFieldColors()
             )
 
@@ -147,9 +177,13 @@ fun SignUpScreen(
                         Text(text = emailError!!, color = Color.White)
                     }
                 },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                ),
                 shape = RoundedCornerShape(16.dp),
                 enabled = !isLoading,
+                singleLine = true,
                 colors = authTextFieldColors()
             )
 
@@ -179,8 +213,20 @@ fun SignUpScreen(
                     }
                 },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = if (password.isEmpty()) ImeAction.Done else ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                    onDone = { 
+                        if (validateInputs() && password.isNotEmpty()) {
+                            focusManager.moveFocus(FocusDirection.Down)
+                        } else {
+                            focusManager.clearFocus()
+                        }
+                    }
+                ),
                 shape = RoundedCornerShape(16.dp),
                 enabled = !isLoading,
+                singleLine = true,
                 colors = authTextFieldColors()
             )
 
@@ -205,8 +251,17 @@ fun SignUpScreen(
                         }
                     },
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            if (validateInputs()) {
+                                onSignUpSuccessWithDetails(username.trim(), email.trim(), password.trim())
+                            }
+                        }
+                    ),
                     shape = RoundedCornerShape(16.dp),
                     enabled = !isLoading,
+                    singleLine = true,
                     colors = authTextFieldColors()
                 )
             }
@@ -221,7 +276,7 @@ fun SignUpScreen(
                 Button(
                     onClick = {
                         if (validateInputs()) {
-                            onSignUpSuccessWithDetails(username, email, password)
+                            onSignUpSuccessWithDetails(username.trim(), email.trim(), password.trim())
                         }
                     },
                     modifier = Modifier

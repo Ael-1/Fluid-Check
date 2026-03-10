@@ -264,11 +264,35 @@ class GuestRepository(private val context: Context) {
         return true
     }
 
-    fun getTodayFluidLogsFlow(): Flow<List<FluidLog>> {
-        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+    /**
+     * Resets guest streak to 0 if they failed to close their ring yesterday.
+     */
+    fun evaluateStreak() {
+        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("GMT+8")
         }.format(Date())
-        return _guestLogsFlow.map { logs -> logs.filter { it.date == today }.sortedBy { it.id } }
+        
+        val calendar = Calendar.getInstance(TimeZone.getTimeZone("GMT+8"))
+        calendar.add(Calendar.DAY_OF_YEAR, -1)
+        val yesterdayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("GMT+8")
+        }.format(calendar.time)
+
+        val currentRecord = _guestUserRecordFlow.value ?: return
+        val lastRingDate = currentRecord.lastRingClosedDate
+        
+        // If last ring not closed yesterday and not today, reset streak to 0
+        if (lastRingDate != yesterdayStr && lastRingDate != todayStr) {
+            _guestUserRecordFlow.value = currentRecord.copy(streak = 0)
+            saveGuestRecordToPrefs()
+        }
+    }
+
+    fun getTodayFluidLogsFlow(specificDate: String? = null): Flow<List<FluidLog>> {
+        val dateToQuery = specificDate ?: SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("GMT+8")
+        }.format(Date())
+        return _guestLogsFlow.map { logs -> logs.filter { it.date == dateToQuery }.sortedBy { it.id } }
     }
 
     fun getFluidLogs(): List<FluidLog> = _guestLogsFlow.value
@@ -285,5 +309,13 @@ class GuestRepository(private val context: Context) {
             notificationsEnabled = null,
             reminderFrequency = "60"
         )
+    }
+
+    fun resetStreak() {
+        val record = _guestUserRecordFlow.value
+        if (record != null) {
+            _guestUserRecordFlow.value = record.copy(streak = 0)
+            saveGuestRecordToPrefs()
+        }
     }
 }

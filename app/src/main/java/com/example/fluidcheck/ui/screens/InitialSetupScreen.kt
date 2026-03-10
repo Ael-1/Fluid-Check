@@ -20,12 +20,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import com.example.fluidcheck.BuildConfig
 import com.example.fluidcheck.R
 import com.example.fluidcheck.ai.GeminiCoach
 import com.example.fluidcheck.model.DEFAULT_QUICK_ADD_CONFIGS
 import com.example.fluidcheck.model.UserRecord
 import com.example.fluidcheck.ui.theme.*
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,6 +65,12 @@ fun InitialSetupScreen(
     val scrollState = rememberScrollState()
 
     val context = LocalContext.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    
+    // Task 11.8: Custom Focus Requesters
+    val weightFocus = remember { FocusRequester() }
+    val heightFocus = remember { FocusRequester() }
+    val ageFocus = remember { FocusRequester() }
     val coach = remember { GeminiCoach(BuildConfig.GEMINI_API_KEY) }
     val scope = rememberCoroutineScope()
     var isLoadingGoal by remember { mutableStateOf(false) }
@@ -131,6 +145,11 @@ fun InitialSetupScreen(
                     colors = listOf(GradientStart, GradientEnd)
                 )
             )
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus()
+                })
+            }
     ) {
         Column(
             modifier = Modifier
@@ -196,11 +215,29 @@ fun InitialSetupScreen(
 
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Box(modifier = Modifier.weight(1f)) {
-                            ResponsiveEditField(label = stringResource(R.string.weight_kg_label), value = weight, onValueChange = { weight = it }, icon = AppIcons.Scale, placeholder = inputPlaceholder)
+                            ResponsiveEditField(
+                                label = stringResource(R.string.weight_kg_label), 
+                                value = weight, 
+                                onValueChange = { weight = it }, 
+                                icon = AppIcons.Scale, 
+                                placeholder = inputPlaceholder,
+                                modifier = Modifier.focusRequester(weightFocus),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Next) })
+                            )
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Box(modifier = Modifier.weight(1f)) {
-                            ResponsiveEditField(label = stringResource(R.string.height_cm_label), value = height, onValueChange = { height = it }, icon = AppIcons.Height, placeholder = inputPlaceholder)
+                            ResponsiveEditField(
+                                label = stringResource(R.string.height_cm_label), 
+                                value = height, 
+                                onValueChange = { height = it }, 
+                                icon = AppIcons.Height, 
+                                placeholder = inputPlaceholder,
+                                modifier = Modifier.focusRequester(heightFocus),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                                keyboardActions = KeyboardActions(onNext = { ageFocus.requestFocus() })
+                            )
                         }
                     }
                     
@@ -208,7 +245,16 @@ fun InitialSetupScreen(
 
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Box(modifier = Modifier.weight(1f)) {
-                            ResponsiveEditField(label = stringResource(R.string.age_label), value = age, onValueChange = { age = it }, icon = AppIcons.Age, placeholder = inputPlaceholder)
+                            ResponsiveEditField(
+                                label = stringResource(R.string.age_label), 
+                                value = age, 
+                                onValueChange = { age = it }, 
+                                icon = AppIcons.Age, 
+                                placeholder = inputPlaceholder,
+                                modifier = Modifier.focusRequester(ageFocus),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+                            )
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         
@@ -275,9 +321,9 @@ fun InitialSetupScreen(
                                     } else {
                                         onComplete(
                                             UserRecord(
-                                                weight = weight, 
-                                                height = height, 
-                                                age = age, 
+                                                weight = weight.trim(), 
+                                                height = height.trim(), 
+                                                age = age.trim(), 
                                                 sex = sex, 
                                                 activity = activity, 
                                                 environment = environment, 
@@ -318,9 +364,9 @@ fun InitialSetupScreen(
                             onClick = {
                                 onComplete(
                                     UserRecord(
-                                        weight = weight, 
-                                        height = height, 
-                                        age = age, 
+                                        weight = weight.trim(), 
+                                        height = height.trim(), 
+                                        age = age.trim(), 
                                         sex = if (sex == selectionPlaceholder) "" else sex, 
                                         activity = if (activity == selectionPlaceholder) "" else activity, 
                                         environment = if (environment == selectionPlaceholder) "" else environment, 
@@ -374,7 +420,10 @@ fun ResponsiveEditField(
     onValueChange: (String) -> Unit,
     icon: ImageVector,
     placeholder: String,
-    isPassword: Boolean = false
+    modifier: Modifier = Modifier,
+    isPassword: Boolean = false,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -391,7 +440,7 @@ fun ResponsiveEditField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth().height(58.dp),
+            modifier = modifier.fillMaxWidth().height(58.dp),
             placeholder = { 
                 @Suppress("DEPRECATION")
                 Text(
@@ -414,12 +463,11 @@ fun ResponsiveEditField(
             visualTransformation = if (isPassword && !passwordVisible) androidx.compose.ui.text.input.PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = PrimaryBlue,
-                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
-                unfocusedContainerColor = Color(0xFFF8FAFC),
-                focusedContainerColor = Color.White
+                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
             ),
             singleLine = true,
-            textStyle = LocalTextStyle.current.copy(fontSize = 16.sp)
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions
         )
     }
 }

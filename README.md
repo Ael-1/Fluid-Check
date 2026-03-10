@@ -17,7 +17,8 @@ FluidCheck is an Android application designed to help users manage their hydrati
 - **Cloud & Local Persistence:** Real-time synchronization between Cloud Firestore and local DataStore for seamless settings and data access across sessions.
 - **Visual Achievement Feedback:** "Radiating Achievement State" and "Infinite Progress Architecture" for an immersive goal-completion experience.
 - **Admin Dashboard:** Comprehensive tools for managing users, roles, and system-wide analytics.
-- **Modern UI:** "Glassmorphism" aesthetic built with Jetpack Compose and Material 3.
+- **Centralized Validation & Security:** Robust username/email validation and security, smart range checking for physical attributes, and mandatory credential re-authentication for sensitive profile updates.
+- **Modern UI:** "Glassmorphism" aesthetic built with Jetpack Compose, Material 3, and optimized keyboard navigation.
 
 ## 🛠 Tech Stack
 

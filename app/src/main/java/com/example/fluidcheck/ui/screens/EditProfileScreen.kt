@@ -5,7 +5,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,8 +18,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fluidcheck.R
@@ -24,6 +32,7 @@ import com.example.fluidcheck.repository.AuthRepository
 import com.example.fluidcheck.repository.UserPreferencesRepository
 import com.example.fluidcheck.repository.FirestoreRepository
 import com.example.fluidcheck.ui.theme.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import android.Manifest
 import android.content.pm.PackageManager
@@ -45,7 +54,7 @@ import com.yalantis.ucrop.UCrop
 import java.io.File
 import java.util.*
 
-private const val ADMIN_EMAIL = "admin@fluidcheck.ai"
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,12 +75,15 @@ fun EditProfileScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     
+    // Status dialog state: (IsSuccess, Message)
+    var statusDialogData by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
+    
     // Load initial data using userId - Wrap in remember so the flow isn't recreated on every recomposition
     val userRecordFlow = remember(userId) { firestoreRepository.getUserRecordFlow(userId) }
     val currentRecord by userRecordFlow.collectAsState(initial = null)
     
     // Core administrative check
-    val isPrimaryAdmin = currentRecord?.email == ADMIN_EMAIL
+    val isPrimaryAdmin = currentRecord?.role == "ADMIN"
     
     // Show personal records ONLY if not primary admin AND not currently in admin mode
     val showPersonalRecords = !isPrimaryAdmin && !isAdminMode
@@ -83,6 +95,37 @@ fun EditProfileScreen(
     var editableConfirmPassword by remember { mutableStateOf("") }
     var reauthPassword by remember { mutableStateOf("") }
     var confirmPasswordError by remember { mutableStateOf<String?>(null) }
+    var usernameError by remember { mutableStateOf<String?>(null) }
+
+    // Task 9.3: Proactive Conflict Prevention (Settings)
+    LaunchedEffect(editableUsername) {
+        if (editableUsername.length >= 4 && editableUsername != (currentRecord?.username ?: "")) {
+            delay(500) // Debounce
+            val isAvailable = firestoreRepository.isUsernameAvailable(editableUsername)
+            if (!isAvailable) {
+                usernameError = "Username is already taken."
+            } else {
+                if (usernameError == "Username is already taken.") usernameError = null
+            }
+        } else {
+            usernameError = null
+        }
+    }
+    
+    val isGoogleUser = remember {
+        authRepository.currentUser?.providerData?.any { it.providerId == "google.com" } == true
+    }
+
+    // Refresh email verification status occasionally or on mount
+    var emailVerified by remember { mutableStateOf(authRepository.currentUser?.isEmailVerified == true) }
+    
+    LaunchedEffect(Unit) {
+        authRepository.currentUser?.reload()?.addOnCompleteListener {
+            emailVerified = authRepository.currentUser?.isEmailVerified == true
+        }
+    }
+
+
 
     // States for personal records
     var weight by remember(currentRecord) { mutableStateOf(currentRecord?.weight ?: "") }
@@ -94,10 +137,12 @@ fun EditProfileScreen(
     var activity by remember(currentRecord) { mutableStateOf(if (currentRecord?.activity?.isEmpty() == true) placeholder else currentRecord?.activity ?: placeholder) }
     var environment by remember(currentRecord) { mutableStateOf(if (currentRecord?.environment?.isEmpty() == true) placeholder else currentRecord?.environment ?: placeholder) }
 
+    val shortPasswordErr = stringResource(R.string.error_short_password)
     val mismatchPasswordErr = stringResource(R.string.error_password_mismatch)
     var showError by remember { mutableStateOf(false) }
     
     val context = LocalContext.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     var showPhotoSourceSelector by remember { mutableStateOf(false) }
     var showPermissionSettingsDialog by remember { mutableStateOf(false) }
     var permissionType by remember { mutableStateOf("") } // "Camera" or "Photos"
@@ -106,12 +151,173 @@ fun EditProfileScreen(
     val networkMonitor = remember { NetworkMonitor(context) }
     val isConnected by networkMonitor.isConnected.collectAsState(initial = true)
 
+    LaunchedEffect(emailVerified, currentRecord?.emailVerified) {
+        if (emailVerified && currentRecord?.emailVerified == false && isConnected) {
+            val updatedRecord = currentRecord!!.copy(emailVerified = true)
+            scope.launch {
+                firestoreRepository.saveUserRecord(userId, updatedRecord)
+            }
+        }
+    }
+
 
     
     // Manual/Optimistic States
     var profilePhotoUrl by remember { mutableStateOf("") }
     var pendingPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    
     var isPhotoRemoved by remember { mutableStateOf(false) }
+
+    // Reusable save logic
+    val onPerformSave = {
+        scope.launch {
+            try {
+                isLoading = true
+                
+                // 0. Handle Photo Upload/Removal first
+                var finalPhotoUrl = profilePhotoUrl
+                if (isPhotoRemoved) {
+                    if (isConnected) {
+                        firestoreRepository.removeProfilePicture(userId)
+                    } else {
+                        // Offline: just clear local photo, Firestore will sync the empty URL via saveUserRecord
+                        context.let { ProfilePhotoManager.deleteLocalPhoto(it) }
+                    }
+                    repository.setPendingPhotoUpload(userId, false)
+                    finalPhotoUrl = ""
+                } else if (pendingPhotoUri != null) {
+                    val uploadResult = firestoreRepository.uploadProfilePicture(userId, pendingPhotoUri!!, isConnected)
+                    if (uploadResult.isSuccess) {
+                        finalPhotoUrl = uploadResult.getOrNull() ?: ""
+                        if (!isConnected) {
+                            repository.setPendingPhotoUpload(userId, true)
+                        } else {
+                            repository.setPendingPhotoUpload(userId, false)
+                        }
+                    } else {
+                        val error = uploadResult.exceptionOrNull()?.message ?: "Unknown error"
+                        isLoading = false
+                        statusDialogData = false to "Photo upload failed: $error"
+                        return@launch
+                    }
+                }
+
+                // Update state for the rest of the flow
+                profilePhotoUrl = finalPhotoUrl
+                pendingPhotoUri = null
+                isPhotoRemoved = false
+
+                // 1. Check for critical changes that REQUIRE internet
+                val usernameChanged = editableUsername != (currentRecord?.username ?: "")
+                val emailChanged = editableEmail != (currentRecord?.email ?: "")
+                val passwordChanged = editablePassword.isNotEmpty()
+
+                if (!isConnected && (usernameChanged || emailChanged || passwordChanged)) {
+                    isLoading = false
+                    statusDialogData = false to "Please connect to the internet to change your username, email, or password."
+                    return@launch
+                }
+
+                // 2. Handle Username Update (Online Only)
+                if (isConnected && usernameChanged) {
+                    val trimmedUsername = editableUsername.trim()
+                    usernameError = com.example.fluidcheck.util.ValidationUtils.validateUsername(trimmedUsername)
+                    if (usernameError != null) {
+                        isLoading = false
+                        return@launch
+                    }
+
+                    if (!firestoreRepository.isUsernameAvailable(trimmedUsername)) {
+                        isLoading = false
+                        statusDialogData = false to "This username is already taken. Please try another one."
+                        return@launch
+                    }
+                    
+                    val userResult = firestoreRepository.updateUsername(userId, currentRecord?.username ?: "", trimmedUsername)
+                    if (userResult.isFailure) {
+                        isLoading = false
+                        statusDialogData = false to (userResult.exceptionOrNull()?.message ?: "Error updating username")
+                        return@launch
+                    }
+                }
+
+                // 3. Handle Email Update (Online Only)
+                if (isConnected && emailChanged) {
+                    val emailResult = authRepository.verifyBeforeUpdateEmail(editableEmail)
+                    if (emailResult.isFailure) {
+                        val error = emailResult.exceptionOrNull()?.message ?: "You may need to sign in again."
+                        isLoading = false
+                        statusDialogData = false to "Error updating email: $error"
+                        return@launch
+                    } else {
+                        // Email update is deferred until the user verifies it
+                        isLoading = false
+                        statusDialogData = true to "A verification email has been sent to $editableEmail. Your email will be updated after you verify it."
+                    }
+                }
+
+                // 4. Handle Password Update (Online Only)
+                if (isConnected && passwordChanged) {
+                    if (editablePassword.length < 6) {
+                        isLoading = false
+                        statusDialogData = false to "Password must be at least 6 characters."
+                        return@launch
+                    }
+                    val passResult = authRepository.updatePassword(editablePassword)
+                    if (passResult.isFailure) {
+                        val error = passResult.exceptionOrNull()?.message ?: "Please try again."
+                        isLoading = false
+                        statusDialogData = false to "Error updating password: $error"
+                        return@launch
+                    }
+                }
+
+                // 5. Save User Record
+                val newRecord = (currentRecord ?: UserRecord()).copy(
+                    uid = userId,
+                    username = editableUsername.trim(),
+                    email = if (emailChanged && isConnected) (currentRecord?.email ?: "") else editableEmail.trim(),
+                    weight = weight.trim(),
+                    height = height.trim(),
+                    age = age.trim(),
+                    sex = sex,
+                    activity = activity,
+                    environment = environment,
+                    profilePictureUrl = profilePhotoUrl,
+                    setupCompleted = true,
+                    emailVerified = emailVerified
+                )
+
+                if (isConnected) {
+                    // Online: save to Firestore (batch + await) then local
+                    val saveResult = firestoreRepository.saveUserRecord(userId, newRecord)
+                    if (saveResult.isSuccess) {
+                        repository.saveUserRecord(userId, newRecord)
+                        isLoading = false
+                        // Only show default success if we didn't just show the email verification success
+                        if (statusDialogData == null) {
+                            statusDialogData = true to "Your profile has been updated successfully!"
+                        }
+                    } else {
+                        val error = saveResult.exceptionOrNull()?.message ?: "Unknown error"
+                        isLoading = false
+                        statusDialogData = false to "Failed to save changes: $error"
+                    }
+                } else {
+                    // Offline: save locally only — Firestore will queue non-critical fields and sync when online
+                    repository.saveUserRecord(userId, newRecord)
+                    firestoreRepository.queueOfflineUserRecordUpdate(userId, newRecord)
+                    isLoading = false
+                    if (statusDialogData == null) {
+                        statusDialogData = true to "Changes saved locally! They will sync with the cloud when you're back online."
+                    }
+                }
+            } catch (e: Exception) {
+                isLoading = false
+                statusDialogData = false to (e.message ?: "An unexpected error occurred.")
+            }
+        }
+    }
 
     /**
      * Resolves the display model for the profile photo:
@@ -152,6 +358,27 @@ fun EditProfileScreen(
                 }
             }
         }
+    }
+
+    // Task 1.9: Adaptive Save Button Logic
+    val hasChanges = remember(
+        editableUsername, editableEmail, editablePassword, weight, height, age, sex, activity, environment, 
+        pendingPhotoUri, isPhotoRemoved, currentRecord
+    ) {
+        val original = currentRecord ?: return@remember false
+        val changedUsername = editableUsername != original.username
+        val changedWeight = weight != original.weight
+        val changedHeight = height != original.height
+        val changedAge = age != original.age
+        val changedSex = sex != (original.sex.ifEmpty { placeholder })
+        val changedActivity = activity != (original.activity.ifEmpty { placeholder })
+        val changedEnvironment = environment != (original.environment.ifEmpty { placeholder })
+        val changedEmail = editableEmail != (original.email ?: "")
+        val changedPhoto = pendingPhotoUri != null || isPhotoRemoved
+        val changedPassword = editablePassword.isNotEmpty()
+
+        changedUsername || changedEmail || changedWeight || changedHeight || changedAge || 
+        changedSex || changedActivity || changedEnvironment || changedPhoto || changedPassword
     }
 
 
@@ -449,9 +676,9 @@ fun EditProfileScreen(
                             val result = authRepository.reauthenticate(reauthPassword)
                             if (result.isSuccess) {
                                 showReauthDialog = false
-                                showSaveDialog = true
+                                onPerformSave()
                             } else {
-                                snackbarHostState.showSnackbar("Invalid password. Please try again.")
+                                statusDialogData = false to "Invalid password. Please try again."
                             }
                             isLoading = false
                         }
@@ -485,130 +712,17 @@ fun EditProfileScreen(
             confirmButton = {
                 if (!isLoading) {
                     @Suppress("DEPRECATION")
-                    TextButton(
+                     TextButton(
                         onClick = {
-                            scope.launch {
-                                isLoading = true
-                                
-                                // 0. Handle Photo Upload/Removal first
-                                var finalPhotoUrl = profilePhotoUrl
-                                if (isPhotoRemoved) {
-                                    if (isConnected) {
-                                        firestoreRepository.removeProfilePicture(userId)
-                                    } else {
-                                        // Offline: just clear local photo, Firestore will sync the empty URL via saveUserRecord
-                                        context.let { ProfilePhotoManager.deleteLocalPhoto(it) }
-                                    }
-                                    repository.setPendingPhotoUpload(userId, false)
-                                    finalPhotoUrl = ""
-                                } else if (pendingPhotoUri != null) {
-                                    val uploadResult = firestoreRepository.uploadProfilePicture(userId, pendingPhotoUri!!, isConnected)
-                                    if (uploadResult.isSuccess) {
-                                        finalPhotoUrl = uploadResult.getOrNull() ?: ""
-                                        if (!isConnected) {
-                                            repository.setPendingPhotoUpload(userId, true)
-                                        } else {
-                                            repository.setPendingPhotoUpload(userId, false)
-                                        }
-                                    } else {
-                                        val error = uploadResult.exceptionOrNull()?.message ?: "Unknown error"
-                                        snackbarHostState.showSnackbar("Photo upload failed: $error")
-                                        isLoading = false
-                                        return@launch
-                                    }
-                                }
+                            val emailChanged = editableEmail != (currentRecord?.email ?: "")
+                            val passwordChanged = editablePassword.isNotEmpty()
 
-                                // Update state for the rest of the flow
-                                profilePhotoUrl = finalPhotoUrl
-                                pendingPhotoUri = null
-                                isPhotoRemoved = false
-
-                                // 1. Check for critical changes that REQUIRE internet
-                                val usernameChanged = editableUsername != (currentRecord?.username ?: "")
-                                val emailChanged = editableEmail != (currentRecord?.email ?: "")
-                                val passwordChanged = editablePassword.isNotEmpty()
-
-                                if (!isConnected && (usernameChanged || emailChanged || passwordChanged)) {
-                                    snackbarHostState.showSnackbar("Please connect to the internet to change your username, email, or password.")
-                                    isLoading = false
-                                    return@launch
-                                }
-
-                                // 2. Handle Username Update (Online Only)
-                                if (isConnected && usernameChanged) {
-                                    if (!firestoreRepository.isUsernameAvailable(editableUsername)) {
-                                        snackbarHostState.showSnackbar("This username is already taken. Please try another one.")
-                                        isLoading = false
-                                        return@launch
-                                    }
-                                    
-                                    val userResult = firestoreRepository.updateUsername(userId, currentRecord?.username ?: "", editableUsername)
-                                    if (userResult.isFailure) {
-                                        snackbarHostState.showSnackbar(userResult.exceptionOrNull()?.message ?: "Error updating username")
-                                        isLoading = false
-                                        return@launch
-                                    }
-                                }
-
-                                // 3. Handle Email Update (Online Only)
-                                if (isConnected && emailChanged) {
-                                    val emailResult = authRepository.updateEmail(editableEmail)
-                                    if (emailResult.isFailure) {
-                                        snackbarHostState.showSnackbar("Error updating email. You may need to sign in again.")
-                                        isLoading = false
-                                        return@launch
-                                    }
-                                }
-
-                                // 4. Handle Password Update (Online Only)
-                                if (isConnected && passwordChanged) {
-                                    val passResult = authRepository.updatePassword(editablePassword)
-                                    if (passResult.isFailure) {
-                                        snackbarHostState.showSnackbar("Error updating password.")
-                                        isLoading = false
-                                        return@launch
-                                    }
-                                }
-
-                                // 5. Save User Record
-                                val newRecord = (currentRecord ?: UserRecord()).copy(
-                                    uid = userId,
-                                    username = editableUsername,
-                                    email = editableEmail,
-                                    weight = weight,
-                                    height = height,
-                                    age = age,
-                                    sex = sex,
-                                    activity = activity,
-                                    environment = environment,
-                                    profilePictureUrl = profilePhotoUrl,
-                                    setupCompleted = true
-                                )
-
-                                if (isConnected) {
-                                    // Online: save to Firestore (batch + await) then local
-                                    val saveResult = firestoreRepository.saveUserRecord(userId, newRecord)
-                                    if (saveResult.isSuccess) {
-                                        repository.saveUserRecord(userId, newRecord)
-                                        isLoading = false
-                                        showSaveDialog = false
-                                        onBack()
-                                    } else {
-                                        val error = saveResult.exceptionOrNull()?.message ?: "Unknown error"
-                                        snackbarHostState.showSnackbar("Error saving changes: $error")
-                                        isLoading = false
-                                    }
-                                } else {
-                                    // Offline: save locally only — Firestore will queue non-critical fields and sync when online
-                                    repository.saveUserRecord(userId, newRecord)
-                                    firestoreRepository.queueOfflineUserRecordUpdate(userId, newRecord)
-                                    isLoading = false
-                                    showSaveDialog = false
-                                    android.widget.Toast.makeText(context, "Changes saved locally! Will sync when online.", android.widget.Toast.LENGTH_SHORT).show()
-                                    onBack()
-                                }
-                                
-
+                            if (emailChanged || passwordChanged) {
+                                showSaveDialog = false
+                                showReauthDialog = true
+                            } else {
+                                showSaveDialog = false
+                                onPerformSave()
                             }
                         }
                     ) {
@@ -622,6 +736,40 @@ fun EditProfileScreen(
                     TextButton(onClick = { showSaveDialog = false }) {
                         Text(stringResource(R.string.cancel), color = TextDark)
                     }
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(28.dp)
+        )
+    }
+
+    // Final result dialog
+    statusDialogData?.let { (isSuccess, message) ->
+        AlertDialog(
+            onDismissRequest = { 
+                if (isSuccess) {
+                    statusDialogData = null
+                    onBack()
+                } else {
+                    statusDialogData = null
+                }
+            },
+            title = { 
+                Text(
+                    text = if (isSuccess) "Success" else "Update Failed",
+                    fontWeight = FontWeight.Bold,
+                    color = if (isSuccess) Color(0xFF10B981) else Color(0xFFEF4444)
+                )
+            },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        statusDialogData = null
+                        if (isSuccess) onBack()
+                    }
+                ) {
+                    Text("OK", color = PrimaryBlue, fontWeight = FontWeight.Bold)
                 }
             },
             containerColor = Color.White,
@@ -678,7 +826,21 @@ fun EditProfileScreen(
                     if (confirmPasswordError != null) confirmPasswordError = null
                 },
                 confirmPasswordError = confirmPasswordError,
-                enabled = !isLoading
+                enabled = !isLoading,
+                isGoogleUser = isGoogleUser,
+                emailVerified = emailVerified,
+                onVerifyEmail = {
+                    scope.launch {
+                        isLoading = true
+                        val result = authRepository.sendEmailVerification()
+                        isLoading = false
+                        if (result.isSuccess) {
+                            statusDialogData = true to "Verification email sent. Please check your inbox."
+                        } else {
+                            statusDialogData = false to (result.exceptionOrNull()?.message ?: "Failed to send verification email.")
+                        }
+                    }
+                }
             )
 
             if (showPersonalRecords) {
@@ -721,33 +883,63 @@ fun EditProfileScreen(
                         } else {
                             showError = false
                             
+                            // Task 1.10: Enhanced Username Validation
+                            val userValidationError = com.example.fluidcheck.util.ValidationUtils.validateUsername(editableUsername)
+                            val emailValidationError = com.example.fluidcheck.util.ValidationUtils.validateEmail(editableEmail)
+                            
+                            if (userValidationError != null || emailValidationError != null) {
+                                statusDialogData = false to (userValidationError ?: emailValidationError!!)
+                                return@Button
+                            }
+
+                            // Task 12.2: Numeric Range Validation
+                            if (showPersonalRecords) {
+                                val wErr = com.example.fluidcheck.util.ValidationUtils.validateWeight(weight.toFloatOrNull())
+                                val hErr = com.example.fluidcheck.util.ValidationUtils.validateHeight(height.toFloatOrNull())
+                                val aErr = com.example.fluidcheck.util.ValidationUtils.validateAge(age.toIntOrNull())
+                                
+                                val firstErr = wErr ?: hErr ?: aErr
+                                if (firstErr != null) {
+                                    statusDialogData = false to firstErr
+                                    return@Button
+                                }
+                            }
+                            
+                            // Check password length
+                            if (editablePassword.isNotEmpty() && editablePassword.length < 6) {
+                                statusDialogData = false to shortPasswordErr
+                                return@Button
+                            }
+
                             // Check password match
                             if (editablePassword.isNotEmpty() && editablePassword != editableConfirmPassword) {
                                 confirmPasswordError = mismatchPasswordErr
-                                scope.launch {
-                                    scrollState.animateScrollTo(0)
-                                }
+                                statusDialogData = false to mismatchPasswordErr
                                 return@Button
                             } else {
                                 confirmPasswordError = null
                             }
 
                             // Check if sensitive changes require reauth
-                            if (editableEmail != (currentRecord?.email ?: "") || editablePassword.isNotEmpty()) {
-                                showReauthDialog = true
-                            } else {
-                                showSaveDialog = true
-                            }
+                            showSaveDialog = true
                         }
                     },
+                    enabled = hasChanges && !isLoading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PrimaryBlue,
+                        disabledContainerColor = PrimaryBlue.copy(alpha = 0.5f)
+                    )
                 ) {
-                    @Suppress("DEPRECATION")
-                    Text(stringResource(R.string.save_changes), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    if (isLoading) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    } else {
+                        @Suppress("DEPRECATION")
+                        Text(stringResource(R.string.save_changes), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
                 }
             }
 
@@ -770,9 +962,13 @@ fun ProfileSettingsContainer(
     profilePhotoModel: Any? = null,
     onEditPhoto: () -> Unit,
     confirmPasswordError: String? = null,
-    enabled: Boolean
+    enabled: Boolean,
+    isGoogleUser: Boolean = false,
+    emailVerified: Boolean = false,
+    onVerifyEmail: () -> Unit = {}
 ) {
     val isGuest = userId == "GUEST"
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
@@ -853,22 +1049,95 @@ fun ProfileSettingsContainer(
             Spacer(modifier = Modifier.height(24.dp))
 
             if (!isGuest) {
-                EditField(label = stringResource(R.string.username_label), value = username, onValueChange = onUsernameChange, icon = AppIcons.PersonOutline, enabled = enabled)
-                Spacer(modifier = Modifier.height(16.dp))
-                EditField(label = stringResource(R.string.email_label), value = email, onValueChange = onEmailChange, icon = AppIcons.Email, enabled = enabled)
-                Spacer(modifier = Modifier.height(16.dp))
-                EditField(label = "New Password", value = password, onValueChange = onPasswordChange, icon = AppIcons.Lock, isPassword = true, enabled = enabled, placeholder = "Leave blank to keep current")
+                EditField(
+                    label = stringResource(R.string.username_label),
+                    value = username,
+                    onValueChange = onUsernameChange,
+                    icon = AppIcons.PersonOutline,
+                    enabled = enabled && !isGoogleUser,
+                    helperText = if (isGoogleUser) "Username cannot be changed for Google accounts." else null,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) })
+                )
                 
-                if (password.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                 EditField(
+                    label = stringResource(R.string.email_label),
+                    value = email,
+                    onValueChange = onEmailChange,
+                    icon = AppIcons.Email,
+                    enabled = enabled && !isGoogleUser,
+                    helperText = if (isGoogleUser) "Email is managed by Google." else null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = if (isGoogleUser) ImeAction.Next else ImeAction.Done),
+                    keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) },
+                        onDone = { focusManager.clearFocus() }
+                    )
+                )
+
+                if (!isGoogleUser && email.isNotEmpty()) {
+                    if (emailVerified) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp, start = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = "Verified", tint = Color(0xFF10B981), modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Verified", color = Color(0xFF10B981), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        }
+                    } else {
+                        TextButton(
+                            onClick = onVerifyEmail,
+                            modifier = Modifier.padding(top = 4.dp, start = 0.dp),
+                            enabled = enabled,
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                        ) {
+                            Text("Verify Email", color = PrimaryBlue, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+                
+                if (!isGoogleUser) {
                     Spacer(modifier = Modifier.height(16.dp))
                     EditField(
-                        label = stringResource(R.string.confirm_password_label),
-                        value = confirmPassword,
-                        onValueChange = onConfirmPasswordChange,
+                        label = "New Password",
+                        value = password,
+                        onValueChange = onPasswordChange,
                         icon = AppIcons.Lock,
                         isPassword = true,
                         enabled = enabled,
-                        error = confirmPasswordError
+                        placeholder = "Leave blank to keep current",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = if (password.isEmpty()) ImeAction.Done else ImeAction.Next),
+                        keyboardActions = KeyboardActions(
+                            onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) },
+                            onDone = { focusManager.clearFocus() }
+                        )
+                    )
+                    
+                    if (password.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        EditField(
+                            label = stringResource(R.string.confirm_password_label),
+                            value = confirmPassword,
+                            onValueChange = onConfirmPasswordChange,
+                            icon = AppIcons.Lock,
+                            isPassword = true,
+                            enabled = enabled,
+                            error = confirmPasswordError,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Password management is handled by Google.",
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
                     )
                 }
             }
@@ -890,6 +1159,12 @@ fun PersonalRecordsContainer(
     var sexExpanded by remember { mutableStateOf(false) }
     var actExpanded by remember { mutableStateOf(false) }
     var envExpanded by remember { mutableStateOf(false) }
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+
+    // Focus Requesters for task 11.8
+    val weightFocus = remember { FocusRequester() }
+    val heightFocus = remember { FocusRequester() }
+    val ageFocus = remember { FocusRequester() }
 
     val sexOptions = listOf("Male", "Female")
     val activityLevels = listOf("Sedentary", "Lightly Active", "Moderate", "Very Active", "Extra Active")
@@ -915,11 +1190,29 @@ fun PersonalRecordsContainer(
 
             Row(modifier = Modifier.fillMaxWidth()) {
                 Box(modifier = Modifier.weight(1f)) {
-                    EditField(label = stringResource(R.string.weight_kg_label), value = weight, onValueChange = onWeightChange, icon = AppIcons.Scale, enabled = enabled)
+                    EditField(
+                        label = stringResource(R.string.weight_kg_label), 
+                        value = weight, 
+                        onValueChange = onWeightChange, 
+                        icon = AppIcons.Scale, 
+                        enabled = enabled,
+                        modifier = Modifier.focusRequester(weightFocus),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Next) })
+                    )
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Box(modifier = Modifier.weight(1f)) {
-                    EditField(label = stringResource(R.string.height_cm_label), value = height, onValueChange = { onHeightChange(it) }, icon = AppIcons.Height, enabled = enabled)
+                    EditField(
+                        label = stringResource(R.string.height_cm_label), 
+                        value = height, 
+                        onValueChange = { onHeightChange(it) }, 
+                        icon = AppIcons.Height, 
+                        enabled = enabled,
+                        modifier = Modifier.focusRequester(heightFocus),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { ageFocus.requestFocus() })
+                    )
                 }
             }
             
@@ -927,7 +1220,16 @@ fun PersonalRecordsContainer(
 
             Row(modifier = Modifier.fillMaxWidth()) {
                 Box(modifier = Modifier.weight(1f)) {
-                    EditField(label = stringResource(R.string.age_label), value = age, onValueChange = onAgeChange, icon = AppIcons.Age, enabled = enabled)
+                    EditField(
+                        label = stringResource(R.string.age_label), 
+                        value = age, 
+                        onValueChange = onAgeChange, 
+                        icon = AppIcons.Age, 
+                        enabled = enabled,
+                        modifier = Modifier.focusRequester(ageFocus),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+                    )
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 
@@ -1090,11 +1392,15 @@ fun EditField(
     value: String,
     onValueChange: (String) -> Unit,
     icon: ImageVector,
+    modifier: Modifier = Modifier,
     isPassword: Boolean = false,
     readOnly: Boolean = false,
     enabled: Boolean = true,
     placeholder: String = "",
-    error: String? = null
+    error: String? = null,
+    helperText: String? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -1110,7 +1416,7 @@ fun EditField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth(),
             placeholder = { if (placeholder.isNotEmpty()) Text(placeholder, fontSize = 14.sp) },
             shape = RoundedCornerShape(16.dp),
             leadingIcon = { Icon(icon, contentDescription = null, tint = PrimaryBlue) },
@@ -1132,9 +1438,15 @@ fun EditField(
             readOnly = readOnly,
             enabled = enabled,
             isError = error != null,
-            supportingText = if (error != null) {
-                { Text(text = error, color = Color.Red, fontSize = 12.sp) }
-            } else null
+            supportingText = {
+                if (error != null) {
+                    Text(text = error, color = Color.Red, fontSize = 12.sp)
+                } else if (helperText != null) {
+                    Text(text = helperText, color = Color.Gray, fontSize = 12.sp)
+                }
+            },
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions
         )
     }
 }

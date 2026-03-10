@@ -24,6 +24,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -37,7 +38,7 @@ fun LoginScreen(
     onSignUpClick: () -> Unit,
     onGoogleSignInClick: () -> Unit,
     onGuestClick: () -> Unit,
-    isGoogleAvailable: Boolean = true,
+    isGoogleAvailable: Boolean = false,
     isLoading: Boolean = false
 ) {
     var identifier by remember { mutableStateOf("") }
@@ -165,7 +166,7 @@ fun LoginScreen(
                         },
                         modifier = Modifier
                             .fillMaxWidth(),
-                        placeholder = { Text(stringResource(R.string.username_label), color = Color.White.copy(alpha = 0.5f)) },
+                        placeholder = { Text(stringResource(R.string.email_or_username_label), color = Color.White.copy(alpha = 0.5f)) },
                         leadingIcon = { Icon(AppIcons.Person, contentDescription = null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(20.dp)) },
                         isError = identifierError != null,
                         supportingText = {
@@ -190,7 +191,7 @@ fun LoginScreen(
                         shape = RoundedCornerShape(16.dp),
                         singleLine = true,
                         enabled = !isLoading,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(
                             onNext = { focusManager.moveFocus(FocusDirection.Down) }
                         )
@@ -239,12 +240,12 @@ fun LoginScreen(
                         shape = RoundedCornerShape(16.dp),
                         singleLine = true,
                         enabled = !isLoading,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(
                             onDone = {
                                 if (validateInputs()) {
                                     focusManager.clearFocus()
-                                    onSignInClick(identifier, password)
+                                    onSignInClick(identifier.trim(), password.trim())
                                 }
                             }
                         )
@@ -261,7 +262,7 @@ fun LoginScreen(
                             onClick = {
                                 if (validateInputs()) {
                                     focusManager.clearFocus()
-                                    onSignInClick(identifier, password)
+                                    onSignInClick(identifier.trim(), password.trim())
                                 }
                             },
                             modifier = Modifier

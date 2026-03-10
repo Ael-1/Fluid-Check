@@ -20,6 +20,7 @@ object AppIcons {
     val AICoach = Icons.Outlined.AutoAwesome
     val Settings = Icons.Outlined.Settings
     val Admin = Icons.Outlined.Shield
+    val Security = Icons.Outlined.Security
     
     // Actions
     val Add = Icons.Default.Add
