@@ -87,6 +87,27 @@ FluidCheck is an Android application designed to help users manage their hydrati
 - [x] Smart Notification Reminders (Hourly & Contextual)
 - [x] Admin Dashboard & User Management
 
+## 🐳 Docker Support
+
+You can build the project using Docker to ensure a consistent build environment without needing to install the Android SDK locally.
+
+### Prerequisites
+- [Docker](https://www.docker.com/products/docker-desktop/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+
+### Build the APK
+To build the debug APK using Docker, run:
+
+```bash
+docker-compose up --build
+```
+
+The generated APK will be available in `app/build/outputs/apk/debug/` on your host machine.
+
+### Important Notes
+- **Secrets:** The `.dockerignore` file excludes `secrets.properties` and `google-services.json` by default for security. Ensure these files are present in your local directory before building, or modify the Dockerfile/compose file to pass them as secrets if using in a CI environment.
+- **Caching:** The `docker-compose.yml` uses a volume to cache Gradle dependencies, making subsequent builds significantly faster.
+
 ## 👨‍💻 Developer
 
 **Vincent Rafael Apog**

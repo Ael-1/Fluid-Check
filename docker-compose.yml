@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  fluidcheck-builder:
+    build: .
+    container_name: fluidcheck-builder
+    volumes:
+      - .:/app
+      # Cache Gradle dependencies to speed up subsequent builds
+      - gradle-cache:/root/.gradle
+    environment:
+      - GRADLE_USER_HOME=/root/.gradle
+    command: ./gradlew assembleDebug --no-daemon
+
+volumes:
+  gradle-cache:
