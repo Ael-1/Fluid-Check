@@ -46,6 +46,7 @@ fun AICoachScreen(
     onSetGoal: (Int) -> Unit,
     isConnected: Boolean = true,
     firestoreRepository: com.example.fluidcheck.repository.FirestoreRepository? = null,
+    measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences = com.example.fluidcheck.util.MeasurementPreferences(),
     // Hoisted states
     aiGoalWeight: String,
     onAiGoalWeightChange: (String) -> Unit,
@@ -78,10 +79,13 @@ fun AICoachScreen(
     mainScope: kotlinx.coroutines.CoroutineScope,
     locationAccessEnabled: Boolean = false,
     weatherGoalAdjustmentEnabled: Boolean = false,
-    onToggleWeatherGoalAdjustment: (Boolean) -> Unit = {}
+    onToggleWeatherGoalAdjustment: (Boolean) -> Unit = {},
+    userRole: String = "FREE USER",
+    onPremiumFeatureClick: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
 
     val coach = remember { GeminiCoach(BuildConfig.GEMINI_API_KEY) }
     
@@ -102,7 +106,7 @@ fun AICoachScreen(
                 "$dateStr: No logs recorded (User did not log any drinks today)"
             } else {
                 dayLogs.joinToString("\n") { log ->
-                    "${log.date} ${log.time}: ${log.amount}ml of ${log.type}"
+                    "${log.date} ${log.time}: ${com.example.fluidcheck.util.MeasurementUtils.formatVolume(context, log.amount, measurementPreferences.volume)} of ${log.type}"
                 }
             }
         }
@@ -151,7 +155,10 @@ fun AICoachScreen(
                 mainScope = mainScope,
                 locationAccessEnabled = locationAccessEnabled,
                 weatherGoalAdjustmentEnabled = weatherGoalAdjustmentEnabled,
-                onToggleWeatherGoalAdjustment = onToggleWeatherGoalAdjustment
+                onToggleWeatherGoalAdjustment = onToggleWeatherGoalAdjustment,
+                measurementPreferences = measurementPreferences,
+                userRole = userRole,
+                onPremiumFeatureClick = onPremiumFeatureClick
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -165,7 +172,10 @@ fun AICoachScreen(
                 onLoadingChange = onAiAssessmentIsLoadingChange,
                 assessmentResult = aiAssessmentResult,
                 onAssessmentResultChange = onAiAssessmentResultChange,
-                mainScope = mainScope
+                mainScope = mainScope,
+                measurementPreferences = measurementPreferences,
+                userRole = userRole,
+                onPremiumFeatureClick = onPremiumFeatureClick
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -181,7 +191,10 @@ fun AICoachScreen(
                 onLoadingChange = onAiRecsIsLoadingChange,
                 recommendation = aiRecsRecommendation,
                 onRecommendationChange = onAiRecsRecommendationChange,
-                mainScope = mainScope
+                mainScope = mainScope,
+                measurementPreferences = measurementPreferences,
+                userRole = userRole,
+                onPremiumFeatureClick = onPremiumFeatureClick
             )
 
             AIDisclaimer()
@@ -217,16 +230,19 @@ fun SmartGoalSetterCard(
     mainScope: kotlinx.coroutines.CoroutineScope,
     locationAccessEnabled: Boolean,
     weatherGoalAdjustmentEnabled: Boolean,
-    onToggleWeatherGoalAdjustment: (Boolean) -> Unit
+    onToggleWeatherGoalAdjustment: (Boolean) -> Unit,
+    measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences = com.example.fluidcheck.util.MeasurementPreferences(),
+    userRole: String = "FREE USER",
+    onPremiumFeatureClick: () -> Unit = {}
 ) {
     val selectionPlaceholder = "Select..."
     val inputPlaceholder = "Input..."
 
     // Auto-populate from Firestore record
-    LaunchedEffect(userRecord) {
+    LaunchedEffect(userRecord, measurementPreferences.volume) {
         userRecord?.let { record ->
-            if (weight.isEmpty()) onWeightChange(record.weight)
-            if (height.isEmpty()) onHeightChange(record.height)
+            if (weight.isEmpty()) onWeightChange(com.example.fluidcheck.util.MeasurementUtils.convertWeightForDisplay(record.weight, measurementPreferences.weight))
+            if (height.isEmpty()) onHeightChange(com.example.fluidcheck.util.MeasurementUtils.convertHeightForDisplay(record.height, measurementPreferences.height))
             if (age.isEmpty()) onAgeChange(record.age)
             if (sex == selectionPlaceholder && record.sex.isNotEmpty()) onSexChange(record.sex)
             if (activity == selectionPlaceholder && record.activity.isNotEmpty()) onActivityChange(record.activity)
@@ -263,7 +279,7 @@ fun SmartGoalSetterCard(
         shape = RoundedCornerShape(32.dp),
         color = Color.White,
         shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = androidx.compose.foundation.BorderStroke(1.dp, Slate100)
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -308,7 +324,7 @@ fun SmartGoalSetterCard(
                     CoachTextField(
                         value = weight, 
                         onValueChange = onWeightChange, 
-                        label = stringResource(R.string.weight_label), 
+                        label = com.example.fluidcheck.util.MeasurementUtils.weightLabel(context, measurementPreferences.weight), 
                         placeholder = inputPlaceholder,
                         modifier = Modifier.focusRequester(weightFocus),
                         imeAction = ImeAction.Next,
@@ -320,7 +336,7 @@ fun SmartGoalSetterCard(
                     CoachTextField(
                         value = height, 
                         onValueChange = onHeightChange, 
-                        label = stringResource(R.string.height_label), 
+                        label = com.example.fluidcheck.util.MeasurementUtils.heightLabel(context, measurementPreferences.height), 
                         placeholder = inputPlaceholder,
                         modifier = Modifier.focusRequester(heightFocus),
                         imeAction = ImeAction.Next,
@@ -389,6 +405,10 @@ fun SmartGoalSetterCard(
 
             if (resultMl != null) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    val formattedResult = try {
+                        val parsed = resultMl.replace(" ml", "").trim().toInt()
+                        com.example.fluidcheck.util.MeasurementUtils.formatVolume(context, parsed, measurementPreferences.volume)
+                    } catch (e: Exception) { resultMl }
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -397,7 +417,7 @@ fun SmartGoalSetterCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Your Ideal Daily Intake: $resultMl",
+                            text = "Your Ideal Daily Intake: $formattedResult",
                             fontWeight = FontWeight.Bold,
                             color = PrimaryBlue,
                             fontSize = 18.sp,
@@ -426,6 +446,10 @@ fun SmartGoalSetterCard(
 
             Button(
                 onClick = {
+                    if (userRole == "FREE USER") {
+                        onPremiumFeatureClick()
+                        return@Button
+                    }
                     if (!isConnected) {
                         showNoInternetDialog = true
                         return@Button
@@ -439,7 +463,10 @@ fun SmartGoalSetterCard(
                         onLoadingChange(true)
                         mainScope.launch {
                             try {
-                                val result = coach.calculateHydrationGoal(weight.trim(), height.trim(), age.trim(), sex, activity, environment)
+                                val metricWeight = com.example.fluidcheck.util.MeasurementUtils.convertWeightToKg(weight.trim(), measurementPreferences.weight)
+                                val metricHeight = com.example.fluidcheck.util.MeasurementUtils.convertHeightToCm(height.trim(), measurementPreferences.height)
+                                val unitsInfo = "User uses ${measurementPreferences.volume.name} for volume, ${measurementPreferences.weight.name} for weight, ${measurementPreferences.height.name} for height."
+                                val result = coach.calculateHydrationGoal(unitsInfo, metricWeight, metricHeight, age.trim(), sex, activity, environment)
                                 onResultMlChange(result ?: "Could not calculate.")
                             } catch (e: Exception) {
                                 onResultMlChange(null)
@@ -469,7 +496,7 @@ fun SmartGoalSetterCard(
 
             Spacer(modifier = Modifier.height(24.dp))
             
-            HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+            HorizontalDivider(color = Slate100, thickness = 1.dp)
             
             Spacer(modifier = Modifier.height(20.dp))
             
@@ -505,7 +532,11 @@ fun SmartGoalSetterCard(
                 Switch(
                     checked = weatherGoalAdjustmentEnabled,
                     onCheckedChange = { enabled ->
-                        onToggleWeatherGoalAdjustment(enabled)
+                        if (userRole == "FREE USER") {
+                            onPremiumFeatureClick()
+                        } else {
+                            onToggleWeatherGoalAdjustment(enabled)
+                        }
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
@@ -526,14 +557,14 @@ fun SmartGoalSetterCard(
                     Icon(
                         imageVector = AppIcons.Info,
                         contentDescription = null,
-                        tint = Color(0xFFEF4444),
+                        tint = ErrorRed,
                         modifier = Modifier.size(16.dp).padding(top = 2.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Calculations may be inaccurate if location services are turned off. You can enable them in Settings.",
                         fontSize = 13.sp,
-                        color = Color(0xFFEF4444),
+                        color = ErrorRed,
                         lineHeight = 18.sp
                     )
                 }
@@ -552,7 +583,10 @@ fun AIHydrationAssessmentCard(
     onLoadingChange: (Boolean) -> Unit,
     assessmentResult: String?,
     onAssessmentResultChange: (String?) -> Unit,
-    mainScope: kotlinx.coroutines.CoroutineScope
+    mainScope: kotlinx.coroutines.CoroutineScope,
+    measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences = com.example.fluidcheck.util.MeasurementPreferences(),
+    userRole: String = "FREE USER",
+    onPremiumFeatureClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showNoInternetDialog by remember { mutableStateOf(false) }
@@ -566,7 +600,7 @@ fun AIHydrationAssessmentCard(
         shape = RoundedCornerShape(32.dp),
         color = Color.White,
         shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = androidx.compose.foundation.BorderStroke(1.dp, Slate100)
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -612,6 +646,10 @@ fun AIHydrationAssessmentCard(
 
             Button(
                 onClick = {
+                    if (userRole == "FREE USER") {
+                        onPremiumFeatureClick()
+                        return@Button
+                    }
                     if (!isConnected) {
                         showNoInternetDialog = true
                         return@Button
@@ -621,10 +659,14 @@ fun AIHydrationAssessmentCard(
                         return@Button
                     }
                     onLoadingChange(true)
+                    val convertedWeight = com.example.fluidcheck.util.MeasurementUtils.convertWeightForDisplay(userRecord?.weight ?: "", measurementPreferences.weight)
+                    val convertedHeight = com.example.fluidcheck.util.MeasurementUtils.convertHeightForDisplay(userRecord?.height ?: "", measurementPreferences.height)
+                    val weightUnit = com.example.fluidcheck.util.MeasurementUtils.weightUnit(context, measurementPreferences.weight)
+                    val heightUnit = com.example.fluidcheck.util.MeasurementUtils.heightUnit(context, measurementPreferences.height)
                     val profileStr = """
                         Username: ${userRecord?.username ?: "User"}
-                        Weight: ${userRecord?.weight ?: "Unknown"} kg
-                        Height: ${userRecord?.height ?: "Unknown"} cm
+                        Weight: $convertedWeight $weightUnit
+                        Height: $convertedHeight $heightUnit
                         Age: ${userRecord?.age ?: "Unknown"}
                         Sex: ${userRecord?.sex ?: "Unknown"}
                         Activity Level: ${userRecord?.activity ?: "Unknown"}
@@ -633,7 +675,8 @@ fun AIHydrationAssessmentCard(
                     
                     mainScope.launch {
                         try {
-                            val result = coach.analyzeHabitsAndRules(logsLast14DaysStr, profileStr)
+                            val unitsInfo = "User uses ${measurementPreferences.volume.name} for volume, ${measurementPreferences.weight.name} for weight, ${measurementPreferences.height.name} for height."
+                            val result = coach.analyzeHabitsAndRules(unitsInfo, logsLast14DaysStr, profileStr)
                             if (result != null) {
                                 onAssessmentResultChange(result.first)
                                 val repository = UserPreferencesRepository(context)
@@ -680,7 +723,10 @@ fun AIRecommendationsCard(
     onLoadingChange: (Boolean) -> Unit,
     recommendation: String?,
     onRecommendationChange: (String?) -> Unit,
-    mainScope: kotlinx.coroutines.CoroutineScope
+    mainScope: kotlinx.coroutines.CoroutineScope,
+    measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences,
+    userRole: String = "FREE USER",
+    onPremiumFeatureClick: () -> Unit = {}
 ) {
     var showNoInternetDialog by remember { mutableStateOf(false) }
     
@@ -696,7 +742,7 @@ fun AIRecommendationsCard(
         shape = RoundedCornerShape(32.dp),
         color = Color.White,
         shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = androidx.compose.foundation.BorderStroke(1.dp, Slate100)
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -769,6 +815,10 @@ fun AIRecommendationsCard(
 
             Button(
                 onClick = {
+                    if (userRole == "FREE USER") {
+                        onPremiumFeatureClick()
+                        return@Button
+                    }
                     if (!isConnected) {
                         showNoInternetDialog = true
                         return@Button
@@ -781,7 +831,8 @@ fun AIRecommendationsCard(
                     onLoadingChange(true)
                     mainScope.launch {
                         try {
-                            val result = coach.getRecommendation(preferences.trim(), habits.trim())
+                            val unitsInfo = "User uses ${measurementPreferences.volume.name} for volume, ${measurementPreferences.weight.name} for weight, ${measurementPreferences.height.name} for height."
+                            val result = coach.getRecommendation(unitsInfo, preferences.trim(), habits.trim())
                             onRecommendationChange(result ?: "Could not get recommendation.")
                         } catch (e: Exception) {
                             onRecommendationChange(null)
@@ -895,7 +946,7 @@ fun CoachTextArea(
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = PrimaryBlue,
             unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
-            unfocusedContainerColor = Color(0xFFF8FAFC),
+            unfocusedContainerColor = Slate50,
             focusedContainerColor = Color.White
         ),
         keyboardOptions = KeyboardOptions(imeAction = imeAction),
@@ -941,7 +992,7 @@ fun ResponsiveDropdownField(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = PrimaryBlue,
                     unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
-                    unfocusedContainerColor = Color(0xFFF8FAFC),
+                    unfocusedContainerColor = Slate50,
                     focusedContainerColor = Color.White
                 ),
                 leadingIcon = icon?.let { { Icon(it, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(24.dp)) } },

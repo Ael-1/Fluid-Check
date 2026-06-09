@@ -49,7 +49,10 @@ fun ProgressScreen(
     firestoreRepository: com.example.fluidcheck.repository.FirestoreRepository,
     dailyGoal: Int,
     accountCreatedAt: Timestamp? = null,
-    allLogs: List<FluidLog>
+    allLogs: List<FluidLog>,
+    measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences = com.example.fluidcheck.util.MeasurementPreferences(),
+    userRole: String = "FREE USER",
+    onPremiumFeatureClick: () -> Unit = {}
 ) {
     var selectedTab by remember { mutableStateOf("Day") }
     var navOffset by remember { mutableIntStateOf(0) }
@@ -60,8 +63,8 @@ fun ProgressScreen(
         navOffset = 0
     }
 
-    val (navLabel, chartData) = remember(selectedTab, navOffset, allLogs, dailyGoal) {
-        getChartDataForRange(selectedTab, navOffset, allLogs, dailyGoal)
+    val (navLabel, chartData) = remember(selectedTab, navOffset, allLogs, dailyGoal, measurementPreferences) {
+        getChartDataForRange(selectedTab, navOffset, allLogs, dailyGoal, measurementPreferences)
     }
 
     // Dynamic Left Bound: User's Account Creation Date
@@ -121,6 +124,7 @@ fun ProgressScreen(
             creationDate = creationDate,
             allLogs = allLogs,
             dailyGoal = dailyGoal,
+            userRole = userRole,
             onDateSelected = { pickedDate ->
                 val todayNow = LocalDate.now(PST_ZONE)
                 navOffset = when (selectedTab) {
@@ -233,7 +237,13 @@ fun ProgressScreen(
                 // Time Range Tabs
                 TimeRangeTabs(
                     selectedTab = selectedTab,
-                    onTabSelected = { selectedTab = it }
+                    onTabSelected = { tab -> 
+                        if (userRole == "FREE USER" && tab != "Day") {
+                            onPremiumFeatureClick()
+                        } else {
+                            selectedTab = tab
+                        }
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(28.dp))
@@ -241,7 +251,13 @@ fun ProgressScreen(
                 // Date Navigation Bar
                 DateNavigationBar(
                     label = navLabel,
-                    onPrevious = { navOffset-- },
+                    onPrevious = { 
+                        if (userRole == "FREE USER" && selectedTab == "Day" && navOffset <= -6) {
+                            onPremiumFeatureClick()
+                        } else {
+                            navOffset-- 
+                        }
+                    },
                     onNext = { navOffset++ },
                     isPreviousEnabled = canGoPrevious,
                     isNextEnabled = canGoNext,
@@ -286,10 +302,11 @@ fun ProgressScreen(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .wrapContentHeight(),
+                .wrapContentHeight()
+                .clickable { if (userRole == "FREE USER") onPremiumFeatureClick() },
             shape = RoundedCornerShape(32.dp),
-            color = Color.White,
-            shadowElevation = 8.dp,
+            color = if (userRole == "FREE USER") Color(0xFFF8FAFC) else Color.White,
+            shadowElevation = if (userRole == "FREE USER") 2.dp else 8.dp,
             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
@@ -302,7 +319,7 @@ fun ProgressScreen(
                         Icon(
                             imageVector = AppIcons.AICoach,
                             contentDescription = null,
-                            tint = PrimaryBlue,
+                            tint = if (userRole == "FREE USER") Color.LightGray else PrimaryBlue,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -310,32 +327,51 @@ fun ProgressScreen(
                             text = "AI Weekly Scorecard",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = TextDark
+                                color = if (userRole == "FREE USER") Color.Gray else TextDark
                             )
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(gradeBgColor)
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = grade,
-                            color = gradeTextColor,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
+                    if (userRole != "FREE USER") {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(gradeBgColor)
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = grade,
+                                color = gradeTextColor,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = AppIcons.Premium,
+                            contentDescription = "Premium",
+                            tint = com.example.fluidcheck.ui.theme.Gold,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = feedback,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        color = MutedForeground,
-                        lineHeight = 22.sp
+                if (userRole != "FREE USER") {
+                    Text(
+                        text = feedback,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            color = MutedForeground,
+                            lineHeight = 22.sp
+                        )
                     )
-                )
+                } else {
+                    Text(
+                        text = "Unlock Premium to get detailed AI analysis on your weekly hydration habits, personalized tips, and a weekly grade.",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            color = MutedForeground.copy(alpha = 0.7f),
+                            lineHeight = 22.sp
+                        )
+                    )
+                }
             }
         }
 
@@ -467,13 +503,14 @@ fun HydrationDatePickerDialog(
     creationDate: LocalDate,
     allLogs: List<FluidLog>,
     dailyGoal: Int,
+    userRole: String,
     onDateSelected: (LocalDate) -> Unit,
     onDismissRequest: () -> Unit
 ) {
     var currentMonth by remember { mutableStateOf(YearMonth.from(initialDate)) }
     var selectedDate by remember { mutableStateOf(initialDate) }
     val today = remember { LocalDate.now(PST_ZONE) }
-    val completedGoalColor = colorResource(id = R.color.water_blue_dark)
+    val completedGoalColor = AccentBlue.copy(alpha = 0.3f)
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
@@ -578,7 +615,8 @@ fun HydrationDatePickerDialog(
                                 
                                 if (dayNum in 1..daysInMonth) {
                                     val cellDate = currentMonth.atDay(dayNum)
-                                    val isSelectable = cellDate >= creationDate && cellDate <= today
+                                    val maxPastDate = if (userRole == "FREE USER") today.minusDays(7) else creationDate
+                                    val isSelectable = cellDate >= maxPastDate && cellDate <= today
                                     val isSelected = cellDate == selectedDate
                                     
                                     // Calculate progress percentage
@@ -593,10 +631,6 @@ fun HydrationDatePickerDialog(
                                             .aspectRatio(1f)
                                             .padding(4.dp)
                                             .clip(RoundedCornerShape(8.dp))
-                                            .background(
-                                                if (isSelected) PrimaryBlue.copy(alpha = 0.15f)
-                                                else Color.Transparent
-                                            )
                                             .clickable(enabled = isSelectable) {
                                                 selectedDate = cellDate
                                             },
@@ -617,12 +651,21 @@ fun HydrationDatePickerDialog(
                                                 // Filled progress sector (pie slice)
                                                 if (progressPct > 0f) {
                                                     val sweepAngle = progressPct * 360f
-                                                    val arcColor = if (progressPct >= 1f) completedGoalColor else AccentBlue
+                                                    val arcColor = completedGoalColor
                                                     drawArc(
                                                         color = arcColor,
                                                         startAngle = -90f,
                                                         sweepAngle = sweepAngle,
                                                         useCenter = true
+                                                    )
+                                                }
+
+                                                // Clean border ring highlight for the selected date
+                                                if (isSelected) {
+                                                    drawCircle(
+                                                        color = PrimaryBlue,
+                                                        radius = radius - 1.dp.toPx(),
+                                                        style = Stroke(width = 2.5f.dp.toPx())
                                                     )
                                                 }
                                             }
@@ -797,7 +840,8 @@ fun getChartDataForRange(
     range: String,
     offset: Int,
     allLogs: List<FluidLog>,
-    dailyGoal: Int
+    dailyGoal: Int,
+    measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences
 ): Pair<String, ChartData> {
     val today = LocalDate.now(PST_ZONE)
     return when (range) {
@@ -846,7 +890,7 @@ fun getChartDataForRange(
                     points = points,
                     xOffsets = xOffsets,
                     xLabels = listOf("12AM", "4AM", "8AM", "12PM", "4PM", "8PM", "11PM"),
-                    yLabels = generateYLabels(chartMax),
+                    yLabels = generateYLabels(chartMax, measurementPreferences),
                     maxValue = chartMax
                 )
             )
@@ -892,7 +936,7 @@ fun getChartDataForRange(
                     points = filteredPoints,
                     xOffsets = xOffsets,
                     xLabels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
-                    yLabels = generateYLabels(chartMax),
+                    yLabels = generateYLabels(chartMax, measurementPreferences),
                     maxValue = chartMax
                 )
             )
@@ -952,7 +996,7 @@ fun getChartDataForRange(
                     points = filteredPoints,
                     xOffsets = xOffsets,
                     xLabels = listOf("Week 1", "Week 2", "Week 3", "Week 4"),
-                    yLabels = generateYLabels(chartMax),
+                    yLabels = generateYLabels(chartMax, measurementPreferences),
                     maxValue = chartMax
                 )
             )
@@ -998,7 +1042,7 @@ fun getChartDataForRange(
                     points = filteredPoints,
                     xOffsets = xOffsets,
                     xLabels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"),
-                    yLabels = generateYLabels(chartMax),
+                    yLabels = generateYLabels(chartMax, measurementPreferences),
                     maxValue = chartMax
                 )
             )
@@ -1006,15 +1050,17 @@ fun getChartDataForRange(
     }
 }
 
-fun generateYLabels(maxValue: Float): List<String> {
+fun generateYLabels(maxValue: Float, measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences): List<String> {
     val steps = 4
-    if (maxValue <= 0f) return listOf("0", "250", "500", "750", "1000")
+    if (maxValue <= 0f) {
+        return (0..steps).map { i -> 
+            val v = i * (1000f / steps)
+            com.example.fluidcheck.util.MeasurementUtils.formatChartLabel(v.toInt(), measurementPreferences.volume)
+        }
+    }
     val interval = maxValue / steps
     return (0..steps).map { i ->
         val value = i * interval
-        when {
-            value >= 1000f -> "${String.format("%.1f", value / 1000f)}k"
-            else -> value.toInt().toString()
-        }
+        com.example.fluidcheck.util.MeasurementUtils.formatChartLabel(value.toInt(), measurementPreferences.volume)
     }
 }

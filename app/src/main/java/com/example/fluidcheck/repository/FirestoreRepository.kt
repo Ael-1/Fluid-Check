@@ -187,7 +187,7 @@ class FirestoreRepository(private val context: Context? = null) {
             activity = document.getString("activity") ?: "",
             environment = document.getString("environment") ?: "",
             setupCompleted = document.getBoolean("setupCompleted") ?: false,
-            role = document.getString("role") ?: "USER",
+            role = document.getString("role") ?: "FREE USER",
             deleted = (document.getBoolean("deleted") ?: document.getBoolean("isDeleted")) ?: false,
             fcmToken = document.getString("fcmToken") ?: "",
             quickAddConfig = quickAddConfig,
@@ -866,6 +866,44 @@ class FirestoreRepository(private val context: Context? = null) {
                     batch.set(docRef, reminder)
                 }
             }.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun upgradeToPremium(userId: String, duration: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        if (userId == "GUEST") {
+            return@withContext Result.failure(Exception("Guest users cannot subscribe."))
+        }
+        try {
+            val now = System.currentTimeMillis()
+            val endDate = if (duration.equals("Yearly", ignoreCase = true)) {
+                now + 31536000000L // 1 year
+            } else {
+                now + 2592000000L // 30 days
+            }
+            usersCollection.document(userId).update(
+                mapOf(
+                    "role" to "PREMIUM USER",
+                    "premiumEndDate" to endDate
+                )
+            ).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun demoteFromPremium(userId: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        if (userId == "GUEST") return@withContext Result.success(Unit)
+        try {
+            usersCollection.document(userId).update(
+                mapOf(
+                    "role" to "FREE USER",
+                    "premiumEndDate" to com.google.firebase.firestore.FieldValue.delete()
+                )
+            ).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

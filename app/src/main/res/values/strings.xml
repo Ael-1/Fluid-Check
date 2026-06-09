@@ -102,6 +102,30 @@
     <string name="disabled">Disabled</string>
     <string name="syncing">Syncing</string>
     <string name="rights_reserved">Fluid Check All Rights Reserved</string>
+
+    <!-- Measurement System -->
+    <string name="measurement_system">Measurement System</string>
+    <string name="measurement_system_subtitle">Choose your preferred units for volume, weight, and height.</string>
+
+    <string name="fl_oz_unit">oz</string>
+    <string name="lbs_unit">lbs</string>
+    <string name="ft_unit">ft</string>
+    <string name="kg_unit">kg</string>
+    <string name="cm_unit">cm</string>
+    <string name="oz_unit">oz</string>
+    <string name="ft_in_unit">ft\'in\"</string>
+
+    <string name="amount_ml_label">Amount (ml)</string>
+    <string name="amount_oz_label">Amount (oz)</string>
+    <string name="daily_goal_ml_label">Daily Goal (ml)</string>
+    <string name="daily_goal_oz_label">Daily Goal (oz)</string>
+    <string name="weight_lbs_label">Weight (lbs)</string>
+    <string name="height_ft_in_label">Height (ft\'in\")</string>
+    
+    <string name="progress_ring_format">%1$s / %2$s %3$s</string>
+    <string name="value_with_unit">%1$s %2$s</string>
+    <string name="value_with_unit_compact">%1$s%2$s</string>
+
     <string name="profile_title">Profile</string>
     <string name="personal_records_title">Personal Records</string>
     <string name="activity_level_label">Activity Level</string>

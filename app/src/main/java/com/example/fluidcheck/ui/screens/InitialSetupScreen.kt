@@ -36,10 +36,16 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.launch
 
+import com.example.fluidcheck.util.MeasurementPreferences
+import com.example.fluidcheck.util.VolumeUnit
+import com.example.fluidcheck.util.WeightUnit
+import com.example.fluidcheck.util.HeightUnit
+import com.example.fluidcheck.util.MeasurementUtils
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InitialSetupScreen(
-    onComplete: (UserRecord, Int?) -> Unit
+    onComplete: (UserRecord, Int?, MeasurementPreferences) -> Unit
 ) {
     var weight by remember { mutableStateOf("") }
     var height by remember { mutableStateOf("") }
@@ -56,6 +62,10 @@ fun InitialSetupScreen(
     var actExpanded by remember { mutableStateOf(false) }
     var envExpanded by remember { mutableStateOf(false) }
 
+    var selectedVolumeUnit by remember { mutableStateOf(VolumeUnit.METRIC) }
+    var selectedWeightUnit by remember { mutableStateOf(WeightUnit.METRIC) }
+    var selectedHeightUnit by remember { mutableStateOf(HeightUnit.METRIC) }
+
     var showError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
     
@@ -71,70 +81,12 @@ fun InitialSetupScreen(
     val weightFocus = remember { FocusRequester() }
     val heightFocus = remember { FocusRequester() }
     val ageFocus = remember { FocusRequester() }
-    val coach = remember { GeminiCoach(BuildConfig.GEMINI_API_KEY) }
-    val scope = rememberCoroutineScope()
-    var isLoadingGoal by remember { mutableStateOf(false) }
-    var showGoalDialog by remember { mutableStateOf<String?>(null) }
 
     fun isInternetAvailable(): Boolean {
         val connectivityManager = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
         val network = connectivityManager.activeNetwork ?: return false
         val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
         return capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
-    }
-
-    if (showGoalDialog != null) {
-        AlertDialog(
-            onDismissRequest = { /* Force choice */ },
-            title = { Text("Personalized Goal", fontWeight = FontWeight.Bold) },
-            text = { Text("Based on your profile, the AI suggests a daily goal of $showGoalDialog. Would you like to set this as your daily goal?") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val goal = showGoalDialog?.filter { it.isDigit() }?.toIntOrNull()
-                        onComplete(
-                            UserRecord(
-                                weight = weight, 
-                                height = height, 
-                                age = age, 
-                                sex = sex, 
-                                activity = activity, 
-                                environment = environment, 
-                                setupCompleted = true,
-                                quickAddConfig = DEFAULT_QUICK_ADD_CONFIGS
-                            ),
-                            goal
-                        )
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
-                ) {
-                    Text("Set as Daily Goal")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        onComplete(
-                            UserRecord(
-                                weight = weight, 
-                                height = height, 
-                                age = age, 
-                                sex = sex, 
-                                activity = activity, 
-                                environment = environment, 
-                                setupCompleted = true,
-                                quickAddConfig = DEFAULT_QUICK_ADD_CONFIGS
-                            ),
-                            3000 // Explicitly use 3000ml as requested
-                        )
-                    }
-                ) {
-                    Text("Use Default (3000ml)", color = Color.Gray)
-                }
-            },
-            containerColor = Color.White,
-            shape = RoundedCornerShape(28.dp)
-        )
     }
 
     Box(
@@ -204,6 +156,41 @@ fun InitialSetupScreen(
                     
                     Spacer(modifier = Modifier.height(24.dp))
 
+                    Text(
+                        text = "Measurement System",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextDark,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        MeasurementSystemCard(
+                            title = "Metric",
+                            subtitle = "ml, kg, cm",
+                            selected = selectedVolumeUnit == VolumeUnit.METRIC && selectedWeightUnit == WeightUnit.METRIC && selectedHeightUnit == HeightUnit.METRIC,
+                            onClick = { 
+                                selectedVolumeUnit = VolumeUnit.METRIC
+                                selectedWeightUnit = WeightUnit.METRIC
+                                selectedHeightUnit = HeightUnit.METRIC
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        MeasurementSystemCard(
+                            title = "Imperial",
+                            subtitle = "oz, lbs, ft",
+                            selected = selectedVolumeUnit == VolumeUnit.IMPERIAL && selectedWeightUnit == WeightUnit.IMPERIAL && selectedHeightUnit == HeightUnit.IMPERIAL,
+                            onClick = { 
+                                selectedVolumeUnit = VolumeUnit.IMPERIAL
+                                selectedWeightUnit = WeightUnit.IMPERIAL
+                                selectedHeightUnit = HeightUnit.IMPERIAL
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
                     if (showError) {
                         Text(
                             text = errorMessage,
@@ -216,7 +203,7 @@ fun InitialSetupScreen(
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Box(modifier = Modifier.weight(1f)) {
                             ResponsiveEditField(
-                                label = stringResource(R.string.weight_kg_label), 
+                                label = MeasurementUtils.weightLabel(context, selectedWeightUnit), 
                                 value = weight, 
                                 onValueChange = { weight = it }, 
                                 icon = AppIcons.Scale, 
@@ -229,7 +216,7 @@ fun InitialSetupScreen(
                         Spacer(modifier = Modifier.width(16.dp))
                         Box(modifier = Modifier.weight(1f)) {
                             ResponsiveEditField(
-                                label = stringResource(R.string.height_cm_label), 
+                                label = MeasurementUtils.heightLabel(context, selectedHeightUnit), 
                                 value = height, 
                                 onValueChange = { height = it }, 
                                 icon = AppIcons.Height, 
@@ -298,93 +285,34 @@ fun InitialSetupScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    val isFormFull = weight.isNotBlank() && height.isNotBlank() && age.isNotBlank() && 
-                                     sex != selectionPlaceholder && activity != selectionPlaceholder && environment != selectionPlaceholder
-                    
                     val isFormEmpty = weight.isBlank() && height.isBlank() && age.isBlank() && 
                                       sex == selectionPlaceholder && activity == selectionPlaceholder && environment == selectionPlaceholder
 
                     Button(
                         onClick = {
-                            if (isFormFull) {
-                                if (!isInternetAvailable()) {
-                                    Toast.makeText(context, "Internet connection required for AI recommendations", Toast.LENGTH_SHORT).show()
-                                    return@Button
-                                }
-                                showError = false
-                                isLoadingGoal = true
-                                scope.launch {
-                                    val goal = coach.calculateHydrationGoal(weight, height, age, sex, activity, environment)
-                                    isLoadingGoal = false
-                                    if (goal != null) {
-                                        showGoalDialog = goal
-                                    } else {
-                                        onComplete(
-                                            UserRecord(
-                                                weight = weight.trim(), 
-                                                height = height.trim(), 
-                                                age = age.trim(), 
-                                                sex = sex, 
-                                                activity = activity, 
-                                                environment = environment, 
-                                                setupCompleted = true,
-                                                quickAddConfig = DEFAULT_QUICK_ADD_CONFIGS
-                                            ),
-                                            3000
-                                        )
-                                    }
-                                }
-                            }
+                            onComplete(
+                                UserRecord(
+                                    weight = MeasurementUtils.convertWeightToKg(weight.trim(), selectedWeightUnit), 
+                                    height = MeasurementUtils.convertHeightToCm(height.trim(), selectedHeightUnit), 
+                                    age = age.trim(), 
+                                    sex = if (sex == selectionPlaceholder) "" else sex, 
+                                    activity = if (activity == selectionPlaceholder) "" else activity, 
+                                    environment = if (environment == selectionPlaceholder) "" else environment, 
+                                    setupCompleted = true,
+                                    quickAddConfig = DEFAULT_QUICK_ADD_CONFIGS
+                                ),
+                                3000,
+                                MeasurementPreferences(selectedVolumeUnit, selectedWeightUnit, selectedHeightUnit)
+                            )
                         },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(60.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                        enabled = !isLoadingGoal && isFormFull
+                        enabled = !isFormEmpty
                     ) {
-                        if (isLoadingGoal) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                        } else {
-                            Icon(
-                                imageVector = AppIcons.AICoach,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
-                                tint = if (isFormFull) Color.White else Color.White.copy(alpha = 0.5f)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("AI Personalized Goal", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        }
-                    }
-                    
-                    // Show Finish Setup whenever ANY data is entered
-                    if (!isFormEmpty) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedButton(
-                            onClick = {
-                                onComplete(
-                                    UserRecord(
-                                        weight = weight.trim(), 
-                                        height = height.trim(), 
-                                        age = age.trim(), 
-                                        sex = if (sex == selectionPlaceholder) "" else sex, 
-                                        activity = if (activity == selectionPlaceholder) "" else activity, 
-                                        environment = if (environment == selectionPlaceholder) "" else environment, 
-                                        setupCompleted = true,
-                                        quickAddConfig = DEFAULT_QUICK_ADD_CONFIGS
-                                    ),
-                                    3000
-                                )
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(60.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            border = androidx.compose.foundation.BorderStroke(2.dp, PrimaryBlue),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryBlue)
-                        ) {
-                            Text(stringResource(R.string.finish_setup), fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        }
+                        Text(stringResource(R.string.finish_setup), fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
                     
                     Spacer(modifier = Modifier.height(8.dp))
@@ -395,7 +323,7 @@ fun InitialSetupScreen(
                             // but we can decide if it saves current inputs.
                             // Based on Turn 285, "if there are inputs... it is stored" applied to the finish path.
                             // We'll keep Skip for now as the pure default path.
-                            onComplete(UserRecord(setupCompleted = true, quickAddConfig = DEFAULT_QUICK_ADD_CONFIGS), 3000)
+                            onComplete(UserRecord(setupCompleted = true, quickAddConfig = DEFAULT_QUICK_ADD_CONFIGS), 3000, MeasurementPreferences())
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -539,6 +467,32 @@ fun ResponsiveDropdownField(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun MeasurementSystemCard(
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(80.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = if (selected) PrimaryBlue.copy(alpha = 0.1f) else Color.White,
+        border = androidx.compose.foundation.BorderStroke(2.dp, if (selected) PrimaryBlue else Color(0xFFF1F5F9))
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(8.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = title, fontWeight = FontWeight.Bold, color = if (selected) PrimaryBlue else TextDark)
+            Text(text = subtitle, fontSize = 12.sp, color = MutedForeground)
         }
     }
 }

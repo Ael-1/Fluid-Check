@@ -66,7 +66,7 @@ object AppIcons {
     val Schedule = Icons.Outlined.Schedule
     val Streak = Icons.Default.LocalFireDepartment
     val Goal = Icons.Default.Star
-
+    val Premium = Icons.Default.WorkspacePremium
     val Notifications = Icons.Outlined.Notifications
     val Lightbulb = Icons.Outlined.Lightbulb
     val Psychology = Icons.Outlined.Psychology

@@ -42,7 +42,7 @@ data class UserRecord(
     val activity: String = "",
     val environment: String = "",
     val setupCompleted: Boolean = false,
-    val role: String = "USER",
+    val role: String = "FREE USER",
     val dailyGoal: Int? = 3000,
     
     // New fields from section 7 of TODO.md
@@ -57,7 +57,8 @@ data class UserRecord(
     val totalFluidDrankAllTime: Int = 0,
     val totalRingsClosed: Int = 0,
     val createdAt: Timestamp? = null,
-    val emailVerified: Boolean = false
+    val emailVerified: Boolean = false,
+    val premiumEndDate: Long? = null
 ) {
     fun isEmpty(): Boolean {
         return weight.isEmpty() && height.isEmpty() && age.isEmpty() && 

@@ -65,6 +65,7 @@ fun EditProfileScreen(
     repository: UserPreferencesRepository,
     firestoreRepository: FirestoreRepository = remember { FirestoreRepository() },
     authRepository: AuthRepository = remember { AuthRepository() },
+    measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences = com.example.fluidcheck.util.MeasurementPreferences(),
     onBack: () -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -128,8 +129,8 @@ fun EditProfileScreen(
 
 
     // States for personal records
-    var weight by remember(currentRecord) { mutableStateOf(currentRecord?.weight ?: "") }
-    var height by remember(currentRecord) { mutableStateOf(currentRecord?.height ?: "") }
+    var weight by remember(currentRecord, measurementPreferences) { mutableStateOf(currentRecord?.weight?.let { com.example.fluidcheck.util.MeasurementUtils.convertWeightForDisplay(it, measurementPreferences.weight) } ?: "") }
+    var height by remember(currentRecord, measurementPreferences) { mutableStateOf(currentRecord?.height?.let { com.example.fluidcheck.util.MeasurementUtils.convertHeightForDisplay(it, measurementPreferences.height) } ?: "") }
     var age by remember(currentRecord) { mutableStateOf(currentRecord?.age ?: "") }
     
     val placeholder = "Please select..."
@@ -273,12 +274,14 @@ fun EditProfileScreen(
                 }
 
                 // 5. Save User Record
+                val convertedWeight = com.example.fluidcheck.util.MeasurementUtils.convertWeightToKg(weight.trim(), measurementPreferences.weight)
+                val convertedHeight = com.example.fluidcheck.util.MeasurementUtils.convertHeightToCm(height.trim(), measurementPreferences.height)
                 val newRecord = (currentRecord ?: UserRecord()).copy(
                     uid = userId,
                     username = editableUsername.trim(),
                     email = if (emailChanged && isConnected) (currentRecord?.email ?: "") else editableEmail.trim(),
-                    weight = weight.trim(),
-                    height = height.trim(),
+                    weight = convertedWeight,
+                    height = convertedHeight,
                     age = age.trim(),
                     sex = sex,
                     activity = activity,
@@ -360,25 +363,35 @@ fun EditProfileScreen(
         }
     }
 
+    fun checkHasChanges(): Boolean {
+        val record = currentRecord ?: return false
+        val photoChanged = pendingPhotoUri != null || (isPhotoRemoved && record.profilePictureUrl.isNotEmpty())
+        
+        val initialWeight = record.weight.let { com.example.fluidcheck.util.MeasurementUtils.convertWeightForDisplay(it, measurementPreferences.weight) }
+        val initialHeight = record.height.let { com.example.fluidcheck.util.MeasurementUtils.convertHeightForDisplay(it, measurementPreferences.height) }
+        val initialAge = record.age
+        val initialSex = if (record.sex.isEmpty()) placeholder else record.sex
+        val initialActivity = if (record.activity.isEmpty()) placeholder else record.activity
+        val initialEnvironment = if (record.environment.isEmpty()) placeholder else record.environment
+        
+        return photoChanged || 
+               editableUsername.trim() != record.username ||
+               editableEmail.trim() != (record.email ?: "") ||
+               editablePassword.isNotEmpty() ||
+               weight.trim() != initialWeight.trim() ||
+               height.trim() != initialHeight.trim() ||
+               age.trim() != initialAge.trim() ||
+               sex != initialSex ||
+               activity != initialActivity ||
+               environment != initialEnvironment
+    }
+
     // Task 1.9: Adaptive Save Button Logic
     val hasChanges = remember(
         editableUsername, editableEmail, editablePassword, weight, height, age, sex, activity, environment, 
         pendingPhotoUri, isPhotoRemoved, currentRecord
     ) {
-        val original = currentRecord ?: return@remember false
-        val changedUsername = editableUsername != original.username
-        val changedWeight = weight != original.weight
-        val changedHeight = height != original.height
-        val changedAge = age != original.age
-        val changedSex = sex != (original.sex.ifEmpty { placeholder })
-        val changedActivity = activity != (original.activity.ifEmpty { placeholder })
-        val changedEnvironment = environment != (original.environment.ifEmpty { placeholder })
-        val changedEmail = editableEmail != (original.email ?: "")
-        val changedPhoto = pendingPhotoUri != null || isPhotoRemoved
-        val changedPassword = editablePassword.isNotEmpty()
-
-        changedUsername || changedEmail || changedWeight || changedHeight || changedAge || 
-        changedSex || changedActivity || changedEnvironment || changedPhoto || changedPassword
+        checkHasChanges()
     }
 
 
@@ -600,24 +613,8 @@ fun EditProfileScreen(
         }
     }
 
-    fun hasChanges(): Boolean {
-        val record = currentRecord ?: UserRecord()
-        val photoChanged = pendingPhotoUri != null || (isPhotoRemoved && record.profilePictureUrl.isNotEmpty())
-        
-        return photoChanged || 
-               editableUsername != (record.username.ifEmpty { username }) ||
-               editableEmail != record.email ||
-               editablePassword.isNotEmpty() ||
-               weight != record.weight ||
-               height != record.height ||
-               age != record.age ||
-               sex != (if (record.sex.isEmpty()) placeholder else record.sex) ||
-               activity != (if (record.activity.isEmpty()) placeholder else record.activity) ||
-               environment != (if (record.environment.isEmpty()) placeholder else record.environment)
-    }
-
     val onAttemptBack = {
-        if (hasChanges()) {
+        if (checkHasChanges()) {
             showUnsavedChangesDialog = true
         } else {
             onBack()
@@ -758,7 +755,7 @@ fun EditProfileScreen(
                 Text(
                     text = if (isSuccess) "Success" else "Update Failed",
                     fontWeight = FontWeight.Bold,
-                    color = if (isSuccess) Color(0xFF10B981) else Color(0xFFEF4444)
+                    color = if (isSuccess) Emerald500 else ErrorRed
                 )
             },
             text = { Text(message) },
@@ -850,7 +847,7 @@ fun EditProfileScreen(
                     @Suppress("DEPRECATION")
                     Text(
                         text = "Please fill in all fields and selections.",
-                        color = Color.Red,
+                        color = ErrorRed,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
@@ -864,7 +861,8 @@ fun EditProfileScreen(
                     sex = sex, onSexChange = { sex = it },
                     activity = activity, onActivityChange = { activity = it },
                     environment = environment, onEnvironmentChange = { environment = it },
-                    enabled = !isLoading
+                    enabled = !isLoading,
+                    measurementPreferences = measurementPreferences
                 )
             }
 
@@ -894,8 +892,14 @@ fun EditProfileScreen(
 
                             // Task 12.2: Numeric Range Validation
                             if (showPersonalRecords) {
-                                val wErr = com.example.fluidcheck.util.ValidationUtils.validateWeight(weight.toFloatOrNull())
-                                val hErr = com.example.fluidcheck.util.ValidationUtils.validateHeight(height.toFloatOrNull())
+                                val parsedHeight = if (measurementPreferences.height == com.example.fluidcheck.util.HeightUnit.IMPERIAL && height.contains("'")) {
+                                    val cm = com.example.fluidcheck.util.MeasurementUtils.convertHeightToCm(height, measurementPreferences.height).toFloatOrNull()
+                                    cm?.let { it / 2.54f }
+                                } else {
+                                    height.toFloatOrNull()
+                                }
+                                val wErr = com.example.fluidcheck.util.ValidationUtils.validateWeight(context, weight.toFloatOrNull(), measurementPreferences.weight)
+                                val hErr = com.example.fluidcheck.util.ValidationUtils.validateHeight(context, parsedHeight, measurementPreferences.height)
                                 val aErr = com.example.fluidcheck.util.ValidationUtils.validateAge(age.toIntOrNull())
                                 
                                 val firstErr = wErr ?: hErr ?: aErr
@@ -974,7 +978,7 @@ fun ProfileSettingsContainer(
         shape = RoundedCornerShape(40.dp),
         color = Color.White,
         shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = androidx.compose.foundation.BorderStroke(1.dp, Slate100)
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             @Suppress("DEPRECATION")
@@ -1084,9 +1088,9 @@ fun ProfileSettingsContainer(
                                 .padding(top = 4.dp, start = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.CheckCircle, contentDescription = "Verified", tint = Color(0xFF10B981), modifier = Modifier.size(14.dp))
+                            Icon(Icons.Default.CheckCircle, contentDescription = "Verified", tint = Emerald500, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Verified", color = Color(0xFF10B981), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            Text("Verified", color = Emerald500, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                         }
                     } else {
                         TextButton(
@@ -1154,12 +1158,14 @@ fun PersonalRecordsContainer(
     sex: String, onSexChange: (String) -> Unit,
     activity: String, onActivityChange: (String) -> Unit,
     environment: String, onEnvironmentChange: (String) -> Unit,
-    enabled: Boolean
+    enabled: Boolean,
+    measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences = com.example.fluidcheck.util.MeasurementPreferences()
 ) {
     var sexExpanded by remember { mutableStateOf(false) }
     var actExpanded by remember { mutableStateOf(false) }
     var envExpanded by remember { mutableStateOf(false) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     // Focus Requesters for task 11.8
     val weightFocus = remember { FocusRequester() }
@@ -1175,7 +1181,7 @@ fun PersonalRecordsContainer(
         shape = RoundedCornerShape(40.dp),
         color = Color.White,
         shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = androidx.compose.foundation.BorderStroke(1.dp, Slate100)
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             @Suppress("DEPRECATION")
@@ -1191,7 +1197,7 @@ fun PersonalRecordsContainer(
             Row(modifier = Modifier.fillMaxWidth()) {
                 Box(modifier = Modifier.weight(1f)) {
                     EditField(
-                        label = stringResource(R.string.weight_kg_label), 
+                        label = com.example.fluidcheck.util.MeasurementUtils.weightLabel(context, measurementPreferences.weight), 
                         value = weight, 
                         onValueChange = onWeightChange, 
                         icon = AppIcons.Scale, 
@@ -1204,7 +1210,7 @@ fun PersonalRecordsContainer(
                 Spacer(modifier = Modifier.width(16.dp))
                 Box(modifier = Modifier.weight(1f)) {
                     EditField(
-                        label = stringResource(R.string.height_cm_label), 
+                        label = com.example.fluidcheck.util.MeasurementUtils.heightLabel(context, measurementPreferences.height), 
                         value = height, 
                         onValueChange = { onHeightChange(it) }, 
                         icon = AppIcons.Height, 

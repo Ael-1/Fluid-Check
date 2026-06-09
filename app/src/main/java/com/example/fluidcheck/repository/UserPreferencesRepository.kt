@@ -5,6 +5,10 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.fluidcheck.model.UserRecord
+import com.example.fluidcheck.util.MeasurementPreferences
+import com.example.fluidcheck.util.VolumeUnit
+import com.example.fluidcheck.util.WeightUnit
+import com.example.fluidcheck.util.HeightUnit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -34,6 +38,9 @@ class UserPreferencesRepository(private val context: Context) {
         fun locationAccessEnabledKey(userId: String) = booleanPreferencesKey(sanitize("${userId}_location_access_enabled"))
         fun weatherGoalAdjustmentEnabledKey(userId: String) = booleanPreferencesKey(sanitize("${userId}_weather_goal_adjustment_enabled"))
         fun predictiveRemindersKey(userId: String) = stringPreferencesKey(sanitize("${userId}_predictive_reminders"))
+        fun volumeUnitKey(userId: String) = stringPreferencesKey(sanitize("${userId}_volume_unit"))
+        fun weightUnitKey(userId: String) = stringPreferencesKey(sanitize("${userId}_weight_unit"))
+        fun heightUnitKey(userId: String) = stringPreferencesKey(sanitize("${userId}_height_unit"))
     }
 
     fun getUserRecord(userId: String): Flow<UserRecord> = context.dataStore.data.map { preferences ->
@@ -50,7 +57,7 @@ class UserPreferencesRepository(private val context: Context) {
             setupCompleted = preferences[PreferencesKeys.setupCompleteKey(userId)] ?: false,
             notificationsEnabled = preferences[PreferencesKeys.notificationsEnabledKey(userId)],
             reminderFrequency = preferences[PreferencesKeys.reminderFrequencyKey(userId)] ?: "60",
-            role = preferences[PreferencesKeys.roleKey(userId)] ?: "USER"
+            role = preferences[PreferencesKeys.roleKey(userId)] ?: "FREE USER"
         )
     }
 
@@ -140,7 +147,7 @@ class UserPreferencesRepository(private val context: Context) {
     }
 
     fun getStoredRole(userId: String): Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[PreferencesKeys.roleKey(userId)] ?: "USER"
+        preferences[PreferencesKeys.roleKey(userId)] ?: "FREE USER"
     }
 
     suspend fun saveStoredRole(userId: String, role: String) {
@@ -179,6 +186,16 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
+    fun isSmartRemindersEnabled(userId: String): Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[booleanPreferencesKey(PreferencesKeys.sanitize("${userId}_smart_reminders_enabled"))] ?: false
+    }
+
+    suspend fun setSmartRemindersEnabled(userId: String, enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[booleanPreferencesKey(PreferencesKeys.sanitize("${userId}_smart_reminders_enabled"))] = enabled
+        }
+    }
+
     fun getLastShownCongratulationsDate(userId: String): Flow<String> = context.dataStore.data.map { preferences ->
         preferences[stringPreferencesKey(PreferencesKeys.sanitize("${userId}_last_congratulations_shown_date"))] ?: ""
     }
@@ -186,6 +203,35 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun saveLastShownCongratulationsDate(userId: String, date: String) {
         context.dataStore.edit { preferences ->
             preferences[stringPreferencesKey(PreferencesKeys.sanitize("${userId}_last_congratulations_shown_date"))] = date
+        }
+    }
+
+    fun getMeasurementPreferences(userId: String): Flow<MeasurementPreferences> = context.dataStore.data.map { preferences ->
+        val volStr = preferences[PreferencesKeys.volumeUnitKey(userId)] ?: VolumeUnit.METRIC.name
+        val weightStr = preferences[PreferencesKeys.weightUnitKey(userId)] ?: WeightUnit.METRIC.name
+        val heightStr = preferences[PreferencesKeys.heightUnitKey(userId)] ?: HeightUnit.METRIC.name
+        MeasurementPreferences(
+            volume = VolumeUnit.fromString(volStr),
+            weight = WeightUnit.fromString(weightStr),
+            height = HeightUnit.fromString(heightStr)
+        )
+    }
+
+    suspend fun setVolumeUnit(userId: String, unit: VolumeUnit) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.volumeUnitKey(userId)] = unit.name
+        }
+    }
+
+    suspend fun setWeightUnit(userId: String, unit: WeightUnit) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.weightUnitKey(userId)] = unit.name
+        }
+    }
+
+    suspend fun setHeightUnit(userId: String, unit: HeightUnit) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.heightUnitKey(userId)] = unit.name
         }
     }
 }

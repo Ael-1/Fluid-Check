@@ -52,6 +52,9 @@ import com.example.fluidcheck.ui.theme.AppBackground
 import com.example.fluidcheck.ui.theme.AppIcons
 import com.example.fluidcheck.ui.theme.PrimaryBlue
 import com.example.fluidcheck.ui.theme.TextDark
+import com.example.fluidcheck.ui.theme.Slate50
+import com.example.fluidcheck.ui.theme.Slate100
+import com.example.fluidcheck.ui.theme.ErrorRed
 import com.example.fluidcheck.util.NetworkMonitor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -97,6 +100,9 @@ fun MainScreen(
     val repository = remember { UserPreferencesRepository(context) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
+    val measurementPreferencesFlow = remember(userId) { repository.getMeasurementPreferences(userId) }
+    val measurementPreferences by measurementPreferencesFlow.collectAsState(initial = com.example.fluidcheck.util.MeasurementPreferences())
+
     // Use userId (UID) for synchronization as document ID
     val userRecordFlow = remember(userId) { firestoreRepository.getUserRecordFlow(userId) }
     val userRecord by userRecordFlow.collectAsState(initial = null)
@@ -120,9 +126,39 @@ fun MainScreen(
     var aiRecsRecommendation by rememberSaveable { mutableStateOf<String?>(null) }
     
     // Core administrative check from database - Now includes MODERATOR
-    val userRole = userRecord?.role ?: "USER"
+    val userRole = userRecord?.role ?: "FREE USER"
     val isDatabaseAdmin = userRole == "ADMIN" || userRole == "MODERATOR"
     val isPrimaryAdmin = userRole == "ADMIN"
+    
+    var showPremiumDialog by remember { mutableStateOf(false) }
+
+    if (showPremiumDialog) {
+        com.example.fluidcheck.ui.screens.PremiumPaywallDialog(
+            onDismiss = { showPremiumDialog = false },
+            onSubscribeMonthly = {
+                scope.launch {
+                    val result = firestoreRepository.upgradeToPremium(userId, "monthly")
+                    if (result.isSuccess) {
+                        showPremiumDialog = false
+                        android.widget.Toast.makeText(context, "Upgraded to Premium (Monthly)!", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        android.widget.Toast.makeText(context, "Upgrade failed: ${result.exceptionOrNull()?.message}", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                }
+            },
+            onSubscribeYearly = {
+                scope.launch {
+                    val result = firestoreRepository.upgradeToPremium(userId, "yearly")
+                    if (result.isSuccess) {
+                        showPremiumDialog = false
+                        android.widget.Toast.makeText(context, "Upgraded to Premium (Yearly)!", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        android.widget.Toast.makeText(context, "Upgrade failed: ${result.exceptionOrNull()?.message}", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        )
+    }
     
     // Last session's mode from DataStore
     val adminModePrefFlow = remember(userId) { repository.getAdminModeFlow(userId) }
@@ -134,6 +170,9 @@ fun MainScreen(
     val dynamicWeatherFlow = remember(userId) { repository.isWeatherGoalAdjustmentEnabled(userId) }
     val dynamicWeatherEnabled by dynamicWeatherFlow.collectAsState(initial = null)
 
+    val smartRemindersFlow = remember(userId) { repository.isSmartRemindersEnabled(userId) }
+    val smartRemindersEnabled by smartRemindersFlow.collectAsState(initial = null)
+
     val allLogsFlow = remember(userId) { firestoreRepository.getFluidLogsFlow(userId) }
     val allLogs by allLogsFlow.collectAsState(initial = null)
     
@@ -143,6 +182,7 @@ fun MainScreen(
                     userId.isEmpty() || 
                     locationAccessEnabled == null || 
                     dynamicWeatherEnabled == null || 
+                    smartRemindersEnabled == null || 
                     allLogs == null
 
     // UI state for switching between User and Admin views
@@ -180,18 +220,22 @@ fun MainScreen(
     }
 
     // Notification states
-    // Default to system permission status if user hasn't made an explicit choice yet.
     val notificationsEnabled = userRecord?.notificationsEnabled ?: hasNotificationPermission
     val reminderFrequency = userRecord?.reminderFrequency ?: "60"
 
     // Sync WorkManager when settings change
-    LaunchedEffect(notificationsEnabled, reminderFrequency, hasNotificationPermission, userId, locationAccessEnabled, dynamicWeatherEnabled) {
+    LaunchedEffect(notificationsEnabled, reminderFrequency, hasNotificationPermission, userId, locationAccessEnabled, dynamicWeatherEnabled, smartRemindersEnabled) {
         if (notificationsEnabled && hasNotificationPermission) {
             val freqInt = reminderFrequency.toIntOrNull() ?: 60
             com.example.fluidcheck.util.NotificationScheduler.scheduleReminders(context, userId, freqInt)
-            com.example.fluidcheck.util.NotificationScheduler.scheduleSmartReminders(context, userId)
             
-            if (locationAccessEnabled == true && dynamicWeatherEnabled == true) {
+            if (smartRemindersEnabled == true) {
+                com.example.fluidcheck.util.NotificationScheduler.scheduleSmartReminders(context, userId)
+            } else {
+                com.example.fluidcheck.util.NotificationScheduler.cancelSmartReminders(context)
+            }
+            
+            if (smartRemindersEnabled == true && locationAccessEnabled == true && dynamicWeatherEnabled == true) {
                 com.example.fluidcheck.util.NotificationScheduler.scheduleWeatherSync(context, userId)
             } else {
                 com.example.fluidcheck.util.NotificationScheduler.cancelWeatherSync(context)
@@ -251,6 +295,26 @@ fun MainScreen(
     // Network and sync state for System Status section
     val networkMonitor = remember { NetworkMonitor(context) }
     val isConnected by networkMonitor.isConnected.collectAsState(initial = true)
+    
+    // Offline Blocking Dialog for Free Users
+    if (!isConnected && userRole == "FREE USER") {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { },
+            title = { 
+                androidx.compose.material3.Text(
+                    text = "Connection Required", 
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = ErrorRed
+                ) 
+            },
+            text = { androidx.compose.material3.Text("Internet connection required. Please try again.") },
+            confirmButton = { },
+            containerColor = androidx.compose.ui.graphics.Color.White,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+            properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+        )
+    }
+    
     val hasPendingWritesFlow = remember(userId) { firestoreRepository.hasPendingWritesFlow(userId) }
     val hasPendingWrites by hasPendingWritesFlow.collectAsState(initial = true)
 
@@ -276,6 +340,9 @@ fun MainScreen(
     if (showLogSheet) {
         LogNewDrinkSheet(
             onDismiss = { showLogSheet = false },
+            VolumeUnit = measurementPreferences.volume,
+            userRole = userRole,
+            onPremiumFeatureClick = { showPremiumDialog = true },
             onConfirm = { type, amount ->
                 scope.launch {
                     try {
@@ -300,7 +367,7 @@ fun MainScreen(
                             val caps = cm.getNetworkCapabilities(activeNet)
                             val isActuallyConnected = caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
                             
-                            val msg = if (isActuallyConnected) "Logged $amount ml of $type" else "Saved locally. Will sync once online."
+                            val msg = if (isActuallyConnected) "Logged ${com.example.fluidcheck.util.MeasurementUtils.formatVolume(context, amount, measurementPreferences.volume)} of $type" else "Saved locally. Will sync once online."
                             android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
                         } else {
                             val msg = if (isConnected) "Error logging drink" else "Error saving locally"
@@ -351,7 +418,8 @@ fun MainScreen(
                         android.widget.Toast.makeText(context, "Delete failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
-            }
+            },
+            VolumeUnit = measurementPreferences.volume
         )
     }
 
@@ -468,6 +536,9 @@ fun MainScreen(
                             logs = todayLogs,
                             streakDays = databaseStreak,
                             quickAddConfigs = quickAddConfigs,
+                            measurementPreferences = measurementPreferences,
+                            userRole = userRole,
+                            onPremiumFeatureClick = { showPremiumDialog = true },
                             onUpdateGoal = { newGoal ->
                                 scope.launch {
                                     try {
@@ -506,7 +577,7 @@ fun MainScreen(
                                             val caps = cm.getNetworkCapabilities(activeNet)
                                             val isActuallyConnected = caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
                                             
-                                            val msg = if (isActuallyConnected) "Logged ${config.amount} ml of ${config.type}" else "Saved locally. Will sync once online."
+                                            val msg = if (isActuallyConnected) "Logged ${com.example.fluidcheck.util.MeasurementUtils.formatVolume(context, config.amount, measurementPreferences.volume)} of ${config.type}" else "Saved locally. Will sync once online."
                                             android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
                                         } else {
                                             val msg = if (isConnected) "Error logging drink" else "Error saving locally"
@@ -535,15 +606,20 @@ fun MainScreen(
                         ProgressScreen(
                             userId = userId,
                             firestoreRepository = firestoreRepository,
+                            userRole = userRole,
+                            onPremiumFeatureClick = { showPremiumDialog = true },
                             dailyGoal = currentGoal,
                             accountCreatedAt = userRecord?.createdAt,
-                            allLogs = allLogs ?: emptyList()
+                            allLogs = allLogs ?: emptyList(),
+                            measurementPreferences = measurementPreferences
                         )
                     }
                     composable(NavRoutes.AICoach.route) { 
                         AICoachScreen(
                             userRecord = userRecord,
                             firestoreRepository = firestoreRepository,
+                            userRole = userRole,
+                            onPremiumFeatureClick = { showPremiumDialog = true },
                             isConnected = isConnected,
                             onSetGoal = { newGoal ->
                                 scope.launch {
@@ -551,7 +627,7 @@ fun MainScreen(
                                         repository.saveDailyGoal(userId, newGoal)
                                         val result = firestoreRepository.saveDailyGoal(userId, newGoal)
                                         if (result.isSuccess) {
-                                            snackbarHostState.showSnackbar("Daily goal updated to ${newGoal}ml")
+                                            snackbarHostState.showSnackbar("Daily goal updated to ${com.example.fluidcheck.util.MeasurementUtils.formatVolume(context, newGoal, measurementPreferences.volume)}")
                                         } else {
                                             snackbarHostState.showSnackbar("Error updating goal")
                                         }
@@ -599,7 +675,8 @@ fun MainScreen(
                                         // Silently fail
                                     }
                                 }
-                            }
+                            },
+                            measurementPreferences = measurementPreferences
                         )
                     }
                     composable(NavRoutes.Settings.route) {
@@ -646,6 +723,10 @@ fun MainScreen(
                                                 android.widget.Toast.makeText(context, "Error syncing notification status", android.widget.Toast.LENGTH_SHORT).show()
                                             }
                                             repository.setNotificationsEnabled(userId, enabled)
+                                            if (!enabled) {
+                                                repository.setSmartRemindersEnabled(userId, false)
+                                                repository.setWeatherGoalAdjustmentEnabled(userId, false)
+                                            }
                                         } catch (e: Exception) {
                                             android.widget.Toast.makeText(context, "Unexpected error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                                         }
@@ -709,6 +790,40 @@ fun MainScreen(
                                             // Silently fail
                                         }
                                     }
+                                },
+                                measurementPreferences = measurementPreferences,
+                                onVolumeUnitChanged = { scope.launch { repository.setVolumeUnit(userId, it) } },
+                                onWeightUnitChanged = { scope.launch { repository.setWeightUnit(userId, it) } },
+                                onHeightUnitChanged = { scope.launch { repository.setHeightUnit(userId, it) } },
+                                 smartRemindersEnabled = smartRemindersEnabled == true,
+                                 onToggleSmartReminders = { enabled ->
+                                     scope.launch {
+                                         try {
+                                             repository.setSmartRemindersEnabled(userId, enabled)
+                                         } catch (e: Exception) {
+                                             android.widget.Toast.makeText(context, "Failed to update reminders status.", android.widget.Toast.LENGTH_SHORT).show()
+                                         }
+                                     }
+                                 },
+                                onSubscribe = { duration ->
+                                    scope.launch {
+                                        val result = firestoreRepository.upgradeToPremium(userId, duration)
+                                        if (result.isSuccess) {
+                                            android.widget.Toast.makeText(context, "Upgraded to Premium!", android.widget.Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            android.widget.Toast.makeText(context, "Upgrade failed: ${result.exceptionOrNull()?.message}", android.widget.Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                },
+                                onRestorePurchases = {
+                                    scope.launch {
+                                        val result = firestoreRepository.demoteFromPremium(userId)
+                                        if (result.isSuccess) {
+                                            android.widget.Toast.makeText(context, "Purchases restored (Demoted to Free User).", android.widget.Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            android.widget.Toast.makeText(context, "Failed to restore: ${result.exceptionOrNull()?.message}", android.widget.Toast.LENGTH_LONG).show()
+                                        }
+                                    }
                                 }
                             )
                     }
@@ -719,6 +834,7 @@ fun MainScreen(
                             isAdminMode = isAdminMode,
                             repository = repository,
                             firestoreRepository = firestoreRepository,
+                            measurementPreferences = measurementPreferences,
                             onBack = { navController.popBackStack() }
                         )
                     }
@@ -743,7 +859,8 @@ fun MainScreen(
                         AdminDashboard(
                             firestoreRepository = firestoreRepository,
                             currentUserRole = userRole,
-                            currentUserId = userId
+                            currentUserId = userId,
+                            measurementPreferences = measurementPreferences
                         )
                     }
                 }
@@ -756,11 +873,17 @@ fun MainScreen(
 @Composable
 fun LogNewDrinkSheet(
     onDismiss: () -> Unit,
-    onConfirm: (String, Int) -> Unit
+    onConfirm: (String, Int) -> Unit,
+    VolumeUnit: com.example.fluidcheck.util.VolumeUnit = com.example.fluidcheck.util.VolumeUnit.METRIC,
+    userRole: String = "FREE USER",
+    onPremiumFeatureClick: () -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val context = LocalContext.current
     var selectedType by remember { mutableStateOf("Water") }
-    var amountText by remember { mutableStateOf("250") }
+    val initialAmount = com.example.fluidcheck.util.MeasurementUtils.convertVolumeForDisplay(250, VolumeUnit)
+    val initialAmountStr = if (initialAmount == initialAmount.toLong().toDouble()) initialAmount.toLong().toString() else "%.1f".format(initialAmount)
+    var amountText by remember { mutableStateOf(initialAmountStr) }
     var isExpanded by remember { mutableStateOf(false) }
     var showError by remember { mutableStateOf(false) }
 
@@ -876,8 +999,14 @@ fun LogNewDrinkSheet(
                                 }
                             },
                             onClick = {
-                                selectedType = type.name
-                                isExpanded = false
+                                if (userRole == "FREE USER" && type.name !in listOf("Water", "Coffee", "Tea")) {
+                                    isExpanded = false
+                                    onDismiss()
+                                    onPremiumFeatureClick()
+                                } else {
+                                    selectedType = type.name
+                                    isExpanded = false
+                                }
                             },
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                         )
@@ -889,7 +1018,7 @@ fun LogNewDrinkSheet(
 
             @Suppress("DEPRECATION")
             Text(
-                text = stringResource(R.string.amount_ml),
+                text = com.example.fluidcheck.util.MeasurementUtils.volumeLabel(context, VolumeUnit),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color.Gray,
@@ -909,15 +1038,17 @@ fun LogNewDrinkSheet(
                         showError = true
                     } else {
                         showError = false
-                        onConfirm(selectedType, amountText.trim().toIntOrNull() ?: 0)
+                        val displayAmount = amountText.trim().toDoubleOrNull() ?: 0.0
+                        val amount = com.example.fluidcheck.util.MeasurementUtils.convertVolumeToMl(displayAmount, VolumeUnit)
+                        onConfirm(selectedType, amount)
                     }
                 }),
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = PrimaryBlue,
                     unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
-                    focusedContainerColor = Color(0xFFF8FAFC),
-                    unfocusedContainerColor = Color(0xFFF8FAFC)
+                    focusedContainerColor = Slate50,
+                    unfocusedContainerColor = Slate50
                 ),
                 textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
                 singleLine = true
@@ -931,7 +1062,8 @@ fun LogNewDrinkSheet(
                         showError = true
                     } else {
                         showError = false
-                        val amount = amountText.trim().toIntOrNull() ?: 0
+                        val displayAmount = amountText.trim().toDoubleOrNull() ?: 0.0
+                        val amount = com.example.fluidcheck.util.MeasurementUtils.convertVolumeToMl(displayAmount, VolumeUnit)
                         onConfirm(selectedType, amount)
                     }
                 },
@@ -963,10 +1095,14 @@ fun EditLogDialog(
     log: FluidLog,
     onDismiss: () -> Unit,
     onSave: (FluidLog) -> Unit,
-    onDelete: (Long) -> Unit
+    onDelete: (Long) -> Unit,
+    VolumeUnit: com.example.fluidcheck.util.VolumeUnit = com.example.fluidcheck.util.VolumeUnit.METRIC
 ) {
+    val context = LocalContext.current
     var selectedType by remember { mutableStateOf(log.type) }
-    var amountText by remember { mutableStateOf(log.amount.toString()) }
+    val displayAmount = com.example.fluidcheck.util.MeasurementUtils.convertVolumeForDisplay(log.amount, VolumeUnit)
+    val initialAmountStr = if (displayAmount == displayAmount.toLong().toDouble()) displayAmount.toLong().toString() else "%.1f".format(displayAmount)
+    var amountText by remember { mutableStateOf(initialAmountStr) }
     var timeText by remember { mutableStateOf(log.time) }
     var isExpanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -1122,7 +1258,7 @@ fun EditLogDialog(
 
                 @Suppress("DEPRECATION")
                 Text(
-                    text = stringResource(R.string.amount_ml),
+                    text = com.example.fluidcheck.util.MeasurementUtils.volumeLabel(context, VolumeUnit),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color.Gray,
@@ -1171,7 +1307,9 @@ fun EditLogDialog(
                             showError = true
                         } else {
                             showError = false
-                            val amount = amountText.trim().toIntOrNull() ?: log.amount
+                            val displayAmount = amountText.trim().toDoubleOrNull() ?: 0.0
+                            val parsedAmount = com.example.fluidcheck.util.MeasurementUtils.convertVolumeToMl(displayAmount, VolumeUnit)
+                            val amount = if (parsedAmount > 0) parsedAmount else log.amount
                             onSave(log.copy(type = selectedType, amount = amount, time = timeText.trim()))
                         }
                     }),
@@ -1192,7 +1330,9 @@ fun EditLogDialog(
                             showError = true
                         } else {
                             showError = false
-                            val amount = amountText.trim().toIntOrNull() ?: log.amount
+                            val displayAmount = amountText.trim().toDoubleOrNull() ?: 0.0
+                            val parsedAmount = com.example.fluidcheck.util.MeasurementUtils.convertVolumeToMl(displayAmount, VolumeUnit)
+                            val amount = if (parsedAmount > 0) parsedAmount else log.amount
                             onSave(log.copy(type = selectedType, amount = amount, time = timeText.trim()))
                         }
                     },

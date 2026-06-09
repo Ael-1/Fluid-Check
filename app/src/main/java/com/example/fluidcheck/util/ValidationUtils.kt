@@ -1,5 +1,7 @@
 package com.example.fluidcheck.util
 
+import android.content.Context
+
 object ValidationUtils {
     /**
      * Validates a username based on Task 1.10:
@@ -21,16 +23,29 @@ object ValidationUtils {
 
     /**
      * Validates numeric ranges based on Task 12.2
+     * Values are validated in the user's display unit.
      */
-    fun validateWeight(weight: Float?): String? {
+    fun validateWeight(context: Context, weight: Float?, unit: WeightUnit = WeightUnit.METRIC): String? {
         if (weight == null) return "Invalid weight."
-        if (weight < 1 || weight > 500) return "Weight must be between 1 and 500 kg."
+        val range = MeasurementUtils.weightRange(unit)
+        val unitLabel = MeasurementUtils.weightUnit(context, unit)
+        if (weight < range.first || weight > range.second) {
+            return "Weight must be between ${range.first.toInt()} and ${range.second.toInt()} $unitLabel."
+        }
         return null
     }
 
-    fun validateHeight(height: Float?): String? {
+    fun validateHeight(context: Context, height: Float?, unit: HeightUnit = HeightUnit.METRIC): String? {
         if (height == null) return "Invalid height."
-        if (height < 30 || height > 300) return "Height must be between 30 and 300 cm."
+        val range = MeasurementUtils.heightRange(unit)
+        val unitLabel = MeasurementUtils.heightUnit(context, unit)
+        if (height < range.first || height > range.second) {
+            return if (unit == HeightUnit.IMPERIAL) {
+                "Height must be between ${range.first.toInt()} and ${range.second.toInt()} inches."
+            } else {
+                "Height must be between ${range.first.toInt()} and ${range.second.toInt()} $unitLabel."
+            }
+        }
         return null
     }
 
@@ -40,9 +55,13 @@ object ValidationUtils {
         return null
     }
 
-    fun validateDailyGoal(goal: Int?): String? {
+    fun validateDailyGoal(context: Context, goal: Int?, unit: VolumeUnit = VolumeUnit.METRIC): String? {
         if (goal == null) return "Invalid goal."
-        if (goal < 100 || goal > 20000) return "Daily goal must be between 100 and 20000 ml."
+        val range = MeasurementUtils.goalRange(unit)
+        val unitLabel = MeasurementUtils.volumeUnit(context, unit)
+        if (goal < range.first || goal > range.second) {
+            return "Daily goal must be between ${range.first} and ${range.second} $unitLabel."
+        }
         return null
     }
 
@@ -55,3 +74,4 @@ object ValidationUtils {
         return null
     }
 }
+

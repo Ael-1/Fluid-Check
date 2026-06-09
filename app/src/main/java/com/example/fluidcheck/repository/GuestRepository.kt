@@ -25,7 +25,7 @@ class GuestRepository(private val context: Context) {
             uid = "GUEST",
             username = "Guest",
             email = "",
-            role = "USER",
+            role = "FREE USER",
             setupCompleted = false,
             notificationsEnabled = null,
             reminderFrequency = "60"
@@ -48,7 +48,7 @@ class GuestRepository(private val context: Context) {
                     uid = "GUEST",
                     username = json.optString("username", "Guest"),
                     email = "",
-                    role = "USER",
+                    role = "FREE USER",
                     dailyGoal = if (json.has("dailyGoal")) json.optInt("dailyGoal", 3000) else 3000,
                     streak = json.optInt("streak", 0),
                     highestStreak = json.optInt("highestStreak", 0),
@@ -332,7 +332,7 @@ class GuestRepository(private val context: Context) {
             uid = "GUEST",
             username = "Guest",
             email = "",
-            role = "USER",
+            role = "FREE USER",
             setupCompleted = false,
             notificationsEnabled = null,
             reminderFrequency = "60"

@@ -414,3 +414,94 @@ val Typography = Typography(
 | 14.7 (Typography)  | 14.2, 14.3, 14.4, 14.5   | 14.1                                       |
 
 **WHEN PROCEEDING TO EXECUTE ALL TASKS UNDER SECTION 14, ENSURE THAT AFTER EXECUTING, EVERYTHING IS STABLE AND WORKING AS IT WAS BEFORE, IF THERE WILL BE CHANGES EVEN IN THE SLIGHTEST WAY, REVERT AND FIND OTHER WAYS SO IT WILL WORK AS IT WAS BEFORE.**
+
+## 15. Role Addition and Hierarchy
+
+1. **Role Renaming:** Rename the existing "USER" role to "FREE USER".
+2. **New Role:** Create a new role named "PREMIUM USER".
+3. **Role Hierarchy:** The new system hierarchy is: `ADMIN > MODERATOR > PREMIUM USER > FREE USER`.
+4. **FREE USER Privileges & Restrictions:**
+   - **Fluid Logging:** Can only log "Water", "Coffee", and "Tea". Other fluid types remain visible in the UI but trigger a paywall dialog when pressed.
+   - **Progress Viewing:** Limited to a 7-day lookback window.
+     - _Daily View:_ Users can only navigate back up to 7 days; navigating further triggers the paywall.
+     - _Weekly View:_ Pressing 'Back' or 'Next' triggers the paywall.
+     - _Monthly/Yearly View:_ Accessing these tabs triggers the paywall.
+   - **AI Features:** Completely restricted. Pressing any buttons or textboxes in the AI Coach Screen triggers the paywall. The AI weekly scorecard is visually de-emphasized, and interacting with it triggers the paywall.
+   - **Weather Integration:** Restricted. Attempting to enable the "Dynamic Weather Goal Adjustment" toggle triggers the paywall.
+   - **Quick-Add:** Completely hidden. The Quick-Add UI and functionality are not visible.
+   - **Gamification:** Limited to basic "Streak" tracking only.
+   - **Notifications:** Limited to standard default notifications. Smart reminders are disabled.
+   - **Data Backup:** Cloud data is fully backed up in Firebase, but the _client-side display_ is restricted to the last 7 days (rolling window: new day in, oldest day out). This ensures no data is lost if the user upgrades later.
+   - **Offline Mode:** The app requires an active internet connection to function.
+   - **Customization:** No access to UI themes, custom logos, or custom progress meters.
+   - **Advertisements:** Ads are enabled (Feature will be elaborated more in section 18).
+
+5. **PREMIUM USER Privileges:**
+   - **UI Cleanliness:** The "Upgrade to Premium" button is removed from the Settings Screen.
+   - **Fluid Logging:** Unlocked access to log all fluid types, plus the ability to create custom fluid types.
+   - **Progress Viewing:** Unlimited historical access. Can view Daily, Weekly, Monthly, and Yearly progress dating back to account creation.
+   - **AI Features:** Full access to the AI Hydration Coach, including ideal intake calculation, AI chat prompts, and habit analysis (No further development needed. leave this feature as is and only enabled for premium users).
+   - **Weather Integration:** Full access to dynamic daily goal adjustments based on local weather metrics (No further development needed. leave this feature as is and only enabled for premium users).
+   - **Quick-Add:** Full access to customizable quick-add slots (No further development needed. leave this feature as is and only enabled for premium users).
+   - **Enhanced Gamification:** Access to the mission board, badges, and streak shields (Feature will be elaborated more in section 16).
+   - **Smart Notifications:** Access to personalized, AI-driven smart reminders (No further development needed. leave this feature as is and only enabled for premium users).
+   - **Unlimited Cloud Access:** Full sync and client-side display of all historical data. _Note: If a subscription expires, their data remains safe in Firebase, but the client-side app will revert to only displaying the last 7 days as a FREE USER._
+   - **Offline Architecture:** Full offline support. Offline logs will sync to the cloud automatically upon reconnection. Use existing project code for this logic (No further development needed. leave this feature as is and only enabled for premium users).
+   - **App Customization:** Exclusive access to UI skins (e.g., dark mode), custom app logos, changeable backgrounds, and alternative Progress meter UI designs (Feature will be elaborated more in section 17).
+   - **Advertisements:** Completely ad-free experience.
+
+6. **MODERATOR Privileges:** Inherits all PREMIUM USER privileges in addition to their existing moderator tools.
+7. **ADMIN Privileges:** Inherits all PREMIUM USER privileges in addition to their existing admin tools.
+
+## 16. Enhanced Gamification
+
+1. **Mission System (Progress Screen):**
+   - **Mission Board UI:** Create a section in the Progress Screen displaying a list of available daily missions.
+   - **Mission Availability:** Maintain exactly 10 available missions at any time, labeled with varying difficulty levels (e.g., Easy, Moderate, Hard, Epic). Unselected missions remain on the board, and new missions populate the board the following day to replace completed or aborted ones.
+   - **Mission Selection:** Users can have a maximum of 5 active missions simultaneously.
+   - **Mission Abandonment:** Users can abort an active mission. However, once a mission is aborted, the user cannot replace it with a new one until the next daily reset.
+   - **Content Generation:** Define a pool of 50 unique missions spanning different difficulties and hydration goals.
+   - **Mission Appearance Probabilities (Board Population):**
+     - _Easy Missions:_ 50% chance to appear in a slot.
+     - _Moderate Missions:_ 30% chance to appear in a slot.
+     - _Hard Missions:_ 14% chance to appear in a slot.
+     - _Epic Missions:_ 6% chance to appear in a slot.
+   - **Reward Tiers & Probabilities:**
+     - _Easy Missions:_ Reward: Common Badges, with a 6.25% probability of dropping a "Streak Shield Fragment."
+     - _Moderate Missions:_ Reward: Rare Badges, with a 12.5% probability of dropping a "Streak Shield Fragment."
+     - _Hard Missions:_ Reward: Epic Badges, with a 33% probability of dropping a "Streak Shield Fragment."
+     - _Epic Missions:_ Reward: Legendary Badges and a guaranteed "Full Streak Shield." (Only 5 out of the 50 total missions should be categorized as Epic, appearing rarely on the board).
+   - _Note: 10 Streak Shield Fragments automatically combine to craft 1 Full Streak Shield._
+
+2. **Inventory & Collectibles (Settings Screen):**
+   - **Access Point:** In the Settings Screen, within the Profile card (above the "Edit Profile" button), add a new button labeled "Shields and Badges."
+   - **Inventory UI:** Tapping the button opens an inventory screen divided into two tabs/sections:
+     - _Consumables:_ Displays the user's current count of Full Streak Shields and Streak Shield Fragments.
+     - _Badge Gallery:_ Displays a grid of all available badges. Unearned badges appear as greyed-out silhouettes. Badges the user has earned appear fully colored, displaying a counter indicating how many times that specific badge has been awarded.
+   - **Milestone Consistency Badges:** In addition to daily missions, implement Milestone Badges that are automatically awarded upon reaching specific long-term consistency goals (A milestone can only be obtained once. eg. if 7-day milestone is achieved, only obtain once. Having another 7-day streak does not reward another 7-day streak milestone). Examples include:
+     - _Streak Milestones:_ Reach a 7-day, 25-day, 50-day, 100-day, and 365-day active streak.
+     - _Volume Milestones:_ Reach lifetime fluid intake milestones (e.g., 50 Liters, 100 Liters, 500 Liters).
+     - _Early Bird:_ Log water consistently before 8:00 AM for 10 consecutive days.
+     - _Perfect Week:_ Close the progress ring 7 days in a row without using a single Streak Shield.
+     - _Hydration Master:_ Log at least 3 different fluid types (e.g., Water, Tea, Coffee) in a single day for 14 consecutive days.
+     - _Weekend Warrior:_ Successfully meet the daily goal on both Saturday and Sunday for 4 consecutive weeks.
+     - _Night Owl:_ Log hydration after 10:00 PM consistently for 7 days.
+   - **Item Details Dialog:** Tapping any item (Badge, Full Shield, or Fragment) opens a dialog containing:
+     - A large, high-resolution image of the item.
+     - For Badges: A description of the mission/achievement required to earn it.
+     - For Shields/Fragments: A description of its utility (protecting a daily streak from breaking).
+   - **Auto-Shield Toggle:** Place a toggle switch labeled "Automatically use shield to prevent streak loss" directly in the "Consumables" tab of the Inventory UI and within the main Settings Screen under a "Preferences" section. When enabled, the system will automatically consume one Full Streak Shield at midnight if the user failed to meet their daily goal.
+
+3. **Active Mission Tracker (Home Screen):**
+   - **Quick View UI:** Add a compact widget to the Home Screen that displays the real-time progress of the user's currently active missions (up to 5).
+
+## 17. App UI Customization
+
+1. Develop multiple themes like (Light mode, Dark mode, etc.). Ensure that these themes looks good, texts are clearly visible, icons and background fit perfectly for its palette.
+2. Develop multiple app logo colors and background colors.
+3. Aside from a Progress Ring develop multiple progress meter for the daily goal intake. (UI is the only thing that changed from this any logic and concept of the progress ring will be the same)
+4. With these Customizations, add a container section "Customization" in the Settings screen where users can select an app theme in a dropdown list in which if one is selected, will change the theme dynamically. An app logo with a dialog box showing different app logos, and Progress meter UI with a dropdown list.
+
+## 18. Ads
+
+1. In this case since we don't have actual advertisements, create a mock ups of ads inside the app. Such as ad banners, or a popup ads if pressing active buttons elements like buttons, textboxes, toggle bars, etc. for 6-10 times (The 6-10 press triggering times must be randomized. Eg. the random calculation starts if the app detected the first active element pressed if the threshold random pressed between 6 to 10 is triggered. Display the pop up ad.)

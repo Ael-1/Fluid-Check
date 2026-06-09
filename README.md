@@ -6,6 +6,19 @@ FluidCheck is an Android application designed to help users manage their hydrati
 
 ## 🚀 Features
 
+- **Global Measurement System (Metric & Imperial):** Switch between Metric (ml, kg, cm) and Imperial (oz, lbs, ft/in) units globally. All tracking, progress charts, profile fields, and AI assessments scale and convert seamlessly. *Purpose: Facilitates international localization and seamless unit conversions.*
+- **Premium Subscription Tier & Interactive Glassmorphic Paywall:** Unlocks advanced capabilities tailored to power-user requirements. *Purpose: Monetizes the application and expands hydration tracking depth.* Unlocked features include:
+  - *All Fluid Types & Custom Logs*: Access a wider catalog of drinks and customize quick-add entries.
+  - *Full Progress Views*: Detailed historical tracking (Daily, Weekly, Monthly, and Yearly charts).
+  - *AI-Powered Coach*: Advanced personalization, habit/composition analysis, and predictive notifications.
+  - *Dynamic Weather Integration*: Real-time target adjustments using weather APIs.
+  - *Streak Shields*: Streak protection and rewards.
+  - *No Ads & Premium UI*: An ad-free experience with custom UI skins.
+- **Structured User Roles & Directory Management:** Establishes clear access privileges and permissions across the system for security and administrative delegation:
+  - *Admin*: Complete control, user/username/role editing (with self-demotion/self-delete guards), and secure double-confirmation delete.
+  - *Moderator*: Read-only directory access and system analytics view for tracking application metrics.
+  - *Premium User*: Access to all premium features and unlimited cloud sync capabilities.
+  - *Free User (Standard)*: Basic logging features and 7-day cloud history recovery.
 - **AI-Powered Personalized Goals:** Get custom daily water intake targets calculated by Gemini AI.
 - **Smart Hydration Coach:** AI-driven personalized recommendations based on your preferences and habits.
 - **Profile Photo Management:** Sophisticated image handling using **uCrop** for precision editing and **ImgBB** for cloud hosting, featuring full offline support.
@@ -16,8 +29,11 @@ FluidCheck is an Android application designed to help users manage their hydrati
 - **Firebase Authentication:** Secure login and sign-up with Firebase Authentication, Google Sign-In, and sophisticated username-to-email mapping.
 - **Cloud & Local Persistence:** Real-time synchronization between Cloud Firestore and local DataStore for seamless settings and data access across sessions.
 - **Visual Achievement Feedback:** "Radiating Achievement State" and "Infinite Progress Architecture" for an immersive goal-completion experience.
-- **Admin Dashboard:** Comprehensive tools for managing users, roles, and system-wide analytics.
-- **Centralized Validation & Security:** Robust username/email validation and security, smart range checking for physical attributes, and mandatory credential re-authentication for sensitive profile updates.
+- **Centralized Quality of Life (QOL) & Validation Polish:** Centralizes app-wide behaviors to ensure stability and user feedback:
+  - Centralized colors and icons inside resource templates (`Color.kt`, `AppIcons.kt`).
+  - Validation systems enforcing sensible bounds (Weight 1–500kg, Height 30–300cm, Age 1–150, Goal 100–20000ml).
+  - Keyboard focus management (auto-dismiss and field-focus chains).
+  - Unsaved change warning guards to prevent losing progress in administration dialogues.
 - **Modern UI:** "Glassmorphism" aesthetic built with Jetpack Compose, Material 3, and optimized keyboard navigation.
 
 ## 🛠 Tech Stack
@@ -86,6 +102,8 @@ FluidCheck is an Android application designed to help users manage their hydrati
 - [x] Dynamic Progress Charts (Cumulative daily and historical views)
 - [x] Smart Notification Reminders (Hourly & Contextual)
 - [x] Admin Dashboard & User Management
+- [x] Global Measurement System (Metric & Imperial Unit Switching)
+- [x] Premium Paywall Dialog & Tier System (Enterprise Edition)
 
 ## 👨‍💻 Developer
 

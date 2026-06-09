@@ -14,7 +14,11 @@ private val LightColorScheme = lightColorScheme(
     onPrimary = Color.White,
     onSecondary = Color.White,
     onBackground = Color.Black,
-    onSurface = Color.Black
+    onSurface = Color.Black,
+    surfaceVariant = Slate50,
+    outline = Slate100,
+    onSurfaceVariant = MutedForeground,
+    error = ErrorRed
 )
 
 @Composable

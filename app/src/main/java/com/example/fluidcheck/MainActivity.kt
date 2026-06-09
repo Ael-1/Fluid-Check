@@ -35,6 +35,8 @@ import com.example.fluidcheck.ui.screens.InitialSetupScreen
 import com.example.fluidcheck.ui.theme.AppIcons
 import com.example.fluidcheck.ui.theme.FluidCheckTheme
 import com.example.fluidcheck.ui.theme.PrimaryBlue
+import com.example.fluidcheck.ui.theme.Gold
+import com.example.fluidcheck.ui.theme.ErrorRed
 import com.example.fluidcheck.util.NotificationHelper
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -312,7 +314,7 @@ class MainActivity : ComponentActivity() {
                                     uid = "GUEST",
                                     username = "Guest",
                                     email = "",
-                                    role = "USER",
+                                    role = "FREE USER",
                                     setupCompleted = false
                                 ))
                                 currentUsername = "Guest"
@@ -353,7 +355,7 @@ class MainActivity : ComponentActivity() {
                             Icon(
                                 imageVector = if (isAuthSuccess) AppIcons.Goal else AppIcons.Info,
                                 contentDescription = null,
-                                tint = if (isAuthSuccess) Color(0xFFFFD700) else Color.Red,
+                                tint = if (isAuthSuccess) Gold else ErrorRed,
                                 modifier = Modifier.size(48.dp)
                             )
                         },
@@ -375,7 +377,7 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier.fillMaxWidth()
                             )
                         },
-                        containerColor = Color.White,
+                        containerColor = MaterialTheme.colorScheme.surface,
                         shape = RoundedCornerShape(24.dp)
                     )
                 }
@@ -470,7 +472,7 @@ class MainActivity : ComponentActivity() {
                                                 uid = userId,
                                                 username = username,
                                                 email = email,
-                                                role = "USER",
+                                                role = "FREE USER",
                                                 setupCompleted = false,
                                                 createdAt = Timestamp.now(),
                                                 dailyGoal = 3000
@@ -519,7 +521,7 @@ class MainActivity : ComponentActivity() {
                     }
                 } else if (!isSetupComplete) {
                     InitialSetupScreen(
-                        onComplete = { record, dailyGoal ->
+                        onComplete = { record, dailyGoal, measurementSystem ->
                             scope.launch {
                                 try {
                                     val userId = if (authRepository.currentUser == null && isLoggedIn) "GUEST" else authRepository.currentUser?.uid ?: ""
@@ -535,6 +537,12 @@ class MainActivity : ComponentActivity() {
                                         )
                                         
                                         firestoreRepository.saveUserRecord(userId, finalRecord)
+                                        
+                                        val userPrefsRepository = com.example.fluidcheck.repository.UserPreferencesRepository(context)
+                                        userPrefsRepository.setVolumeUnit(userId, measurementSystem.volume)
+                                        userPrefsRepository.setWeightUnit(userId, measurementSystem.weight)
+                                        userPrefsRepository.setHeightUnit(userId, measurementSystem.height)
+                                        
                                         isSetupComplete = true
                                     }
                                 } catch (e: Exception) {

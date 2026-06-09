@@ -54,6 +54,9 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlinx.coroutines.launch
+import com.example.fluidcheck.util.VolumeUnit
+import com.example.fluidcheck.util.MeasurementPreferences
+import com.example.fluidcheck.util.MeasurementUtils
 
 @Composable
 fun HomeScreen(
@@ -67,7 +70,10 @@ fun HomeScreen(
     onUpdateGoal: (Int) -> Unit,
     onEditLog: (FluidLog) -> Unit,
     onQuickAdd: (QuickAddConfig) -> Unit,
-    onUpdateQuickAdd: (List<QuickAddConfig>) -> Unit
+    onUpdateQuickAdd: (List<QuickAddConfig>) -> Unit,
+    measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences = com.example.fluidcheck.util.MeasurementPreferences(),
+    userRole: String = "FREE USER",
+    onPremiumFeatureClick: () -> Unit = {}
 ) {
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val allLogsFlow = remember(userId) { firestoreRepository.getFluidLogsFlow(userId) }
@@ -117,7 +123,8 @@ fun HomeScreen(
             onSave = { newGoal ->
                 onUpdateGoal(newGoal)
                 showGoalDialog = false
-            }
+            },
+            volumeUnit = measurementPreferences.volume
         )
     }
 
@@ -155,7 +162,8 @@ fun HomeScreen(
                         android.widget.Toast.makeText(context, "Delete failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
-            }
+            },
+            volumeUnit = measurementPreferences.volume
         )
     }
 
@@ -165,7 +173,8 @@ fun HomeScreen(
             onSave = { config ->
                 onUpdateQuickAdd(actualConfigs + config)
                 showQuickAddDialog = false
-            }
+            },
+            volumeUnit = measurementPreferences.volume
         )
     }
 
@@ -198,7 +207,10 @@ fun HomeScreen(
                     onUpdateQuickAdd = onUpdateQuickAdd,
                     onAddClick = { if (!selectionMode) showQuickAddDialog = true },
                     onEditGoalClick = { if (!selectionMode) showGoalDialog = true },
-                    onTapBackground = dismissSelection
+                    onTapBackground = dismissSelection,
+                    volumeUnit = measurementPreferences.volume,
+                    userRole = userRole,
+                    onPremiumFeatureClick = onPremiumFeatureClick
                 )
             }
             
@@ -253,7 +265,8 @@ fun HomeScreen(
                         log = log, 
                         onEdit = { if (!selectionMode) onEditLog(log) },
                         isInteractionEnabled = !selectionMode,
-                        onTapBackground = dismissSelection
+                        onTapBackground = dismissSelection,
+                        volumeUnit = measurementPreferences.volume
                     )
                 }
             }
@@ -319,7 +332,10 @@ fun LazyItemScope.HeroSection(
     onUpdateQuickAdd: (List<QuickAddConfig>) -> Unit,
     onAddClick: () -> Unit,
     onEditGoalClick: () -> Unit,
-    onTapBackground: () -> Unit
+    onTapBackground: () -> Unit,
+    volumeUnit: VolumeUnit,
+    userRole: String = "FREE USER",
+    onPremiumFeatureClick: () -> Unit = {}
 ) {
     val gradient = Brush.verticalGradient(
         colors = listOf(GradientStart, GradientMid, GradientEnd)
@@ -364,7 +380,8 @@ fun LazyItemScope.HeroSection(
                     dailyGoal = dailyGoal,
                     onEditGoalClick = onEditGoalClick,
                     isInteractionEnabled = !selectionMode,
-                    onTapBackground = onTapBackground
+                    onTapBackground = onTapBackground,
+                    volumeUnit = volumeUnit
                 )
             }
             
@@ -383,21 +400,51 @@ fun LazyItemScope.HeroSection(
                 MetricsGrid(
                     remaining = (dailyGoal - totalIntake).coerceAtLeast(0), 
                     isClosed = totalIntake >= dailyGoal,
-                    onTapBackground = onTapBackground
+                    onTapBackground = onTapBackground,
+                    volumeUnit = volumeUnit
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                HeroQuickAdd(
-                    configs = quickAddConfigs,
-                    selectionMode = selectionMode,
-                    onSelectionModeChange = onSelectionModeChange,
-                    selectedConfigs = selectedConfigs,
-                    onSelectedConfigsChange = onSelectedConfigsChange,
-                    onQuickAdd = onQuickAdd,
-                    onUpdateQuickAdd = onUpdateQuickAdd,
-                    onAddClick = onAddClick
-                )
+                if (userRole != "FREE USER") {
+                    HeroQuickAdd(
+                        configs = quickAddConfigs,
+                        selectionMode = selectionMode,
+                        onSelectionModeChange = onSelectionModeChange,
+                        selectedConfigs = selectedConfigs,
+                        onSelectedConfigsChange = onSelectedConfigsChange,
+                        onQuickAdd = onQuickAdd,
+                        onUpdateQuickAdd = onUpdateQuickAdd,
+                        onAddClick = onAddClick,
+                        volumeUnit = volumeUnit
+                    )
+                } else {
+                    // Premium Upsell for Quick Add
+                    androidx.compose.material3.Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                            .clickable { onPremiumFeatureClick() },
+                        colors = androidx.compose.material3.CardDefaults.cardColors(
+                            containerColor = Color.White.copy(alpha = 0.15f)
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(AppIcons.Premium, contentDescription = "Premium", tint = com.example.fluidcheck.ui.theme.Gold)
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                @Suppress("DEPRECATION")
+                                Text("Unlock Quick Add", fontWeight = FontWeight.Bold, color = Color.White)
+                                @Suppress("DEPRECATION")
+                                Text("Save favorite drinks for 1-tap logging", fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -412,7 +459,8 @@ fun HeroQuickAdd(
     onSelectedConfigsChange: (Set<QuickAddConfig>) -> Unit,
     onQuickAdd: (QuickAddConfig) -> Unit,
     onUpdateQuickAdd: (List<QuickAddConfig>) -> Unit,
-    onAddClick: () -> Unit
+    onAddClick: () -> Unit,
+    volumeUnit: VolumeUnit
 ) {
     val actualConfigs = configs ?: DEFAULT_QUICK_ADD_CONFIGS
 
@@ -518,7 +566,8 @@ fun HeroQuickAdd(
                                 }
                             },
                             isSelected = config in selectedConfigs,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            volumeUnit = volumeUnit
                         )
                     }
                     
@@ -594,7 +643,8 @@ fun HeroQuickAddButton(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     isSelected: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    volumeUnit: VolumeUnit
 ) {
     Surface(
         modifier = modifier
@@ -624,7 +674,7 @@ fun HeroQuickAddButton(
             Spacer(modifier = Modifier.height(4.dp))
             @Suppress("DEPRECATION")
             Text(
-                text = "${config.amount}ml",
+                text = MeasurementUtils.formatVolumeCompact(LocalContext.current, config.amount, volumeUnit),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -639,7 +689,8 @@ fun HeroQuickAddButton(
 @Composable
 fun AddQuickAddDialog(
     onDismiss: () -> Unit,
-    onSave: (QuickAddConfig) -> Unit
+    onSave: (QuickAddConfig) -> Unit,
+    volumeUnit: VolumeUnit = VolumeUnit.METRIC
 ) {
     var selectedType by remember { mutableStateOf("Water") }
     var amountText by remember { mutableStateOf("") }
@@ -650,8 +701,9 @@ fun AddQuickAddDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val amount = amountText.trim().toIntOrNull() ?: 0
-                    if (amount > 0) {
+                    val displayAmount = amountText.trim().toDoubleOrNull() ?: 0.0
+                    if (displayAmount > 0) {
+                        val amount = MeasurementUtils.convertVolumeToMl(displayAmount, volumeUnit)
                         onSave(QuickAddConfig(amount, selectedType))
                     }
                 },
@@ -698,12 +750,13 @@ fun AddQuickAddDialog(
                 Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = amountText,
-                    onValueChange = { if (it.all { char -> char.isDigit() }) amountText = it },
-                    label = { Text("Amount (ml)") },
+                    onValueChange = { if (it.all { char -> char.isDigit() || char == '.' }) amountText = it },
+                    label = { Text(MeasurementUtils.volumeLabel(LocalContext.current, volumeUnit)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = {
-                        val amount = amountText.trim().toIntOrNull() ?: 0
-                        if (amount > 0) {
+                        val displayAmount = amountText.trim().toDoubleOrNull() ?: 0.0
+                        if (displayAmount > 0) {
+                            val amount = MeasurementUtils.convertVolumeToMl(displayAmount, volumeUnit)
                             onSave(QuickAddConfig(amount, selectedType))
                         }
                     }),
@@ -760,7 +813,8 @@ fun HeroProgressRing(
     dailyGoal: Int,
     onEditGoalClick: () -> Unit,
     isInteractionEnabled: Boolean = true,
-    onTapBackground: () -> Unit = {}
+    onTapBackground: () -> Unit = {},
+    volumeUnit: VolumeUnit
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
@@ -812,8 +866,8 @@ fun HeroProgressRing(
                 style = Stroke(width = strokeWidthPx)
             )
 
-            val lap1Color = Color(0xFFACE6FD)
-            val lap2Color = Color(0xFF0369A1) // Darker Sky Blue for 2nd lap
+            val lap1Color = Sky200
+            val lap2Color = Sky700 // Darker Sky Blue for 2nd lap
 
             val numFullLaps = animatedProgress.toInt()
             val currentLapProgress = animatedProgress % 1f
@@ -923,7 +977,7 @@ fun HeroProgressRing(
                 ) {
                     @Suppress("DEPRECATION")
                     Text(
-                        text = "%,d / %,d ml".format(totalIntake, dailyGoal),
+                        text = MeasurementUtils.formatProgressRing(LocalContext.current, totalIntake, dailyGoal, volumeUnit),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White,
@@ -994,7 +1048,8 @@ fun LogHistoryDialog(
     logs: List<FluidLog>?,
     onDismiss: () -> Unit,
     onEdit: (FluidLog) -> Unit,
-    onDeleteLogs: (List<FluidLog>) -> Unit
+    onDeleteLogs: (List<FluidLog>) -> Unit,
+    volumeUnit: VolumeUnit = VolumeUnit.METRIC
 ) {
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedLogs by remember { mutableStateOf(setOf<FluidLog>()) }
@@ -1161,7 +1216,7 @@ fun LogHistoryDialog(
                                 val isLogSelected = selectedLogs.contains(log)
                                 val cardBgColor = when {
                                     isLogSelected -> PrimaryBlue.copy(alpha = 0.08f)
-                                    else -> Color(0xFFF8FAFC)
+                                    else -> Slate50
                                 }
 
                                 Card(
@@ -1233,7 +1288,7 @@ fun LogHistoryDialog(
                                         Column(horizontalAlignment = Alignment.End) {
                                             @Suppress("DEPRECATION")
                                             Text(
-                                                "${log.amount}ml", 
+                                                MeasurementUtils.formatVolumeCompact(LocalContext.current, log.amount, volumeUnit), 
                                                 fontWeight = FontWeight.Bold, 
                                                 color = PrimaryBlue,
                                                 maxLines = 1,
@@ -1270,7 +1325,7 @@ fun LogHistorySkeleton() {
         repeat(3) {
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                colors = CardDefaults.cardColors(containerColor = Slate50),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -1348,9 +1403,12 @@ fun StreakPill(days: Int, onClick: () -> Unit = {}) {
 fun UpdateDailyGoalDialog(
     currentGoal: Int,
     onDismiss: () -> Unit,
-    onSave: (Int) -> Unit
+    onSave: (Int) -> Unit,
+    volumeUnit: VolumeUnit
 ) {
-    var goalText by remember { mutableStateOf(currentGoal.toString()) }
+    val displayValue = MeasurementUtils.convertVolumeForDisplay(currentGoal, volumeUnit)
+    val initialText = if (displayValue == displayValue.toLong().toDouble()) displayValue.toLong().toString() else "%.1f".format(displayValue)
+    var goalText by remember { mutableStateOf(initialText) }
     var showError by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
@@ -1389,18 +1447,19 @@ fun UpdateDailyGoalDialog(
 
             OutlinedTextField(
                 value = goalText,
-                onValueChange = { if (it.all { char -> char.isDigit() }) goalText = it },
+                onValueChange = { if (it.all { char -> char.isDigit() || char == '.' }) goalText = it },
                 label = { 
                     @Suppress("DEPRECATION")
-                    Text(stringResource(R.string.daily_goal_field_label), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) 
+                    Text(MeasurementUtils.dailyGoalLabel(LocalContext.current, volumeUnit), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) 
                 },
                 placeholder = { Text("e.g. 2500", fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 modifier = Modifier.fillMaxWidth().height(64.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = {
-                    val goal = goalText.trim().toIntOrNull()
-                    if (goal != null && goal > 0) {
-                        onSave(goal)
+                    val parsed = goalText.trim().toDoubleOrNull()
+                    if (parsed != null && parsed > 0) {
+                        val goalMl = MeasurementUtils.convertVolumeToMl(parsed, volumeUnit)
+                        onSave(goalMl)
                     } else {
                         showError = true
                     }
@@ -1418,9 +1477,10 @@ fun UpdateDailyGoalDialog(
             
             Button(
                 onClick = {
-                    val goal = goalText.trim().toIntOrNull()
-                    if (goal != null && goal > 0) {
-                        onSave(goal)
+                    val parsed = goalText.trim().toDoubleOrNull()
+                    if (parsed != null && parsed > 0) {
+                        val goalMl = MeasurementUtils.convertVolumeToMl(parsed, volumeUnit)
+                        onSave(goalMl)
                     } else {
                         showError = true
                     }
@@ -1442,7 +1502,7 @@ fun UpdateDailyGoalDialog(
 }
 
 @Composable
-fun MetricsGrid(remaining: Int, isClosed: Boolean, onTapBackground: () -> Unit = {}) {
+fun MetricsGrid(remaining: Int, isClosed: Boolean, onTapBackground: () -> Unit = {}, volumeUnit: VolumeUnit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -1455,8 +1515,8 @@ fun MetricsGrid(remaining: Int, isClosed: Boolean, onTapBackground: () -> Unit =
         @Suppress("DEPRECATION")
         MetricCard(
             label = if (isClosed) stringResource(R.string.progress_ring_closed) else stringResource(R.string.remaining_intake),
-            value = if (isClosed) "0" else "%,d".format(remaining),
-            unit = stringResource(R.string.ml_unit),
+            value = if (isClosed) "0" else MeasurementUtils.formatVolume(LocalContext.current, remaining, volumeUnit),
+            unit = null, // formatVolume includes the unit
             isHighlighted = isClosed,
             modifier = Modifier.fillMaxWidth(0.6f)
         )
@@ -1599,7 +1659,8 @@ fun RecentLogItem(
     log: FluidLog, 
     onEdit: () -> Unit, 
     isInteractionEnabled: Boolean = true,
-    onTapBackground: () -> Unit = {}
+    onTapBackground: () -> Unit = {},
+    volumeUnit: VolumeUnit
 ) {
     Card(
         modifier = Modifier
@@ -1675,7 +1736,7 @@ fun RecentLogItem(
             Column(horizontalAlignment = Alignment.End) {
                 @Suppress("DEPRECATION")
                 Text(
-                    text = "${log.amount}ml",
+                    text = MeasurementUtils.formatVolumeCompact(LocalContext.current, log.amount, volumeUnit),
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     color = PrimaryBlue,

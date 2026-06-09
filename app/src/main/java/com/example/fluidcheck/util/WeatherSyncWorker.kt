@@ -121,13 +121,16 @@ class WeatherSyncWorker(
             val coach = GeminiCoach(apiKey)
             val envPrompt = if (humidity != null && humidity > 60.0) "Hot and Humid" else "Hot"
             
+            val prefs = prefsRepository.getMeasurementPreferences(userId).first()
+            
             val newGoalStr = coach.calculateHydrationGoal(
                 weight = userRecord.weight.ifEmpty { "70" },
                 height = userRecord.height.ifEmpty { "175" },
                 age = userRecord.age.ifEmpty { "25" },
                 sex = userRecord.sex.ifEmpty { "Male" },
                 activity = userRecord.activity.ifEmpty { "Moderate" },
-                environment = envPrompt
+                environment = envPrompt,
+                unitsInfo = "User uses ${prefs.volume.name} for volume, ${prefs.weight.name} for weight, ${prefs.height.name} for height."
             )
 
             val parsedGoal = newGoalStr?.replace(Regex("[^0-9]"), "")?.toIntOrNull()
@@ -144,10 +147,11 @@ class WeatherSyncWorker(
 
             val displayTemp = temp.toInt()
             val adjustmentAmount = adjustedGoal - currentGoal
+            val volumeUnit = prefs.volume
             NotificationHelper.showSmartReminder(
                 applicationContext,
                 "Daily Goal Adjusted! ☀️",
-                "Daily goal adjusted by +${adjustmentAmount}ml today due to high local heat (${displayTemp}°C)."
+                "Daily goal adjusted by +${MeasurementUtils.formatVolume(applicationContext, adjustmentAmount, volumeUnit)} today due to high local heat (${displayTemp}°C)."
             )
         }
 

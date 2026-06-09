@@ -17,3 +17,16 @@ val MutedForeground = Color(0xFF64748B)
 val TextDark = Color(0xFF1E293B)
 val ErrorRed = Color(0xFFEF4444)
 val WarningAmber = Color(0xFFF59E0B)
+
+// Consolidated raw colors
+val Gold = Color(0xFFFFD700)
+val Slate50 = Color(0xFFF8FAFC)
+val Slate100 = Color(0xFFF1F5F9)
+val Emerald500 = Color(0xFF10B981)
+val Amber700 = Color(0xFFD97706)
+val Purple500 = Color(0xFFA855F7)
+val Blue100 = Color(0xFFDBEAFE)
+val Amber100 = Color(0xFFFEF3C7)
+val Sky200 = Color(0xFFACE6FD)
+val Sky700 = Color(0xFF0369A1)
+

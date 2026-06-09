@@ -27,6 +27,9 @@ class SmartReminderWorker(
         val notificationsEnabled = prefsRepository.getNotificationsEnabled(userId).first()
         if (notificationsEnabled == false) return Result.success()
 
+        val measurementPreferences = prefsRepository.getMeasurementPreferences(userId).first()
+        val volumeUnit = measurementPreferences.volume
+
         val userRecord = firestoreRepository.getUserRecord(userId) ?: return Result.success()
         val dailyGoal = userRecord.dailyGoal ?: 3000
         
@@ -135,7 +138,7 @@ class SmartReminderWorker(
                 NotificationHelper.showSmartReminder(
                     applicationContext,
                     "Almost there! 🔥",
-                    "You're only ${remaining}ml away from closing your ring today! You can do it."
+                    "You're only ${MeasurementUtils.formatVolume(applicationContext, remaining, volumeUnit)} away from closing your ring today! You can do it."
                 )
             }
             
@@ -149,7 +152,7 @@ class SmartReminderWorker(
             }
             
             // Streak alert: last day was today, but maybe check if streak is high
-            userRecord.streak >= 7 && userRecord.lastRingClosedDate != todayDate && hour >= 20 -> {
+            userRecord.streak >= 2 && userRecord.lastRingClosedDate != todayDate && hour >= 20 -> {
                 NotificationHelper.showSmartReminder(
                     applicationContext,
                     "Protect your streak! 🔥",

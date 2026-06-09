@@ -96,7 +96,7 @@ fun AboutDeveloperScreen(onBack: () -> Unit) {
                 shape = RoundedCornerShape(24.dp),
                 color = Color.White,
                 shadowElevation = 2.dp,
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+                border = androidx.compose.foundation.BorderStroke(1.dp, Slate100)
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Text(
@@ -123,7 +123,7 @@ fun AboutDeveloperScreen(onBack: () -> Unit) {
                 shape = RoundedCornerShape(24.dp),
                 color = Color.White,
                 shadowElevation = 2.dp,
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+                border = androidx.compose.foundation.BorderStroke(1.dp, Slate100)
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Text(

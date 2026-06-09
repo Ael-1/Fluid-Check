@@ -80,8 +80,9 @@ enum class SortState { DEFAULT, PRESS_1, PRESS_2 }
 @Composable
 fun AdminDashboard(
     firestoreRepository: FirestoreRepository = remember { FirestoreRepository() },
-    currentUserRole: String = "USER",
-    currentUserId: String = ""
+    currentUserRole: String = "FREE USER",
+    currentUserId: String = "",
+    measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences = com.example.fluidcheck.util.MeasurementPreferences()
 ) {
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     var searchQuery by remember { mutableStateOf("") }
@@ -120,12 +121,14 @@ fun AdminDashboard(
     var activeSortState by remember { mutableStateOf(SortState.DEFAULT) }
 
     val roleWeight = { role: String ->
-        when (role.uppercase()) {
-            "ADMIN" -> 3
-            "MODERATOR" -> 2
-            "USER" -> 1
+        val roleWeight = when (role.uppercase()) {
+            "ADMIN" -> 4
+            "MODERATOR" -> 3
+            "PREMIUM USER" -> 2
+            "FREE USER" -> 1
             else -> 0
         }
+        roleWeight
     }
 
     val sortedUsers = remember(filteredUsers, activeSortColumn, activeSortState) {
@@ -231,7 +234,8 @@ fun AdminDashboard(
                         statusDialogData = false to (e.message ?: "An unexpected error occurred.")
                     }
                 }
-            }
+            },
+            measurementPreferences = measurementPreferences
         )
     }
 
@@ -251,7 +255,7 @@ fun AdminDashboard(
                     }
                 ) {
                     @Suppress("DEPRECATION")
-                    Text("Confirm", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
+                    Text("Confirm", color = ErrorRed, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -302,7 +306,7 @@ fun AdminDashboard(
                 Text(
                     text = if (isSuccess) "Success" else "Update Failed",
                     fontWeight = FontWeight.Bold,
-                    color = if (isSuccess) Color(0xFF10B981) else Color(0xFFEF4444)
+                    color = if (isSuccess) Emerald500 else ErrorRed
                 )
             },
             text = { Text(message) },
@@ -335,7 +339,7 @@ fun AdminDashboard(
             AnalyticsGrid(
                 totalUsers = totalUsers.toString(),
                 moderators = moderatorsCount.toString(),
-                avgGoal = "%.0f ml".format(avgGoal),
+                avgGoal = com.example.fluidcheck.util.MeasurementUtils.formatVolumeCompact(context, avgGoal.toInt(), measurementPreferences.volume),
                 totalLogs = totalRings.toString(),
                 avgStreak = avgStreak
             )
@@ -435,16 +439,17 @@ fun EditUserDetailedDialog(
     currentUserId: String,
     onDismiss: () -> Unit,
     onSave: (UserRecord) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences = com.example.fluidcheck.util.MeasurementPreferences()
 ) {
     var username by remember { mutableStateOf(user.username) }
     var role by remember { mutableStateOf(user.role) }
-    var dailyGoal by remember { mutableStateOf(user.dailyGoal?.toString() ?: "3000") }
+    var dailyGoal by remember { mutableStateOf(com.example.fluidcheck.util.MeasurementUtils.convertVolumeForDisplay(user.dailyGoal ?: 3000, measurementPreferences.volume).toString()) }
     var isLoading by remember { mutableStateOf(false) }
     
     // Personal Records States
-    var weight by remember { mutableStateOf(user.weight) }
-    var height by remember { mutableStateOf(user.height) }
+    var weight by remember { mutableStateOf(com.example.fluidcheck.util.MeasurementUtils.convertWeightForDisplay(user.weight, measurementPreferences.weight)) }
+    var height by remember { mutableStateOf(com.example.fluidcheck.util.MeasurementUtils.convertHeightForDisplay(user.height, measurementPreferences.height)) }
     var age by remember { mutableStateOf(user.age) }
     var sex by remember { mutableStateOf(user.sex.ifEmpty { "Please select..." }) }
     var activity by remember { mutableStateOf(user.activity.ifEmpty { "Please select..." }) }
@@ -457,11 +462,13 @@ fun EditUserDetailedDialog(
     var showDiscardConfirm by remember { mutableStateOf(false) }
 
     fun hasChanges(): Boolean {
+        val convertedWeight = com.example.fluidcheck.util.MeasurementUtils.convertWeightForDisplay(user.weight, measurementPreferences.weight)
+        val convertedHeight = com.example.fluidcheck.util.MeasurementUtils.convertHeightForDisplay(user.height, measurementPreferences.height)
         return username != user.username ||
                role != user.role ||
-               dailyGoal != (user.dailyGoal?.toString() ?: "3000") ||
-               weight != user.weight ||
-               height != user.height ||
+               dailyGoal != com.example.fluidcheck.util.MeasurementUtils.convertVolumeForDisplay(user.dailyGoal ?: 3000, measurementPreferences.volume).toString() ||
+               weight != convertedWeight ||
+               height != convertedHeight ||
                age != user.age ||
                sex != (user.sex.ifEmpty { "Please select..." }) ||
                activity != (user.activity.ifEmpty { "Please select..." }) ||
@@ -478,7 +485,7 @@ fun EditUserDetailedDialog(
                     showDiscardConfirm = false
                     onDismiss()
                 }) {
-                    Text("DISCARD", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
+                    Text("DISCARD", color = ErrorRed, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -518,7 +525,7 @@ fun EditUserDetailedDialog(
     if (showDeleteFirstConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteFirstConfirm = false },
-            title = { Text(text = "Delete User", fontWeight = FontWeight.Bold, color = Color(0xFFEF4444)) },
+            title = { Text(text = "Delete User", fontWeight = FontWeight.Bold, color = ErrorRed) },
             text = { 
                 Text(
                     "Are you sure you want to delete \"${user.username.ifEmpty { user.email }}\"? This action cannot be undone.",
@@ -533,7 +540,7 @@ fun EditUserDetailedDialog(
                     }
                 ) {
                     @Suppress("DEPRECATION")
-                    Text("Confirm", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
+                    Text("Confirm", color = ErrorRed, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -578,7 +585,7 @@ fun EditUserDetailedDialog(
                         Text(
                             text = if (isSuccess) "Success" else "Validation Error",
                             fontWeight = FontWeight.Bold,
-                            color = if (isSuccess) Color(0xFF10B981) else Color(0xFFEF4444)
+                            color = if (isSuccess) Emerald500 else ErrorRed
                         )
                     },
                     text = { Text(message) },
@@ -696,7 +703,7 @@ fun EditUserDetailedDialog(
                             expanded = roleExpanded,
                             onDismissRequest = { roleExpanded = false }
                         ) {
-                            listOf("USER", "MODERATOR").forEach { option ->
+                            listOf("FREE USER", "PREMIUM USER", "MODERATOR").forEach { option ->
                                 DropdownMenuItem(
                                     text = { Text(option) },
                                     onClick = {
@@ -716,8 +723,9 @@ fun EditUserDetailedDialog(
                 if (user.role != "ADMIN") {
                     InfoSectionHeader("HYDRATION STATISTICS")
                     if (canEdit) {
+                        val heightLabel = com.example.fluidcheck.util.MeasurementUtils.heightLabel(context, measurementPreferences.height)
                         EditField(
-                            label = "Daily Goal (ml)",
+                            label = com.example.fluidcheck.util.MeasurementUtils.dailyGoalLabel(context, measurementPreferences.volume),
                             value = dailyGoal,
                             onValueChange = { if (it.all { c -> c.isDigit() }) dailyGoal = it },
                             icon = AppIcons.Goal,
@@ -725,7 +733,7 @@ fun EditUserDetailedDialog(
                             keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) })
                         )
                     } else {
-                        ReadOnlyField("Daily Goal (ml)", dailyGoal)
+                        ReadOnlyField(com.example.fluidcheck.util.MeasurementUtils.dailyGoalLabel(context, measurementPreferences.volume), dailyGoal)
                     }
                     
                     Spacer(modifier = Modifier.height(16.dp))
@@ -753,7 +761,7 @@ fun EditUserDetailedDialog(
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Box(modifier = Modifier.weight(1f)) {
-                            ReadOnlyField("Total Drank", "${user.totalFluidDrankAllTime} ml")
+                            ReadOnlyField("Total Drank", com.example.fluidcheck.util.MeasurementUtils.formatVolumeCompact(context, user.totalFluidDrankAllTime, measurementPreferences.volume))
                         }
                     }
 
@@ -766,7 +774,7 @@ fun EditUserDetailedDialog(
                             .fillMaxWidth()
                             .clickable { showProgressGraph = !showProgressGraph },
                         shape = RoundedCornerShape(16.dp),
-                        color = if (showProgressGraph) PrimaryBlue.copy(alpha = 0.08f) else Color(0xFFF8FAFC),
+                        color = if (showProgressGraph) PrimaryBlue.copy(alpha = 0.08f) else Slate50,
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp, 
                             if (showProgressGraph) PrimaryBlue.copy(alpha = 0.3f) else Color.LightGray.copy(alpha = 0.2f)
@@ -806,7 +814,8 @@ fun EditUserDetailedDialog(
                         UserProgressChart(
                             allLogs = userLogs.value,
                             dailyGoal = user.dailyGoal ?: 3000,
-                            accountCreatedAt = user.createdAt
+                            accountCreatedAt = user.createdAt,
+                            measurementPreferences = measurementPreferences
                         )
                     }
 
@@ -820,7 +829,8 @@ fun EditUserDetailedDialog(
                         sex = sex, onSexChange = { sex = it },
                         activity = activity, onActivityChange = { activity = it },
                         environment = environment, onEnvironmentChange = { environment = it },
-                        enabled = canEdit
+                        enabled = canEdit,
+                        measurementPreferences = measurementPreferences
                     )
                 }
 
@@ -829,14 +839,11 @@ fun EditUserDetailedDialog(
 
                     Button(
                         onClick = {
-                            // Task 1.10: Enhanced Username Validation
                             val uErr = com.example.fluidcheck.util.ValidationUtils.validateUsername(username)
-                            
-                            // Task 12.2: Numeric Range Validation
-                            val wErr = com.example.fluidcheck.util.ValidationUtils.validateWeight(weight.toFloatOrNull())
-                            val hErr = com.example.fluidcheck.util.ValidationUtils.validateHeight(height.toFloatOrNull())
+                            val wErr = com.example.fluidcheck.util.ValidationUtils.validateWeight(context, weight.toFloatOrNull(), measurementPreferences.weight)
+                            val hErr = com.example.fluidcheck.util.ValidationUtils.validateHeight(context, height.toFloatOrNull(), measurementPreferences.height)
                             val aErr = com.example.fluidcheck.util.ValidationUtils.validateAge(age.toIntOrNull())
-                            val gErr = com.example.fluidcheck.util.ValidationUtils.validateDailyGoal(dailyGoal.toIntOrNull())
+                            val gErr = com.example.fluidcheck.util.ValidationUtils.validateDailyGoal(context, dailyGoal.toIntOrNull(), measurementPreferences.volume)
 
                             val firstErr = uErr ?: wErr ?: hErr ?: aErr ?: gErr
                             if (firstErr != null) {
@@ -844,12 +851,14 @@ fun EditUserDetailedDialog(
                                 return@Button
                             }
 
+                            val weightLabel = com.example.fluidcheck.util.MeasurementUtils.weightLabel(context, measurementPreferences.weight)
+                            val heightLabel = com.example.fluidcheck.util.MeasurementUtils.heightLabel(context, measurementPreferences.height)
                             onSave(user.copy(
                                 username = username.trim(),
                                 role = role,
-                                dailyGoal = dailyGoal.trim().toIntOrNull() ?: 3000,
-                                weight = weight.trim(),
-                                height = height.trim(),
+                                dailyGoal = com.example.fluidcheck.util.MeasurementUtils.convertVolumeToMl(dailyGoal.trim().toDoubleOrNull() ?: 3000.0, measurementPreferences.volume),
+                                weight = com.example.fluidcheck.util.MeasurementUtils.convertWeightToKg(weight.trim(), measurementPreferences.weight),
+                                height = com.example.fluidcheck.util.MeasurementUtils.convertHeightToCm(height.trim(), measurementPreferences.height),
                                 age = age.trim(),
                                 sex = sex.replace("Please select...", ""),
                                 activity = activity.replace("Please select...", ""),
@@ -882,10 +891,10 @@ fun EditUserDetailedDialog(
                             .height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color(0xFFEF4444)
+                            contentColor = ErrorRed
                         ),
                         border = androidx.compose.foundation.BorderStroke(
-                            1.5.dp, Color(0xFFEF4444).copy(alpha = 0.5f)
+                            1.5.dp, ErrorRed.copy(alpha = 0.5f)
                         )
                     ) {
                         Icon(
@@ -978,7 +987,7 @@ fun PasswordConfirmationDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = PrimaryBlue,
                         unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
-                        errorBorderColor = Color(0xFFEF4444)
+                        errorBorderColor = ErrorRed
                     ),
                     isError = errorMessage != null,
                     singleLine = true
@@ -987,7 +996,7 @@ fun PasswordConfirmationDialog(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = errorMessage!!,
-                        color = Color(0xFFEF4444),
+                        color = ErrorRed,
                         fontSize = 12.sp
                     )
                 }
@@ -1022,7 +1031,7 @@ fun PasswordConfirmationDialog(
                 enabled = !isLoading
             ) {
                 @Suppress("DEPRECATION")
-                Text("DELETE", color = if (isLoading) Color.Gray else Color(0xFFEF4444), fontWeight = FontWeight.Bold)
+                Text("DELETE", color = if (isLoading) Color.Gray else ErrorRed, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
@@ -1043,7 +1052,8 @@ fun PasswordConfirmationDialog(
 fun UserProgressChart(
     allLogs: List<FluidLog>,
     dailyGoal: Int,
-    accountCreatedAt: com.google.firebase.Timestamp? = null
+    accountCreatedAt: com.google.firebase.Timestamp? = null,
+    measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences = com.example.fluidcheck.util.MeasurementPreferences()
 ) {
     var selectedTab by remember { mutableStateOf("Week") }
     var navOffset by remember { mutableIntStateOf(0) }
@@ -1053,8 +1063,8 @@ fun UserProgressChart(
         navOffset = 0
     }
 
-    val (navLabel, chartData) = remember(selectedTab, navOffset, allLogs, dailyGoal) {
-        getChartDataForRange(selectedTab, navOffset, allLogs, dailyGoal)
+    val (navLabel, chartData) = remember(selectedTab, navOffset, allLogs, dailyGoal, measurementPreferences) {
+        getChartDataForRange(selectedTab, navOffset, allLogs, dailyGoal, measurementPreferences)
     }
 
     val creationDate = remember(accountCreatedAt) {
@@ -1084,6 +1094,7 @@ fun UserProgressChart(
             creationDate = creationDate,
             allLogs = allLogs,
             dailyGoal = dailyGoal,
+            userRole = "ADMIN",
             onDateSelected = { pickedDate ->
                 val todayNow = LocalDate.now(PST_ZONE)
                 navOffset = when (selectedTab) {
@@ -1145,7 +1156,7 @@ fun UserProgressChart(
         shape = RoundedCornerShape(24.dp),
         color = Color.White,
         shadowElevation = 4.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = androidx.compose.foundation.BorderStroke(1.dp, Slate100)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -1202,7 +1213,7 @@ fun ReadOnlyField(label: String, value: String) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            color = Color(0xFFF8FAFC),
+            color = Slate50,
             border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
         ) {
             Text(
@@ -1237,7 +1248,7 @@ fun AnalyticsGrid(
                 title = "MODERATORS",
                 value = moderators,
                 icon = AppIcons.Security,
-                iconColor = Color(0xFFD97706),
+                iconColor = Amber700,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -1248,7 +1259,7 @@ fun AnalyticsGrid(
                 title = "AVG. GOAL",
                 value = avgGoal,
                 icon = AppIcons.Goal,
-                iconColor = Color(0xFF22C55E),
+                iconColor = SuccessGreen,
                 modifier = Modifier.weight(1f)
             )
             AnalyticsCard(
@@ -1265,7 +1276,7 @@ fun AnalyticsGrid(
             title = stringResource(R.string.avg_streak),
             value = avgStreak,
             icon = AppIcons.Progress,
-            iconColor = Color(0xFFA855F7),
+            iconColor = Purple500,
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -1351,8 +1362,8 @@ fun UserDirectoryHeader(
                     FilledTonalButton(
                         onClick = onDeleteSelected,
                         colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = Color(0xFFEF4444).copy(alpha = 0.1f),
-                            contentColor = Color(0xFFEF4444)
+                            containerColor = ErrorRed.copy(alpha = 0.1f),
+                            contentColor = ErrorRed
                         ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
@@ -1516,13 +1527,13 @@ fun UserRow(
             
             Box(modifier = Modifier.weight(1f)) {
                 val roleColor = when (user.role) {
-                    "ADMIN" -> Color(0xFFDBEAFE)
-                    "MODERATOR" -> Color(0xFFFEF3C7)
-                    else -> Color(0xFFF1F5F9)
+                    "ADMIN" -> Blue100
+                    "MODERATOR" -> Amber100
+                    else -> Slate100
                 }
                 val roleTextColor = when (user.role) {
                     "ADMIN" -> PrimaryBlue
-                    "MODERATOR" -> Color(0xFFD97706)
+                    "MODERATOR" -> Amber700
                     else -> Color.Gray
                 }
                 Surface(

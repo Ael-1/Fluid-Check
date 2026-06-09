@@ -132,6 +132,11 @@ object NotificationScheduler {
         Log.d(TAG, "Weather sync cancelled")
     }
 
+    fun cancelSmartReminders(context: Context) {
+        WorkManager.getInstance(context).cancelUniqueWork(SMART_REMINDER_WORK_NAME)
+        Log.d(TAG, "Smart reminders cancelled")
+    }
+
     fun cancelAllReminders(context: Context) {
         // Cancel AlarmManager hydration reminder
         val intent = Intent(context, ReminderAlarmReceiver::class.java).apply {

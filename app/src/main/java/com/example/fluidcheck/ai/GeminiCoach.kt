@@ -15,6 +15,7 @@ class GeminiCoach(apiKey: String) {
     )
 
     suspend fun calculateHydrationGoal(
+        unitsInfo: String,
         weight: String,
         height: String,
         age: String,
@@ -29,6 +30,7 @@ class GeminiCoach(apiKey: String) {
             2. Activity Level Adjustment: Add 500 ml for Lightly Active/Moderate and 1000 ml for Very Active/Extra Active (representing sweat loss recovery).
             3. Environmental Adjustment: Add 500 ml for Hot/Humid conditions.
             
+            $unitsInfo
             User Data:
             - Weight: $weight kg
             - Height: $height cm
@@ -68,11 +70,12 @@ class GeminiCoach(apiKey: String) {
     }
 
     suspend fun getRecommendation(
+        unitsInfo: String,
         preferences: String,
         habits: String
     ): String? = withContext(Dispatchers.IO) {
         val prompt = """
-            You are a professional clinical dietitian. Give a short, personalized hydration recommendation (max 5 sentences) based on the user's preferences: '$preferences' and habits: '$habits'.
+            You are a professional clinical dietitian. Give a short, personalized hydration recommendation (max 5 sentences) based on the user's preferences: '$preferences' and habits: '$habits'. $unitsInfo
             Base your advice strictly on established physiological science (such as beverage hydration index, optimal water timing, diuretic balance for coffee/alcohol, or electrolyte preservation).
             Keep it encouraging, clear, and professional. Provide only the recommendation itself. Do not output any thoughts, reasoning steps, or markdown tags.
         """.trimIndent()
@@ -143,6 +146,7 @@ class GeminiCoach(apiKey: String) {
     }
 
     suspend fun analyzeHabitsAndRules(
+        unitsInfo: String,
         logsLast14Days: String,
         profile: String
     ): Pair<String, String>? = withContext(Dispatchers.IO) {
@@ -150,6 +154,7 @@ class GeminiCoach(apiKey: String) {
             You are a professional clinical dietitian and predictive health analyzer.
             Analyze the following 14-day fluid intake logs and user profile:
             
+            $unitsInfo
             User Profile:
             $profile
             
