@@ -40,6 +40,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fluidcheck.R
@@ -52,6 +53,7 @@ import com.example.fluidcheck.ui.theme.*
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
@@ -75,7 +77,12 @@ fun HomeScreen(
     var showAchievementDialog by rememberSaveable { mutableStateOf(false) }
     var showHistoryDialog by remember { mutableStateOf(false) }
     var showQuickAddDialog by remember { mutableStateOf(false) }
-    var hasShownAchievementThisSession by rememberSaveable { mutableStateOf(false) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val userPreferencesRepository = remember(context) { com.example.fluidcheck.repository.UserPreferencesRepository(context) }
+    val scope = rememberCoroutineScope()
+    val lastShownDateFlow = remember(userId) { userPreferencesRepository.getLastShownCongratulationsDate(userId) }
+    val lastShownDate by lastShownDateFlow.collectAsState(initial = null)
 
     var selectionMode by remember { mutableStateOf(false) }
     var selectedConfigs by remember { mutableStateOf(setOf<QuickAddConfig>()) }
@@ -91,12 +98,15 @@ fun HomeScreen(
     }
 
     // Check if goal achieved to show dialog
-    LaunchedEffect(totalIntake, dailyGoal) {
-        if (totalIntake >= dailyGoal && dailyGoal > 0 && !hasShownAchievementThisSession) {
+    val today = remember {
+        java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("GMT+8")
+        }.format(java.util.Date())
+    }
+
+    LaunchedEffect(totalIntake, dailyGoal, lastShownDate) {
+        if (lastShownDate != null && totalIntake >= dailyGoal && dailyGoal > 0 && lastShownDate != today) {
             showAchievementDialog = true
-            hasShownAchievementThisSession = true
-        } else if (totalIntake < dailyGoal) {
-            hasShownAchievementThisSession = false
         }
     }
 
@@ -112,16 +122,39 @@ fun HomeScreen(
     }
 
     if (showAchievementDialog) {
-        GoalAchievedDialog(onDismiss = { showAchievementDialog = false })
+        GoalAchievedDialog(
+            onDismiss = { 
+                showAchievementDialog = false 
+                scope.launch {
+                    userPreferencesRepository.saveLastShownCongratulationsDate(userId, today)
+                }
+            }
+        )
     }
 
     if (showHistoryDialog) {
-        val allLogs by allLogsFlow.collectAsState(initial = emptyList())
+        val allLogs by allLogsFlow.collectAsState(initial = null)
+        val context = LocalContext.current
+        val scope = rememberCoroutineScope()
         LogHistoryDialog(
             logs = allLogs, 
             onDismiss = { showHistoryDialog = false },
             onEdit = { 
                 onEditLog(it)
+            },
+            onDeleteLogs = { selectedLogs ->
+                scope.launch {
+                    try {
+                        val result = firestoreRepository.deleteFluidLogs(userId, selectedLogs)
+                        if (result.isSuccess) {
+                            android.widget.Toast.makeText(context, "Deleted ${selectedLogs.size} logs", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            android.widget.Toast.makeText(context, "Error deleting logs", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "Delete failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         )
     }
@@ -957,28 +990,115 @@ fun GoalAchievedDialog(onDismiss: () -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun LogHistoryDialog(logs: List<FluidLog>, onDismiss: () -> Unit, onEdit: (FluidLog) -> Unit) {
+fun LogHistoryDialog(
+    logs: List<FluidLog>?,
+    onDismiss: () -> Unit,
+    onEdit: (FluidLog) -> Unit,
+    onDeleteLogs: (List<FluidLog>) -> Unit
+) {
+    var isSelectionMode by remember { mutableStateOf(false) }
+    var selectedLogs by remember { mutableStateOf(setOf<FluidLog>()) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("Delete Logs", fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to delete these ${selectedLogs.size} logs?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteLogs(selectedLogs.toList())
+                        isSelectionMode = false
+                        selectedLogs = emptySet()
+                        showDeleteConfirmDialog = false
+                    }
+                ) {
+                    Text("Delete", color = Color.Red, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteConfirmDialog = false }
+                ) {
+                    Text("Cancel", color = Color.Gray)
+                }
+            },
+            containerColor = Color.White
+        )
+    }
+
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            isSelectionMode = false
+            selectedLogs = emptySet()
+            onDismiss()
+        },
         confirmButton = {
             @Suppress("DEPRECATION")
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = {
+                    isSelectionMode = false
+                    selectedLogs = emptySet()
+                    onDismiss()
+                }
+            ) {
                 @Suppress("DEPRECATION")
                 Text(stringResource(R.string.close), fontWeight = FontWeight.Bold, color = PrimaryBlue)
             }
         },
         title = {
-            @Suppress("DEPRECATION")
-            Text(
-                stringResource(R.string.log_history),
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
-                color = TextDark
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isSelectionMode) {
+                    Text(
+                        text = "${selectedLogs.size} selected",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = PrimaryBlue
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = {
+                                showDeleteConfirmDialog = true
+                            }
+                        ) {
+                            Icon(
+                                imageVector = AppIcons.Delete,
+                                contentDescription = "Delete Selected",
+                                tint = Color.Red
+                            )
+                        }
+                        TextButton(
+                            onClick = {
+                                isSelectionMode = false
+                                selectedLogs = emptySet()
+                            }
+                        ) {
+                            Text("Cancel", color = Color.Gray, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                } else {
+                    @Suppress("DEPRECATION")
+                    Text(
+                        stringResource(R.string.log_history),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = TextDark
+                    )
+                }
+            }
         },
         text = {
             val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
             val groupedLogs = remember(logs) {
+                if (logs == null) return@remember emptyList()
                 val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).apply {
                     timeZone = java.util.TimeZone.getTimeZone("GMT+8")
                 }
@@ -1005,8 +1125,17 @@ fun LogHistoryDialog(logs: List<FluidLog>, onDismiss: () -> Unit, onEdit: (Fluid
                 }
             }
 
+            val sdfToday = remember {
+                java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).apply {
+                    timeZone = java.util.TimeZone.getTimeZone("GMT+8")
+                }
+            }
+            val todayStr = remember { sdfToday.format(java.util.Date()) }
+
             Box(modifier = Modifier.heightIn(max = 400.dp)) {
-                if (logs.isEmpty()) {
+                if (logs == null) {
+                    LogHistorySkeleton()
+                } else if (logs.isEmpty()) {
                     Text("No logs found.", color = MutedForeground)
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1021,19 +1150,49 @@ fun LogHistoryDialog(logs: List<FluidLog>, onDismiss: () -> Unit, onEdit: (Fluid
                                         text = header.uppercase(), 
                                         fontWeight = FontWeight.Black,
                                         fontSize = 11.sp,
-                                        color = PrimaryBlue.copy(alpha = 0.7f),
+                                        color = PrimaryBlue,
                                         letterSpacing = 1.sp,
                                         modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                                     )
                                 }
                             }
                             items(logItems.reversed()) { log ->
+                                val isToday = log.date == todayStr
+                                val isLogSelected = selectedLogs.contains(log)
+                                val cardBgColor = when {
+                                    isLogSelected -> PrimaryBlue.copy(alpha = 0.08f)
+                                    else -> Color(0xFFF8FAFC)
+                                }
+
                                 Card(
                                     shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                                    colors = CardDefaults.cardColors(containerColor = cardBgColor),
+                                    border = if (isLogSelected) androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.3f)) else null,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable(enabled = log.isEditable) { onEdit(log) }
+                                        .combinedClickable(
+                                            enabled = isToday,
+                                            onLongClick = {
+                                                if (!isSelectionMode) {
+                                                    isSelectionMode = true
+                                                    selectedLogs = setOf(log)
+                                                }
+                                            },
+                                            onClick = {
+                                                if (isSelectionMode) {
+                                                    if (selectedLogs.contains(log)) {
+                                                        selectedLogs = selectedLogs - log
+                                                        if (selectedLogs.isEmpty()) {
+                                                            isSelectionMode = false
+                                                        }
+                                                    } else {
+                                                        selectedLogs = selectedLogs + log
+                                                    }
+                                                } else {
+                                                    onEdit(log)
+                                                }
+                                            }
+                                        )
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(12.dp),
@@ -1092,6 +1251,63 @@ fun LogHistoryDialog(logs: List<FluidLog>, onDismiss: () -> Unit, onEdit: (Fluid
         containerColor = Color.White,
         shape = RoundedCornerShape(24.dp)
     )
+}
+
+@Composable
+fun LogHistorySkeleton() {
+    val infiniteTransition = rememberInfiniteTransition(label = "SkeletonPulse")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 0.9f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "SkeletonAlpha"
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        repeat(3) {
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .background(Color(0xFFE2E8F0).copy(alpha = alpha), CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier
+                                .width(80.dp)
+                                .height(14.dp)
+                                .background(Color(0xFFE2E8F0).copy(alpha = alpha), RoundedCornerShape(4.dp))
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(120.dp)
+                                .height(10.dp)
+                                .background(Color(0xFFE2E8F0).copy(alpha = alpha), RoundedCornerShape(4.dp))
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .width(50.dp)
+                            .height(14.dp)
+                            .background(Color(0xFFE2E8F0).copy(alpha = alpha), RoundedCornerShape(4.dp))
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable

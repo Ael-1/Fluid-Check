@@ -80,6 +80,7 @@ fun MainScreen(
     onGoogleSignInClick: () -> Unit = {},
     hasNotificationPermission: Boolean = true,
     onRequestNotificationPermission: () -> Unit = {},
+    onRequestLocationPermission: () -> Unit = {},
     firestoreRepository: FirestoreRepository = run {
         val context = LocalContext.current
         remember(context) { FirestoreRepository(context) }
@@ -99,6 +100,24 @@ fun MainScreen(
     // Use userId (UID) for synchronization as document ID
     val userRecordFlow = remember(userId) { firestoreRepository.getUserRecordFlow(userId) }
     val userRecord by userRecordFlow.collectAsState(initial = null)
+
+    // Persistent AI Coach Screen States
+    var aiGoalWeight by rememberSaveable { mutableStateOf("") }
+    var aiGoalHeight by rememberSaveable { mutableStateOf("") }
+    var aiGoalAge by rememberSaveable { mutableStateOf("") }
+    var aiGoalSex by rememberSaveable { mutableStateOf("Select...") }
+    var aiGoalActivity by rememberSaveable { mutableStateOf("Select...") }
+    var aiGoalEnvironment by rememberSaveable { mutableStateOf("Select...") }
+    var aiGoalIsLoading by rememberSaveable { mutableStateOf(false) }
+    var aiGoalResultMl by rememberSaveable { mutableStateOf<String?>(null) }
+
+    var aiAssessmentIsLoading by rememberSaveable { mutableStateOf(false) }
+    var aiAssessmentResult by rememberSaveable { mutableStateOf<String?>(null) }
+
+    var aiRecsPreferences by rememberSaveable { mutableStateOf("") }
+    var aiRecsHabits by rememberSaveable { mutableStateOf("") }
+    var aiRecsIsLoading by rememberSaveable { mutableStateOf(false) }
+    var aiRecsRecommendation by rememberSaveable { mutableStateOf<String?>(null) }
     
     // Core administrative check from database - Now includes MODERATOR
     val userRole = userRecord?.role ?: "USER"
@@ -108,9 +127,23 @@ fun MainScreen(
     // Last session's mode from DataStore
     val adminModePrefFlow = remember(userId) { repository.getAdminModeFlow(userId) }
     val adminModeState by adminModePrefFlow.collectAsState(initial = "LOADING")
+
+    val locationAccessFlow = remember(userId) { repository.isLocationAccessEnabled(userId) }
+    val locationAccessEnabled by locationAccessFlow.collectAsState(initial = null)
+
+    val dynamicWeatherFlow = remember(userId) { repository.isWeatherGoalAdjustmentEnabled(userId) }
+    val dynamicWeatherEnabled by dynamicWeatherFlow.collectAsState(initial = null)
+
+    val allLogsFlow = remember(userId) { firestoreRepository.getFluidLogsFlow(userId) }
+    val allLogs by allLogsFlow.collectAsState(initial = null)
     
     // Determine if we are still waiting for critical data
-    val isLoading = userRecord == null || adminModeState == "LOADING" || userId.isEmpty()
+    val isLoading = userRecord == null || 
+                    adminModeState == "LOADING" || 
+                    userId.isEmpty() || 
+                    locationAccessEnabled == null || 
+                    dynamicWeatherEnabled == null || 
+                    allLogs == null
 
     // UI state for switching between User and Admin views
     // Initialized ONLY when loading is done to prevent flicker
@@ -152,11 +185,17 @@ fun MainScreen(
     val reminderFrequency = userRecord?.reminderFrequency ?: "60"
 
     // Sync WorkManager when settings change
-    LaunchedEffect(notificationsEnabled, reminderFrequency, hasNotificationPermission, userId) {
+    LaunchedEffect(notificationsEnabled, reminderFrequency, hasNotificationPermission, userId, locationAccessEnabled, dynamicWeatherEnabled) {
         if (notificationsEnabled && hasNotificationPermission) {
             val freqInt = reminderFrequency.toIntOrNull() ?: 60
             com.example.fluidcheck.util.NotificationScheduler.scheduleReminders(context, userId, freqInt)
             com.example.fluidcheck.util.NotificationScheduler.scheduleSmartReminders(context, userId)
+            
+            if (locationAccessEnabled == true && dynamicWeatherEnabled == true) {
+                com.example.fluidcheck.util.NotificationScheduler.scheduleWeatherSync(context, userId)
+            } else {
+                com.example.fluidcheck.util.NotificationScheduler.cancelWeatherSync(context)
+            }
             
             // Also sync to local repository for worker offline access
             scope.launch {
@@ -205,7 +244,8 @@ fun MainScreen(
     
     val currentGoal = userRecord?.dailyGoal ?: 3000
     val totalIntake = todayLogs.sumOf { it.amount }
-    val currentStreak = userRecord?.streak ?: 0
+    val databaseStreak = userRecord?.streak ?: 0
+    val lastRingClosedDate = userRecord?.lastRingClosedDate ?: ""
     val quickAddConfigs = userRecord?.quickAddConfig ?: emptyList()
 
     // Network and sync state for System Status section
@@ -226,37 +266,10 @@ fun MainScreen(
         }
     }
 
-    // Handle Streak and Logic
-    LaunchedEffect(totalIntake, currentGoal) {
-        if (!isAdminMode && totalIntake >= currentGoal && currentGoal > 0 && userRecord != null) {
-            val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
-                timeZone = TimeZone.getTimeZone("GMT+8")
-            }.format(Date())
-            if (userRecord?.lastRingClosedDate != today) {
-                val calendar = Calendar.getInstance(TimeZone.getTimeZone("GMT+8"))
-                calendar.add(Calendar.DAY_OF_YEAR, -1)
-                val yesterday = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
-                    timeZone = TimeZone.getTimeZone("GMT+8")
-                }.format(calendar.time)
-                
-                firestoreRepository.markGoalAchievedToday(userId, today, yesterday)
-            }
-        }
-    }
-
-    // Streak Catch-up (Task 1.12)
+    // Streak Catch-up & Evaluation (Task 1.12)
     LaunchedEffect(userRecord, currentTodayDate) {
-        val lastDate = userRecord?.lastRingClosedDate ?: ""
-        if (lastDate.isNotEmpty() && !isAdminMode) {
-            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("GMT+8") }
-            val calendar = Calendar.getInstance(TimeZone.getTimeZone("GMT+8"))
-            calendar.add(Calendar.DAY_OF_YEAR, -1)
-            val yesterday = sdf.format(calendar.time)
-            
-            if (lastDate != currentTodayDate && lastDate != yesterday) {
-                // Missed more than 1 day, reset streak
-                firestoreRepository.resetStreak(userId)
-            }
+        if (userId.isNotEmpty() && !isAdminMode) {
+            firestoreRepository.evaluateStreak(userId)
         }
     }
 
@@ -453,7 +466,7 @@ fun MainScreen(
                             dailyGoal = currentGoal,
                             totalIntake = totalIntake,
                             logs = todayLogs,
-                            streakDays = currentStreak,
+                            streakDays = databaseStreak,
                             quickAddConfigs = quickAddConfigs,
                             onUpdateGoal = { newGoal ->
                                 scope.launch {
@@ -523,12 +536,14 @@ fun MainScreen(
                             userId = userId,
                             firestoreRepository = firestoreRepository,
                             dailyGoal = currentGoal,
-                            accountCreatedAt = userRecord?.createdAt
+                            accountCreatedAt = userRecord?.createdAt,
+                            allLogs = allLogs ?: emptyList()
                         )
                     }
                     composable(NavRoutes.AICoach.route) { 
                         AICoachScreen(
                             userRecord = userRecord,
+                            firestoreRepository = firestoreRepository,
                             isConnected = isConnected,
                             onSetGoal = { newGoal ->
                                 scope.launch {
@@ -542,6 +557,46 @@ fun MainScreen(
                                         }
                                     } catch (e: Exception) {
                                         android.widget.Toast.makeText(context, "Unexpected error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
+                            aiGoalWeight = aiGoalWeight,
+                            onAiGoalWeightChange = { aiGoalWeight = it },
+                            aiGoalHeight = aiGoalHeight,
+                            onAiGoalHeightChange = { aiGoalHeight = it },
+                            aiGoalAge = aiGoalAge,
+                            onAiGoalAgeChange = { aiGoalAge = it },
+                            aiGoalSex = aiGoalSex,
+                            onAiGoalSexChange = { aiGoalSex = it },
+                            aiGoalActivity = aiGoalActivity,
+                            onAiGoalActivityChange = { aiGoalActivity = it },
+                            aiGoalEnvironment = aiGoalEnvironment,
+                            onAiGoalEnvironmentChange = { aiGoalEnvironment = it },
+                            aiGoalIsLoading = aiGoalIsLoading,
+                            onAiGoalIsLoadingChange = { aiGoalIsLoading = it },
+                            aiGoalResultMl = aiGoalResultMl,
+                            onAiGoalResultMlChange = { aiGoalResultMl = it },
+                            aiAssessmentIsLoading = aiAssessmentIsLoading,
+                            onAiAssessmentIsLoadingChange = { aiAssessmentIsLoading = it },
+                            aiAssessmentResult = aiAssessmentResult,
+                            onAiAssessmentResultChange = { aiAssessmentResult = it },
+                            aiRecsPreferences = aiRecsPreferences,
+                            onAiRecsPreferencesChange = { aiRecsPreferences = it },
+                            aiRecsHabits = aiRecsHabits,
+                            onAiRecsHabitsChange = { aiRecsHabits = it },
+                            aiRecsIsLoading = aiRecsIsLoading,
+                            onAiRecsIsLoadingChange = { aiRecsIsLoading = it },
+                            aiRecsRecommendation = aiRecsRecommendation,
+                            onAiRecsRecommendationChange = { aiRecsRecommendation = it },
+                            mainScope = scope,
+                            locationAccessEnabled = locationAccessEnabled ?: false,
+                            weatherGoalAdjustmentEnabled = dynamicWeatherEnabled ?: false,
+                            onToggleWeatherGoalAdjustment = { enabled ->
+                                scope.launch {
+                                    try {
+                                        repository.setWeatherGoalAdjustmentEnabled(userId, enabled)
+                                    } catch (e: Exception) {
+                                        // Silently fail
                                     }
                                 }
                             }
@@ -564,7 +619,7 @@ fun MainScreen(
                                 userId = userId,
                                 username = userRecord?.username ?: username,
                                 email = userRecord?.email ?: "",
-                                streak = userRecord?.streak ?: 0,
+                                streak = databaseStreak,
                                 isDatabaseAdmin = isDatabaseAdmin,
                                 isAdminMode = isAdminMode,
                                 userRole = userRole,
@@ -633,7 +688,28 @@ fun MainScreen(
                                         popUpTo(0) { inclusive = true }
                                     }
                                 },
-                                profilePictureUrl = displayProfilePhoto
+                                profilePictureUrl = displayProfilePhoto,
+                                onRequestLocationPermission = onRequestLocationPermission,
+                                locationAccessEnabled = locationAccessEnabled ?: false,
+                                dynamicWeatherEnabled = dynamicWeatherEnabled ?: false,
+                                onToggleLocationAccess = { enabled ->
+                                    scope.launch {
+                                        try {
+                                            repository.setLocationAccessEnabled(userId, enabled)
+                                        } catch (e: Exception) {
+                                            // Silently fail
+                                        }
+                                    }
+                                },
+                                onToggleWeatherGoalAdjustment = { enabled ->
+                                    scope.launch {
+                                        try {
+                                            repository.setWeatherGoalAdjustmentEnabled(userId, enabled)
+                                        } catch (e: Exception) {
+                                            // Silently fail
+                                        }
+                                    }
+                                }
                             )
                     }
                     composable(NavRoutes.EditProfile.route) {

@@ -31,6 +31,9 @@ class UserPreferencesRepository(private val context: Context) {
         fun reminderFrequencyKey(userId: String) = stringPreferencesKey(sanitize("${userId}_reminder_frequency"))
         fun pendingPhotoUploadKey(userId: String) = booleanPreferencesKey(sanitize("${userId}_pending_photo_upload"))
         fun roleKey(userId: String) = stringPreferencesKey(sanitize("${userId}_role"))
+        fun locationAccessEnabledKey(userId: String) = booleanPreferencesKey(sanitize("${userId}_location_access_enabled"))
+        fun weatherGoalAdjustmentEnabledKey(userId: String) = booleanPreferencesKey(sanitize("${userId}_weather_goal_adjustment_enabled"))
+        fun predictiveRemindersKey(userId: String) = stringPreferencesKey(sanitize("${userId}_predictive_reminders"))
     }
 
     fun getUserRecord(userId: String): Flow<UserRecord> = context.dataStore.data.map { preferences ->
@@ -143,6 +146,46 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun saveStoredRole(userId: String, role: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.roleKey(userId)] = role
+        }
+    }
+
+    fun isLocationAccessEnabled(userId: String): Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.locationAccessEnabledKey(userId)] ?: false
+    }
+
+    suspend fun setLocationAccessEnabled(userId: String, enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.locationAccessEnabledKey(userId)] = enabled
+        }
+    }
+
+    fun isWeatherGoalAdjustmentEnabled(userId: String): Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.weatherGoalAdjustmentEnabledKey(userId)] ?: false
+    }
+
+    suspend fun setWeatherGoalAdjustmentEnabled(userId: String, enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.weatherGoalAdjustmentEnabledKey(userId)] = enabled
+        }
+    }
+
+    fun getPredictiveReminders(userId: String): Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.predictiveRemindersKey(userId)] ?: "[]"
+    }
+
+    suspend fun setPredictiveReminders(userId: String, remindersJson: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.predictiveRemindersKey(userId)] = remindersJson
+        }
+    }
+
+    fun getLastShownCongratulationsDate(userId: String): Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[stringPreferencesKey(PreferencesKeys.sanitize("${userId}_last_congratulations_shown_date"))] ?: ""
+    }
+
+    suspend fun saveLastShownCongratulationsDate(userId: String, date: String) {
+        context.dataStore.edit { preferences ->
+            preferences[stringPreferencesKey(PreferencesKeys.sanitize("${userId}_last_congratulations_shown_date"))] = date
         }
     }
 }

@@ -87,7 +87,7 @@ fun InitialSetupScreen(
         AlertDialog(
             onDismissRequest = { /* Force choice */ },
             title = { Text("Personalized Goal", fontWeight = FontWeight.Bold) },
-            text = { Text("Based on your profile, the AI suggests a daily goal of ${showGoalDialog}ml. Would you like to set this as your daily goal?") },
+            text = { Text("Based on your profile, the AI suggests a daily goal of $showGoalDialog. Would you like to set this as your daily goal?") },
             confirmButton = {
                 Button(
                     onClick = {

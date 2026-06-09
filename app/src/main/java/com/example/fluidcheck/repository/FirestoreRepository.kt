@@ -308,6 +308,29 @@ class FirestoreRepository(private val context: Context? = null) {
         }
     }
 
+    suspend fun deleteFluidLogs(uid: String, logs: List<FluidLog>): Result<Unit> {
+        if (logs.isEmpty()) return Result.success(Unit)
+        if (uid == "GUEST") {
+            logs.forEach { guestRepository?.deleteFluidLog(it) }
+            return Result.success(Unit)
+        }
+        return try {
+            val batch = db.batch()
+            val userRef = usersCollection.document(uid)
+            val totalAmount = logs.sumOf { it.amount.toLong() }
+            
+            batch.update(userRef, "totalFluidDrankAllTime", FieldValue.increment(-totalAmount))
+            logs.forEach { log ->
+                val logRef = userRef.collection("fluid_logs").document(log.id.toString())
+                batch.delete(logRef)
+            }
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     fun getFluidLogsFlow(uid: String): Flow<List<FluidLog>> {
         if (uid == "GUEST") {
             return guestRepository?.guestLogsFlow ?: kotlinx.coroutines.flow.flowOf(emptyList())
@@ -447,15 +470,14 @@ class FirestoreRepository(private val context: Context? = null) {
              return Result.success(Unit)
         }
         
-        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("GMT+8")
-        }.format(Date())
+        }
+        val todayStr = sdf.format(Date())
         
         val calendar = Calendar.getInstance(TimeZone.getTimeZone("GMT+8"))
         calendar.add(Calendar.DAY_OF_YEAR, -1)
-        val yesterdayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
-            timeZone = TimeZone.getTimeZone("GMT+8")
-        }.format(calendar.time)
+        val yesterdayStr = sdf.format(calendar.time)
 
         return try {
             val userRef = usersCollection.document(uid)
@@ -463,14 +485,61 @@ class FirestoreRepository(private val context: Context? = null) {
             if (!userDoc.exists()) return Result.success(Unit)
             
             val lastRingDate = userDoc.getString("lastRingClosedDate") ?: ""
-            
-            // If the last ring was NOT closed yesterday AND not today, reset streak to 0
-            if (lastRingDate != yesterdayStr && lastRingDate != todayStr) {
-                 userRef.update("streak", 0).await()
+            val dailyGoal = userDoc.getLong("dailyGoal")?.toInt() ?: 3000
+            val databaseStreak = userDoc.getLong("streak")?.toInt() ?: 0
+            val highestStreak = userDoc.getLong("highestStreak")?.toInt() ?: 0
+            val totalRingsClosed = userDoc.getLong("totalRingsClosed")?.toInt() ?: 0
+
+            // If the last evaluated date was already yesterday or today, we don't need to re-evaluate yesterday
+            if (lastRingDate == yesterdayStr || lastRingDate == todayStr) {
+                return Result.success(Unit)
+            }
+
+            // Get yesterday's logs to check if the goal was met
+            val yesterdayLogs = getLogsForDate(uid, yesterdayStr)
+            val yesterdayIntake = yesterdayLogs.sumOf { it.amount }
+
+            if (yesterdayIntake >= dailyGoal && dailyGoal > 0) {
+                // Yesterday's goal was met! Increment/update streak
+                val calendar2 = Calendar.getInstance(TimeZone.getTimeZone("GMT+8"))
+                calendar2.time = calendar.time
+                calendar2.add(Calendar.DAY_OF_YEAR, -1)
+                val dayBeforeYesterdayStr = sdf.format(calendar2.time)
+
+                val newStreak = if (lastRingDate == dayBeforeYesterdayStr) {
+                    databaseStreak + 1
+                } else {
+                    1
+                }
+
+                val updates = mutableMapOf<String, Any>(
+                    "streak" to newStreak,
+                    "lastRingClosedDate" to yesterdayStr,
+                    "totalRingsClosed" to totalRingsClosed + 1
+                )
+                if (newStreak > highestStreak) {
+                    updates["highestStreak"] = newStreak
+                }
+                userRef.update(updates).await()
+            } else {
+                // Yesterday's goal was not met, reset streak to 0
+                userRef.update("streak", 0).await()
             }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    suspend fun getLogsForDate(uid: String, dateStr: String): List<FluidLog> {
+        return try {
+            val querySnapshot = usersCollection.document(uid)
+                .collection("fluid_logs")
+                .whereEqualTo("date", dateStr)
+                .get().await()
+            querySnapshot.toObjects(FluidLog::class.java)
+        } catch (e: Exception) {
+            emptyList()
         }
     }
 
@@ -760,6 +829,43 @@ class FirestoreRepository(private val context: Context? = null) {
         }
         return try {
             usersCollection.document(uid).update("streak", 0).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getPredictiveReminders(uid: String): Result<List<Map<String, Any>>> {
+        if (uid.isEmpty() || uid == "GUEST") return Result.success(emptyList())
+        return try {
+            val snapshot = usersCollection.document(uid)
+                .collection("predictive_reminders").get().await()
+            val list = snapshot.documents.map { doc ->
+                val map = doc.data?.toMutableMap() ?: mutableMapOf()
+                map["id"] = doc.id
+                map
+            }
+            Result.success(list)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun savePredictiveReminders(uid: String, reminders: List<Map<String, Any>>): Result<Unit> {
+        if (uid.isEmpty() || uid == "GUEST") return Result.success(Unit)
+        return try {
+            val subRef = usersCollection.document(uid).collection("predictive_reminders")
+            val existing = subRef.get().await()
+            db.runBatch { batch ->
+                existing.documents.forEach { doc ->
+                    batch.delete(doc.reference)
+                }
+                reminders.forEach { reminder ->
+                    val id = reminder["id"]?.toString() ?: UUID.randomUUID().toString()
+                    val docRef = subRef.document(id)
+                    batch.set(docRef, reminder)
+                }
+            }.await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

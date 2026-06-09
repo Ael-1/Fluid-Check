@@ -20,7 +20,7 @@
 14. Role Change Detection on Cold Start: Persist the user's last-known role to `DataStore` (e.g., `UserPreferencesRepository`). On app launch, compare the stored role against the Firestore-fetched role. If they differ, show the "Your role has been updated to [NEW_ROLE]" dialog and update the stored role. This covers role changes that occur while the app is completely closed. \*\*DONE
 15. Fix Offline Intake Feedback: When logging a fluid intake (via manual log or Quick Add) while offline, the feedback message ("Saved locally. Will sync once online.") does not appear. Debug the `isConnected` state in `MainScreen` to ensure it reflects the correct network status at the time the log is saved. Verify the Snackbar is displayed for both `saveFluidLog` (new logs) and Quick Add operations. Also check that the Quick Add callback in `HomeScreen` triggers the same offline feedback path as manual logging. \*\*DONE
 
-## 2. Home screen
+## 2. Home screen \\DONE
 
 1. Users can UPDATE daily goal \*\*DONE
 2. Users can CREATE new log drink, then log drink is stored in Firestore (fluid type, amount and log date) \*\*DONE
@@ -41,10 +41,28 @@
 ## 3. Progress screen \*\*DONE
 
 1. READ Firestore to see the date and amount of their log drink which is then displayed in Your Progress \*\*DONE
+2. Weekly Habits Scorecard (AI Progress Rating):
+   - Data & Trigger: Compile the user's logged intake data from the last 7 days.
+   - AI Processing: Send this weekly intake history to `GeminiCoach` (using Gemini 3 Flash Live model). Instruct the AI to compute a comprehensive Weekly Hydration Rating (e.g., "A", "B+", etc.) and provide a concise, personal summary of successes (e.g., "Hit goal 6/7 days") and gaps (e.g., "Weekend intake was low").
+   - UI Display: In `ProgressScreen.kt`, add an "AI Weekly Scorecard" section. Display a large visual grade badge with dynamic colors matching the rating, alongside the AI's feedback text. \*\*DONE
 
 ## 4. AI Coach screen \*\*DONE
 
 1. READ Firestore to see user records (weight, height, etc.) so the textfields of these attributes in Personalized Goals are automatically inputted \*\*DONE
+2. AI Logs & Habits Analysis (Assessment Engine):
+   - Model Choice: Use Gemini 3 Flash Live as the core model. \*\*DONE
+   - Data Collection: Query the user's last 14 days of fluid logs (`FluidLog` documents containing amount, type, timestamp) and user profile metrics (`weight`, `height`, `age`, `sex`, `activity`, `environment`) from Firestore remote or offline local cache. \*\*DONE
+   - Gemini Processing: Pass the collected log dataset to `GeminiCoach`. Prompt the model to analyze: (a) hydration volume adequacy based on profile stats, (b) time-of-day distribution patterns, and (c) fluid type composition (e.g., coffee/tea diuretic analysis vs pure water). \*\*DONE
+   - UI Integration: In `AICoachScreen.kt`, add a new "AI Hydration Assessment" card. Include a prominent "Analyze My Habits" button. When clicked, display a loading spinner, invoke the model, and render the resulting analysis in a structured, clean text container. \*\*DONE
+3. AI-Powered Predictive Alerts & Custom Notification Rules:
+   - Rule Generation: During the "Analyze My Habits" flow, instruct Gemini to output up to 3 predictive hydration alerts formatted as a structured JSON array. Example: `[{"dayOfWeek": 6, "time": "15:00", "message": "Based on your usual Friday habits, you tend to forget to drink water after 3:00 PM. Here is your extra nudge!"}]` (where Sunday = 1, Saturday = 7). \*\*DONE
+   - Local & Remote Storage: Parse the JSON rules and save them in DataStore (`UserPreferencesRepository`) and Firestore under the user's profile document (`/users/{userId}/predictive_reminders`). \*\*DONE
+   - Customization UI: Add a UI section in `SettingsScreen` under Notifications allowing users to view the list of current AI-generated predictive alert rules, toggle individual rules on/off, or trigger a regeneration. \*\*DONE
+   - Dynamic Scheduling: Modify `NotificationHelper` / `WorkManager` background jobs to read these custom rules. Schedule local notification alarms that trigger on the specified days and times, sending the personalized alert if the user's intake is currently under 50% of their goal for the day at that hour. \*\*DONE
+4. Dynamic Weather Integration:
+   - Weather API Integration: Integrate a free weather API (e.g., Open-Meteo) to fetch the user's current environment temperature and humidity. \*\*DONE
+   - Recalculation & Alerting: If weather metrics change dramatically (e.g., high heat or humidity), invoke `GeminiCoach` to automatically recalculate the recommended goal. Update the user's daily goal dynamically and display a descriptive notification/alert: "Daily goal adjusted by +500ml today due to high local heat (34°C)." \*\*DONE
+   - Goal Control Toggle: Add a toggle switch in the "Personalized Goals" card on the `AICoachScreen` allowing users to enable/disable "Dynamic Weather Goal Adjustment". If disabled, the daily goal remains manual and static. \*\*DONE
 
 ## 5. Settings screen \*\*DONE
 
@@ -58,7 +76,7 @@
 8. READ from Firestore to display user's username and email in Edit Profile \*\*DONE
 9. READ from Firestore to display personal records in Edit Profile \*\*DONE
 
-## 6. Admin Dashboard screen
+## 6. Admin Dashboard screen \*\*DONE
 
 1. READ Auth or Firestore to display total users \*\*DONE
 2. READ Firestore for total downloads \*\*DONE (Using Total Users as proxy)
@@ -142,3 +160,257 @@
 
 1. Verify Current Email Address: Add a "Verify Email" button in `EditProfileScreen` inside `ProfileSettingsContainer`, below the email field (visible only when `!isGoogleUser && authRepository.currentUser?.isEmailVerified == false`). When tapped, call a new `AuthRepository.sendEmailVerification()` method (wrapping `auth.currentUser?.sendEmailVerification()?.await()`). On success, show feedback via `statusDialogData` (the existing AlertDialog pattern used throughout the screen): "Verification email sent. Please check your inbox." If the email is already verified, hide the button entirely and optionally show a small "✓ Verified" label. \*\*DONE
 2. Verify-Before-Update Email Flow: Replace the current `AuthRepository.updateEmail()` (which calls the deprecated `auth.currentUser?.updateEmail()`) with a new `AuthRepository.verifyBeforeUpdateEmail(newEmail)` method (wrapping `auth.currentUser?.verifyBeforeUpdateEmail(newEmail)?.await()`). In `EditProfileScreen`, update the email save block (currently at Step 3 in the save flow, around line 615–625) to call `verifyBeforeUpdateEmail()` instead of `updateEmail()`. On success, show via `statusDialogData`: "A verification email has been sent to [newEmail]. Your email will update after you verify it." **Crucially**, do **not** write the new email to the Firestore user record in `newRecord.copy()` (currently line 648) — keep the old email until Firebase Auth confirms the change on next sign-in. The existing re-authentication flow (`showReauthDialog`) already gates email changes, so no additional re-auth logic is needed. Google Sign-In users are already excluded (their email field is read-only per Task 12.4). \*\*DONE
+
+## 14. Codebase Cleanup
+
+### 14.1 Restructure Folder, Subfolder, and File Architecture
+
+Reorganize the project source tree under `app/src/main/java/com/example/fluidcheck/` to follow clean architecture layering (data → domain → presentation), improving discoverability and separation of concerns.
+
+**Current structure** is a flat package-by-layer approach: `model/`, `repository/`, `ui/`, `util/`, `ai/` — all at the same level with `MainActivity.kt` (37KB) and `MainScreen.kt` (59KB) as monolithic files.
+
+**Target structure (Clean Architecture):**
+
+```
+com/example/fluidcheck/
+├── MainActivity.kt              (Slim: only setContent + top-level nav)
+├── data/
+│   ├── local/
+│   │   └── UserPreferencesRepository.kt   (from repository/)
+│   ├── remote/
+│   │   ├── AuthRepository.kt              (from repository/)
+│   │   ├── FirestoreRepository.kt         (from repository/)
+│   │   └── GuestRepository.kt             (from repository/)
+│   └── model/
+│       ├── ChartData.kt                   (from model/)
+│       ├── FluidLog.kt                    (from model/)
+│       ├── FluidType.kt                   (from model/)
+│       ├── NavigationItem.kt              (from model/)
+│       └── UserData.kt                    (from model/)
+├── domain/
+│   └── ai/
+│       └── GeminiCoach.kt                 (from ai/)
+├── ui/
+│   ├── MainScreen.kt
+│   ├── admin/AdminDashboard.kt
+│   ├── auth/ (LoginScreen.kt, SignUpScreen.kt, VerifyAccountScreen.kt, AuthComponents.kt)
+│   ├── components/                        (NEW — extract from MainScreen.kt)
+│   │   ├── LogNewDrinkSheet.kt            (currently at ~line 679 in MainScreen.kt)
+│   │   ├── EditLogDialog.kt               (currently in MainScreen.kt)
+│   │   └── BottomNavigation.kt            (FluidBottomNavigation at ~line 1147 in MainScreen.kt)
+│   ├── navigation/NavRoutes.kt
+│   ├── screens/ (AICoachScreen.kt, AboutDeveloperScreen.kt, EditProfileScreen.kt, HomeScreen.kt, InitialSetupScreen.kt, ProgressScreen.kt, SettingsScreen.kt)
+│   └── theme/ (AppIcons.kt, Color.kt, Theme.kt, Type.kt)
+└── util/ (unchanged)
+```
+
+**Steps:**
+
+1. Create new directories: `data/local/`, `data/remote/`, `data/model/`, `domain/ai/`, `ui/components/`.
+2. Move files to their new locations as shown above.
+3. Update all `package` declarations in moved files (e.g., `package com.example.fluidcheck.repository` → `package com.example.fluidcheck.data.remote`).
+4. Update **all import statements** across the entire codebase to reference the new package paths. Search for old package prefixes: `com.example.fluidcheck.repository`, `com.example.fluidcheck.model`, `com.example.fluidcheck.ai`.
+5. Extract from `MainScreen.kt`: `LogNewDrinkSheet` composable → `ui/components/LogNewDrinkSheet.kt`; `EditLogDialog` composable → `ui/components/EditLogDialog.kt`; `FluidBottomNavigation` composable → `ui/components/BottomNavigation.kt`.
+6. Delete `PlaceholderScreens.kt` (87 bytes — contains only a package declaration and a comment, confirmed dead file).
+7. **Verify:** Run `./gradlew assembleDebug` — build must succeed with zero unresolved reference errors. Perform after each major move step as this is a high-risk refactor touching every file.
+
+---
+
+### 14.2 Remove Hard-Coded Admin Username and Email in MainActivity
+
+Remove any hard-coded admin-specific identity values (username, email, or role assignments) from `MainActivity.kt`. All admin identity should be derived solely from the `UserRecord.role` field stored in Firestore.
+
+**Current state:** No literal hardcoded admin email/username strings (like `"admin@example.com"`) exist. However, multiple raw string literals are used as identity constants throughout `MainActivity.kt`:
+
+- `"GUEST"` used as a user ID fallback (lines 84, 280, 292, 296-302, 424, 510, 516, 552).
+- `"Guest"` used as a display username (lines 298, 303, 424).
+- `"USER"` used as a default role (lines 300, 458).
+- `3000` used as a default daily goal (lines 461, 519).
+
+**Steps:**
+
+1. Search `MainActivity.kt` and the full codebase for any string literals matching admin usernames or emails. Check for patterns: `"admin"`, `"ADMIN"`, any `@` email addresses, any known developer names.
+2. Extract the raw string/number literals into named constants:
+   ```kotlin
+   companion object {
+       const val GUEST_USER_ID = "GUEST"
+       const val GUEST_USERNAME = "Guest"
+       const val DEFAULT_ROLE = "USER"
+       const val DEFAULT_DAILY_GOAL = 3000
+   }
+   ```
+3. Replace all occurrences of `"GUEST"`, `"Guest"`, `"USER"`, and `3000` (as default goal) with the named constants across `MainActivity.kt` and any other files referencing these values.
+4. Confirm admin role checking remains purely database-driven (currently correct — `MainScreen.kt` line 105: `val isDatabaseAdmin = userRole == "ADMIN" || userRole == "MODERATOR"`). Extract role string literals (`"ADMIN"`, `"MODERATOR"`, `"USER"`) into an enum or constants object for type safety.
+5. **Verify:** Search the entire codebase for any remaining hardcoded admin emails or usernames. Run `./gradlew assembleDebug`.
+
+---
+
+### 14.3 Consolidate All Icons into AppIcons Object
+
+Ensure all icon references across the app go through the centralized `AppIcons` object in `ui/theme/AppIcons.kt`. No file should directly reference `Icons.Default.*`, `Icons.Outlined.*`, `Icons.Filled.*`, or `Icons.AutoMirrored.*`.
+
+**Current state:** `AppIcons.kt` defines ~50 icons in a well-organized object. However, violations exist in multiple files:
+
+1. **`AdminDashboard.kt` line 1454** — directly uses `Icons.Default.ArrowDropDown` and `Icons.Default.ArrowDropUp`.
+2. **`FluidType.kt` lines 10-31** — All **18 fluid types** use `Icons.Outlined.*` directly (e.g., `Icons.Outlined.WaterDrop`, `Icons.Outlined.Coffee`, etc.). This is also an architecture violation: the model layer should not depend on Compose UI icons.
+3. **`EditProfileScreen.kt` line 1087** — directly uses `Icons.Default.CheckCircle`.
+4. **`NotificationHelper.kt` line 71** — uses `R.drawable.fluid_check_icon` directly instead of `AppIcons.AppLogo`.
+5. **`AboutDeveloperScreen.kt` line 66** — uses `R.drawable.me` directly (developer photo — not a standard app icon, but should be tracked as a drawable reference).
+
+**Steps:**
+
+1. Add missing icons to `AppIcons.kt`:
+   ```kotlin
+   val ArrowDropDown = Icons.Default.ArrowDropDown
+   val ArrowDropUp = Icons.Default.ArrowDropUp
+   val CheckCircle = Icons.Default.CheckCircle
+   // Fluid Types (all 18 icons from FluidType.kt)
+   val WaterDrop = Icons.Outlined.WaterDrop
+   val Coffee = Icons.Outlined.Coffee
+   // ... (add all 18 fluid type icons referenced in FluidType.kt)
+   ```
+2. Update `AdminDashboard.kt` line 1454 to use `AppIcons.ArrowDropDown` and `AppIcons.ArrowDropUp`.
+3. Update `EditProfileScreen.kt` line 1087 to use `AppIcons.CheckCircle`.
+4. Update `FluidType.kt` lines 10-31 to use `AppIcons.*` for all 18 fluid type icons. Import `AppIcons` from `com.example.fluidcheck.ui.theme`. Consider whether the icon reference should remain in the model or be moved to a UI-layer mapping function to avoid coupling the model layer to Compose UI.
+5. Update `NotificationHelper.kt` line 71 to use `AppIcons.AppLogo`.
+6. Run a full codebase grep for `Icons.Default`, `Icons.Outlined`, `Icons.Filled`, `Icons.AutoMirrored` in all `.kt` files **excluding** `AppIcons.kt` itself. Fix any remaining direct references.
+7. **Verify:** `grep -rn "Icons\.Default\|Icons\.Outlined\|Icons\.Filled\|Icons\.AutoMirrored" --include="*.kt"` excluding `AppIcons.kt` should return **zero results**. `./gradlew assembleDebug` must pass.
+
+---
+
+### 14.4 Consolidate colors.xml — Remove Unused Color Values
+
+Audit `colors.xml` (`app/src/main/res/values/colors.xml`) for unused color resources and remove them. Ensure colors used across the app are consolidated between the XML resources and the Compose `Color.kt`.
+
+**Current state:**
+
+- `colors.xml` defines 11 colors: `black`, `white`, `primary` (#2196F3), `primary_variant`, `secondary`, `background`, `text_primary`, `text_secondary`, `accent`, `water_blue`, `water_blue_dark`.
+- `Color.kt` defines 15 Compose colors with **different hex values** for similar concepts (e.g., `PrimaryBlue = 0xFF3B82F6` vs XML `primary = #2196F3`). These two systems are completely disconnected.
+- Additionally, **80+ instances** of inline `Color(0xFF...)` are scattered across `.kt` files (especially `AdminDashboard.kt` ~25+, `HomeScreen.kt` ~10+, `EditProfileScreen.kt` ~8+), bypassing both `colors.xml` and `Color.kt`.
+
+**Steps:**
+
+1. Search the entire codebase for references to each color in `colors.xml` (`@color/black`, `R.color.black`, etc.) for all 11 entries. Check `themes.xml` references too.
+2. Remove any color entries from `colors.xml` that have **zero references** outside of `colors.xml` itself.
+3. For colors referenced only in `themes.xml`, verify if `themes.xml` is actively used (the app uses Compose theming via `Theme.kt`). If only used for splash screen or system bars, keep only those required colors.
+4. Reconcile `Color.kt` and `colors.xml` — unify to a single source of truth where both define a "primary blue" with different hex values.
+5. Add named constants to `Color.kt` for all inline `Color(0xFF...)` values found across the codebase (e.g., `Color(0xFFF1F5F9)` → `val BorderGray = Color(0xFFF1F5F9)`). Replace all inline usages with the named constant.
+6. **Verify:** `./gradlew assembleDebug` must pass. No `unresolved reference` errors for removed colors.
+
+---
+
+### 14.5 Extract Hardcoded Strings to strings.xml
+
+Move all user-facing hardcoded string literals from `.kt` source files into `strings.xml` (`app/src/main/res/values/strings.xml`). Deduplicate strings that have the same value by referencing a single `strings.xml` entry.
+
+**Current state:** `strings.xml` has 165 entries with good coverage, but **~60+ hardcoded user-facing strings** remain across `.kt` files.
+
+**Known violations by file:**
+
+**`MainActivity.kt` (~15 strings):** `"Cloud sync failed."` (lines 95, 113), `"Permission Required"` (135), `"Smart Reminders require notification permission..."` (136), `"Open Settings"` (147), `"Cancel"` (154), `"Account Verified!"` (238, 610 — duplicate), `"Welcome, $username!..."` (239), `"Sign In Failed"` / `"Firebase Google Auth Failed"` (251), `"Unexpected Auth Error"` (257), `"Awesome"` / `"Try Again"` (334), `"Internet Connection Required"` + message (373-374, 433-434 — duplicate), `"Sign In Error"` (405), `"Profile Error"` (473), `"Connection Error"` (486), `"Error saving setup..."` (527), `"Verification Failed"` / `"Verification Error"` (622-623, 628-629).
+
+**`AdminDashboard.kt` (~10 strings):** `"Delete Selected Users"` (242), `"Discard Changes?"` (474), `"DISCARD"` (481), `"Delete User"` (521, 889), `"Save User Details"` (861), `"🔒 Security Verification"` (926), `"Enter your admin password to delete..."` (933), `"$selectedCount selected"` (1335).
+
+**Auth screens (~10 strings):** `LoginScreen.kt`: `"Smart Fluid Intake Tracker"` (125), `"Continue as Guest"` (313), `" or sign in with "` (334). `SignUpScreen.kt`: `" or sign up with "` (318). `VerifyAccountScreen.kt`: `"Verify Your Account"` (101), `"Secure your local data..."` (108), `"Confirm Verification"` (269, 288).
+
+**Other screens (~15 strings):** `HomeScreen.kt`: `"QUICK ADD"` (423), `"Please input a valid goal."` (1368). `EditProfileScreen.kt`: `"Change Profile Photo"` (544), `"Take a Photo"` (563), `"Choose from Gallery"` (578), `"Remove Current Photo"` (596), `"Are you sure..."` (709). `SettingsScreen.kt`: `"Verify Account"` (328), `"STREAK"` / `"$streak Days"` (472, 479). `AboutDeveloperScreen.kt`: `"Vincent Rafael Apog"` (77). `ProgressScreen.kt`: `"Select Date"` (379). `AICoachScreen.kt`: `"Please fill in all fields."` (177), `"Your Ideal Daily Intake: $resultMl"` (278). `InitialSetupScreen.kt`: `"You can skip this setup..."` (197).
+
+**`FluidType.kt` — Untranslatable model strings:** All 18 fluid type names (`"Water"`, `"Coffee"`, `"Juice"`, etc.) are hardcoded as Kotlin strings and are NOT in `strings.xml`, making them untranslatable.
+
+**Steps:**
+
+1. Scan **all `.kt` files** for hardcoded user-facing strings using: `grep -rn 'Text("\|text = "\|title = "\|label = "\|Toast.makeText.*"' --include="*.kt"`.
+2. For each hardcoded string found (see inventory above): (a) Check if an equivalent string already exists in `strings.xml` — if so, use `stringResource(R.string.existing_key)`. (b) If not, add a new entry to `strings.xml` with a descriptive, snake_case key name following the existing naming conventions (e.g., `error_cloud_sync_failed`, `toast_log_deleted`).
+3. **Deduplication:** Identify strings in `strings.xml` with identical or near-identical values and consolidate. Examples: `login_failed_title` / `error_invalid_credentials_title` (both "Login Failed"); `awesome` / `awesome_caps` (both "AWESOME!"); `weight_kg_label` / `weight_label` and `height_cm_label` / `height_label` (near-duplicates); `sex_label` / `gender_label` (both refer to sex/gender). Consolidate to a single entry and update all references.
+4. Replace `Toast.makeText(context, "...", ...)` with `context.getString(R.string.key)`.
+5. Replace `Text("...")` with `Text(stringResource(R.string.key))`.
+6. Add fluid type names to `strings.xml` and update `FluidType.kt` to use `stringResource()` or a context-aware approach.
+7. Use Android string formatting for parameterized strings (e.g., `"Logged $amount ml of $type"` → `<string name="toast_logged_drink">Logged %1$d ml of %2$s</string>` with `context.getString(R.string.toast_logged_drink, amount, type)`).
+8. **Verify:** `grep -rn 'Text("\|Toast.makeText.*"' --include="*.kt" | grep -v 'import\|package\|//' | grep -v 'stringResource\|getString\|R.string'` should return minimal results (only programmatically generated strings are acceptable). `./gradlew assembleDebug` must pass.
+
+---
+
+### 14.6 Remove Redundant Hard-Coded Static UI Code (POST-DATABASE INTEGRATION)
+
+**PREREQUISITE: Execute ONLY after confirming that Firestore database integration is fully functional and all screens fetch data from the database. Executing prematurely will break the UI.**
+
+Remove any remaining static/mock data, placeholder content, and hardcoded UI values that were used during pre-database development. All data displayed in the UI should come from Firestore or local DataStore.
+
+**Steps:**
+
+1. Search for static data patterns: `grep -rn "listOf\|mapOf\|arrayOf\|mutableListOf" --include="*.kt"` — identify any inline dummy lists used as default UI data (hardcoded log entries, user lists, chart data).
+2. Delete `PlaceholderScreens.kt` (87 bytes — contains only a package declaration and comment `"// SettingsScreen moved to its own file."` — confirmed dead code) and remove all references.
+3. Search for hardcoded numeric values that should be database-driven: default goal `3000` (appears in multiple places), default amount `"250"` (line 687 in `MainScreen.kt`). Extract to named constants.
+4. Remove any `TODO` or `FIXME` comments referencing static/placeholder data (e.g., `UserData.kt` line 48: `"// New fields from section 7 of TODO.md"`).
+5. **Verify:** Run the app and verify all screens display live Firestore data. `./gradlew assembleDebug` must pass.
+
+---
+
+### 14.7 Utilize Typography Object from Type.kt — Unify Application Typography
+
+Replace all inline `fontSize`, `fontWeight`, `fontFamily`, and `TextStyle` declarations across the app with references to the centralized `Typography` object via `MaterialTheme.typography`.
+
+**Current state:**
+
+- `Type.kt` defines only 4 styles: `headlineLarge` (36sp/Black), `titleLarge` (24sp/Bold), `bodyLarge` (16sp/Normal), `labelMedium` (14sp/Medium). It also contains a TODO comment on line 9: `"In a real project, we would import Poppins and PT Sans fonts here."` — still using `FontFamily.SansSerif` as fallback.
+- **130+ instances** of inline `fontSize` and `fontWeight` across the codebase, with virtually none referencing the Typography object.
+- Common hardcoded sizes: 10.sp, 11.sp, 12.sp, 13.sp, 14.sp, 15.sp, 16.sp, 17.sp, 18.sp, 20.sp, 22.sp, 24.sp, 28.sp, 36.sp, 40.sp, 48.sp.
+- Worst offenders by inline count: `AdminDashboard.kt` (45+), `HomeScreen.kt` (40+), `EditProfileScreen.kt` (30+), `SettingsScreen.kt` (25+), `AICoachScreen.kt` (20+), `MainScreen.kt` (15+).
+
+**Step 1 — Expand the Typography Definition.** Update `Type.kt` to cover all text styles actually used in the app:
+
+```kotlin
+val Typography = Typography(
+    displayLarge  = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Black, fontSize = 36.sp),
+    displayMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold,  fontSize = 28.sp),
+    displaySmall  = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold,  fontSize = 24.sp),
+    headlineLarge  = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Black, fontSize = 36.sp),
+    headlineMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold,  fontSize = 24.sp),
+    headlineSmall  = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold,  fontSize = 20.sp),
+    titleLarge  = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold,   fontSize = 24.sp),
+    titleMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold,   fontSize = 18.sp),
+    titleSmall  = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold,   fontSize = 16.sp),
+    bodyLarge  = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Normal, fontSize = 16.sp, letterSpacing = 0.5.sp),
+    bodyMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Normal, fontSize = 14.sp, letterSpacing = 0.25.sp),
+    bodySmall  = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Normal, fontSize = 12.sp, letterSpacing = 0.4.sp),
+    labelLarge  = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Medium, fontSize = 16.sp),
+    labelMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Medium, fontSize = 14.sp),
+    labelSmall  = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Medium, fontSize = 12.sp),
+)
+```
+
+**Step 2 — Create a mapping guide** before editing screens:
+
+- `fontSize = 36.sp, fontWeight = Black` → `MaterialTheme.typography.displayLarge`
+- `fontSize = 28.sp, fontWeight = Bold` → `MaterialTheme.typography.displayMedium`
+- `fontSize = 24.sp, fontWeight = Bold` → `MaterialTheme.typography.headlineMedium`
+- `fontSize = 20.sp, fontWeight = Bold` → `MaterialTheme.typography.headlineSmall`
+- `fontSize = 18.sp, fontWeight = Bold` → `MaterialTheme.typography.titleMedium`
+- `fontSize = 16.sp, fontWeight = Bold/Medium` → `MaterialTheme.typography.titleSmall` or `labelLarge`
+- `fontSize = 16.sp, fontWeight = Normal` → `MaterialTheme.typography.bodyLarge`
+- `fontSize = 14.sp, fontWeight = Normal` → `MaterialTheme.typography.bodyMedium`
+- `fontSize = 14.sp, fontWeight = Medium` → `MaterialTheme.typography.labelMedium`
+- `fontSize = 12.sp, fontWeight = Normal` → `MaterialTheme.typography.bodySmall`
+- `fontSize = 12.sp, fontWeight = Medium/Bold` → `MaterialTheme.typography.labelSmall`
+
+**Step 3 — Update all screen files.** Replace inline text styling. Before: `Text(text = "Title", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextDark)`. After: `Text(text = "Title", style = MaterialTheme.typography.headlineMedium, color = TextDark)`. Process files by size (largest first): `AdminDashboard.kt`, `HomeScreen.kt`, `EditProfileScreen.kt`, `MainScreen.kt`, `ProgressScreen.kt`, `SettingsScreen.kt`, `AICoachScreen.kt`, `InitialSetupScreen.kt`, `LoginScreen.kt`, `SignUpScreen.kt`, `VerifyAccountScreen.kt`, `AboutDeveloperScreen.kt`, `AuthComponents.kt`, `MainActivity.kt`.
+
+**Step 4 — Handle edge cases:** Preserve `color` when specified alongside `fontSize`/`fontWeight`. For `OutlinedTextField`/`TextField`, use `textStyle = MaterialTheme.typography.bodyMedium`. Investigate whether `@Suppress("DEPRECATION")` annotations on `Text` composables (found in `MainScreen.kt`) can be removed after migration to `style =`.
+
+**Step 5 — Verify:** `grep -rn "fontSize = \|fontWeight = " --include="*.kt"` in the `ui/` directory should return near-zero results (exceptions: custom `AnnotatedString` spans, one-off UI elements). `./gradlew assembleDebug` must pass. Manually inspect each screen for correct text sizing. Do NOT change text colors as part of this task — only `fontSize`, `fontWeight`, `fontFamily`, and `letterSpacing`.
+
+---
+
+### Task Dependency and Parallelization
+
+| Task               | Can Run In Parallel With | Dependencies                               |
+| ------------------ | ------------------------ | ------------------------------------------ |
+| 14.1 (Restructure) | None — do first          | None                                       |
+| 14.2 (Admin creds) | 14.3, 14.4, 14.5, 14.7   | 14.1                                       |
+| 14.3 (Icons)       | 14.2, 14.4, 14.5, 14.7   | 14.1                                       |
+| 14.4 (Colors)      | 14.2, 14.3, 14.5, 14.7   | 14.1                                       |
+| 14.5 (Strings)     | 14.2, 14.3, 14.4, 14.7   | 14.1                                       |
+| 14.6 (Static UI)   | None — do last           | 14.1-14.5 + database integration confirmed |
+| 14.7 (Typography)  | 14.2, 14.3, 14.4, 14.5   | 14.1                                       |
+
+**WHEN PROCEEDING TO EXECUTE ALL TASKS UNDER SECTION 14, ENSURE THAT AFTER EXECUTING, EVERYTHING IS STABLE AND WORKING AS IT WAS BEFORE, IF THERE WILL BE CHANGES EVEN IN THE SLIGHTEST WAY, REVERT AND FIND OTHER WAYS SO IT WILL WORK AS IT WAS BEFORE.**

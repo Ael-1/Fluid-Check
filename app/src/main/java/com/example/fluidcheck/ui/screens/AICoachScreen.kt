@@ -33,17 +33,80 @@ import com.example.fluidcheck.ai.GeminiCoach
 import com.example.fluidcheck.model.UserRecord
 import com.example.fluidcheck.ui.theme.*
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.ZoneId
+import com.example.fluidcheck.repository.UserPreferencesRepository
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun AICoachScreen(
     userRecord: UserRecord?,
     onSetGoal: (Int) -> Unit,
-    isConnected: Boolean = true
+    isConnected: Boolean = true,
+    firestoreRepository: com.example.fluidcheck.repository.FirestoreRepository? = null,
+    // Hoisted states
+    aiGoalWeight: String,
+    onAiGoalWeightChange: (String) -> Unit,
+    aiGoalHeight: String,
+    onAiGoalHeightChange: (String) -> Unit,
+    aiGoalAge: String,
+    onAiGoalAgeChange: (String) -> Unit,
+    aiGoalSex: String,
+    onAiGoalSexChange: (String) -> Unit,
+    aiGoalActivity: String,
+    onAiGoalActivityChange: (String) -> Unit,
+    aiGoalEnvironment: String,
+    onAiGoalEnvironmentChange: (String) -> Unit,
+    aiGoalIsLoading: Boolean,
+    onAiGoalIsLoadingChange: (Boolean) -> Unit,
+    aiGoalResultMl: String?,
+    onAiGoalResultMlChange: (String?) -> Unit,
+    aiAssessmentIsLoading: Boolean,
+    onAiAssessmentIsLoadingChange: (Boolean) -> Unit,
+    aiAssessmentResult: String?,
+    onAiAssessmentResultChange: (String?) -> Unit,
+    aiRecsPreferences: String,
+    onAiRecsPreferencesChange: (String) -> Unit,
+    aiRecsHabits: String,
+    onAiRecsHabitsChange: (String) -> Unit,
+    aiRecsIsLoading: Boolean,
+    onAiRecsIsLoadingChange: (Boolean) -> Unit,
+    aiRecsRecommendation: String?,
+    onAiRecsRecommendationChange: (String?) -> Unit,
+    mainScope: kotlinx.coroutines.CoroutineScope,
+    locationAccessEnabled: Boolean = false,
+    weatherGoalAdjustmentEnabled: Boolean = false,
+    onToggleWeatherGoalAdjustment: (Boolean) -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
     val focusManager = LocalFocusManager.current
 
     val coach = remember { GeminiCoach(BuildConfig.GEMINI_API_KEY) }
+    
+    val allLogsFlow = remember(userRecord?.uid) {
+        firestoreRepository?.getFluidLogsFlow(userRecord?.uid ?: "") ?: kotlinx.coroutines.flow.emptyFlow()
+    }
+    val allLogs by allLogsFlow.collectAsState(initial = emptyList())
+    
+    val logsLast14DaysStr = remember(allLogs) {
+        val todayNow = LocalDate.now(ZoneId.of("GMT+8"))
+        val datesList = (0..14).map { todayNow.minusDays(it.toLong()) }.reversed()
+        val logsByDate = allLogs.groupBy { it.date }
+        
+        datesList.joinToString("\n") { date ->
+            val dateStr = date.toString()
+            val dayLogs = logsByDate[dateStr]
+            if (dayLogs.isNullOrEmpty()) {
+                "$dateStr: No logs recorded (User did not log any drinks today)"
+            } else {
+                dayLogs.joinToString("\n") { log ->
+                    "${log.date} ${log.time}: ${log.amount}ml of ${log.type}"
+                }
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -64,11 +127,62 @@ fun AICoachScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            SmartGoalSetterCard(coach, userRecord, onSetGoal, isConnected)
+            SmartGoalSetterCard(
+                coach = coach,
+                userRecord = userRecord,
+                onSetGoal = onSetGoal,
+                isConnected = isConnected,
+                weight = aiGoalWeight,
+                onWeightChange = onAiGoalWeightChange,
+                height = aiGoalHeight,
+                onHeightChange = onAiGoalHeightChange,
+                age = aiGoalAge,
+                onAgeChange = onAiGoalAgeChange,
+                sex = aiGoalSex,
+                onSexChange = onAiGoalSexChange,
+                activity = aiGoalActivity,
+                onActivityChange = onAiGoalActivityChange,
+                environment = aiGoalEnvironment,
+                onEnvironmentChange = onAiGoalEnvironmentChange,
+                isLoading = aiGoalIsLoading,
+                onLoadingChange = onAiGoalIsLoadingChange,
+                resultMl = aiGoalResultMl,
+                onResultMlChange = onAiGoalResultMlChange,
+                mainScope = mainScope,
+                locationAccessEnabled = locationAccessEnabled,
+                weatherGoalAdjustmentEnabled = weatherGoalAdjustmentEnabled,
+                onToggleWeatherGoalAdjustment = onToggleWeatherGoalAdjustment
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            AIRecommendationsCard(coach, isConnected)
+            AIHydrationAssessmentCard(
+                coach = coach,
+                userRecord = userRecord,
+                logsLast14DaysStr = logsLast14DaysStr,
+                isConnected = isConnected,
+                isLoading = aiAssessmentIsLoading,
+                onLoadingChange = onAiAssessmentIsLoadingChange,
+                assessmentResult = aiAssessmentResult,
+                onAssessmentResultChange = onAiAssessmentResultChange,
+                mainScope = mainScope
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            AIRecommendationsCard(
+                coach = coach,
+                isConnected = isConnected,
+                preferences = aiRecsPreferences,
+                onPreferencesChange = onAiRecsPreferencesChange,
+                habits = aiRecsHabits,
+                onHabitsChange = onAiRecsHabitsChange,
+                isLoading = aiRecsIsLoading,
+                onLoadingChange = onAiRecsIsLoadingChange,
+                recommendation = aiRecsRecommendation,
+                onRecommendationChange = onAiRecsRecommendationChange,
+                mainScope = mainScope
+            )
 
             AIDisclaimer()
 
@@ -83,33 +197,42 @@ fun SmartGoalSetterCard(
     coach: GeminiCoach,
     userRecord: UserRecord?,
     onSetGoal: (Int) -> Unit,
-    isConnected: Boolean
+    isConnected: Boolean,
+    weight: String,
+    onWeightChange: (String) -> Unit,
+    height: String,
+    onHeightChange: (String) -> Unit,
+    age: String,
+    onAgeChange: (String) -> Unit,
+    sex: String,
+    onSexChange: (String) -> Unit,
+    activity: String,
+    onActivityChange: (String) -> Unit,
+    environment: String,
+    onEnvironmentChange: (String) -> Unit,
+    isLoading: Boolean,
+    onLoadingChange: (Boolean) -> Unit,
+    resultMl: String?,
+    onResultMlChange: (String?) -> Unit,
+    mainScope: kotlinx.coroutines.CoroutineScope,
+    locationAccessEnabled: Boolean,
+    weatherGoalAdjustmentEnabled: Boolean,
+    onToggleWeatherGoalAdjustment: (Boolean) -> Unit
 ) {
-    var weight by remember { mutableStateOf("") }
-    var height by remember { mutableStateOf("") }
-    var age by remember { mutableStateOf("") }
-    
     val selectionPlaceholder = "Select..."
     val inputPlaceholder = "Input..."
-    
-    var sex by remember { mutableStateOf(selectionPlaceholder) }
-    var activity by remember { mutableStateOf(selectionPlaceholder) }
-    var environment by remember { mutableStateOf(selectionPlaceholder) }
 
     // Auto-populate from Firestore record
     LaunchedEffect(userRecord) {
         userRecord?.let { record ->
-            if (weight.isEmpty()) weight = record.weight
-            if (height.isEmpty()) height = record.height
-            if (age.isEmpty()) age = record.age
-            if (sex == selectionPlaceholder && record.sex.isNotEmpty()) sex = record.sex
-            if (activity == selectionPlaceholder && record.activity.isNotEmpty()) activity = record.activity
-            if (environment == selectionPlaceholder && record.environment.isNotEmpty()) environment = record.environment
+            if (weight.isEmpty()) onWeightChange(record.weight)
+            if (height.isEmpty()) onHeightChange(record.height)
+            if (age.isEmpty()) onAgeChange(record.age)
+            if (sex == selectionPlaceholder && record.sex.isNotEmpty()) onSexChange(record.sex)
+            if (activity == selectionPlaceholder && record.activity.isNotEmpty()) onActivityChange(record.activity)
+            if (environment == selectionPlaceholder && record.environment.isNotEmpty()) onEnvironmentChange(record.environment)
         }
     }
-    
-    var isLoading by remember { mutableStateOf(false) }
-    var resultMl by remember { mutableStateOf<String?>(null) }
     
     var sexExpanded by remember { mutableStateOf(false) }
     var actExpanded by remember { mutableStateOf(false) }
@@ -129,8 +252,7 @@ fun SmartGoalSetterCard(
     val heightFocus = remember { FocusRequester() }
     val ageFocus = remember { FocusRequester() }
     
-    val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
 
     if (showNoInternetDialog) {
         NoInternetDialog(onDismiss = { showNoInternetDialog = false })
@@ -185,7 +307,7 @@ fun SmartGoalSetterCard(
                 Box(modifier = Modifier.weight(1f)) {
                     CoachTextField(
                         value = weight, 
-                        onValueChange = { weight = it }, 
+                        onValueChange = onWeightChange, 
                         label = stringResource(R.string.weight_label), 
                         placeholder = inputPlaceholder,
                         modifier = Modifier.focusRequester(weightFocus),
@@ -197,7 +319,7 @@ fun SmartGoalSetterCard(
                 Box(modifier = Modifier.weight(1f)) {
                     CoachTextField(
                         value = height, 
-                        onValueChange = { height = it }, 
+                        onValueChange = onHeightChange, 
                         label = stringResource(R.string.height_label), 
                         placeholder = inputPlaceholder,
                         modifier = Modifier.focusRequester(heightFocus),
@@ -211,7 +333,7 @@ fun SmartGoalSetterCard(
                 Box(modifier = Modifier.weight(1f)) {
                     CoachTextField(
                         value = age, 
-                        onValueChange = { age = it }, 
+                        onValueChange = onAgeChange, 
                         label = stringResource(R.string.age_label), 
                         placeholder = inputPlaceholder,
                         modifier = Modifier.focusRequester(ageFocus),
@@ -228,7 +350,7 @@ fun SmartGoalSetterCard(
                         expanded = sexExpanded,
                         onExpandedChange = { sexExpanded = it },
                         options = sexOptions,
-                        onSelect = { sex = it; sexExpanded = false },
+                        onSelect = { onSexChange(it); sexExpanded = false },
                         icon = null,
                         isCoachStyle = true
                     )
@@ -243,7 +365,7 @@ fun SmartGoalSetterCard(
                         expanded = actExpanded,
                         onExpandedChange = { actExpanded = it },
                         options = activityLevels,
-                        onSelect = { activity = it; actExpanded = false },
+                        onSelect = { onActivityChange(it); actExpanded = false },
                         icon = null,
                         isCoachStyle = true
                     )
@@ -256,7 +378,7 @@ fun SmartGoalSetterCard(
                         expanded = envExpanded,
                         onExpandedChange = { envExpanded = it },
                         options = weatherOptions,
-                        onSelect = { environment = it; envExpanded = false },
+                        onSelect = { onEnvironmentChange(it); envExpanded = false },
                         icon = null,
                         isCoachStyle = true
                     )
@@ -314,16 +436,16 @@ fun SmartGoalSetterCard(
                     } else {
                         showError = false
                         focusManager.clearFocus()
-                        isLoading = true
-                        scope.launch {
+                        onLoadingChange(true)
+                        mainScope.launch {
                             try {
                                 val result = coach.calculateHydrationGoal(weight.trim(), height.trim(), age.trim(), sex, activity, environment)
-                                resultMl = result ?: "Could not calculate."
+                                onResultMlChange(result ?: "Could not calculate.")
                             } catch (e: Exception) {
-                                resultMl = null
+                                onResultMlChange(null)
                                 android.widget.Toast.makeText(context, "Error calculating goal: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                             } finally {
-                                isLoading = false
+                                onLoadingChange(false)
                             }
                         }
                     }
@@ -344,6 +466,204 @@ fun SmartGoalSetterCard(
                     Text(stringResource(R.string.calculate_goal), fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+            
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            // Clean: preferences loaded from hoisted parameters
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Icon(
+                        imageVector = AppIcons.Weather,
+                        contentDescription = null,
+                        tint = PrimaryBlue,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Dynamic Weather Goal Adjustment",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextDark
+                        )
+                        Text(
+                            text = "Automatically adjust goals based on local temperature",
+                            fontSize = 12.sp,
+                            color = MutedForeground
+                        )
+                    }
+                }
+                Switch(
+                    checked = weatherGoalAdjustmentEnabled,
+                    onCheckedChange = { enabled ->
+                        onToggleWeatherGoalAdjustment(enabled)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = PrimaryBlue,
+                        uncheckedThumbColor = Color.White,
+                        uncheckedTrackColor = Color.LightGray.copy(alpha = 0.5f),
+                        uncheckedBorderColor = Color.Transparent
+                    )
+                )
+            }
+            
+            if (!weatherGoalAdjustmentEnabled || !locationAccessEnabled) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        imageVector = AppIcons.Info,
+                        contentDescription = null,
+                        tint = Color(0xFFEF4444),
+                        modifier = Modifier.size(16.dp).padding(top = 2.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Calculations may be inaccurate if location services are turned off. You can enable them in Settings.",
+                        fontSize = 13.sp,
+                        color = Color(0xFFEF4444),
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AIHydrationAssessmentCard(
+    coach: GeminiCoach,
+    userRecord: UserRecord?,
+    logsLast14DaysStr: String,
+    isConnected: Boolean,
+    isLoading: Boolean,
+    onLoadingChange: (Boolean) -> Unit,
+    assessmentResult: String?,
+    onAssessmentResultChange: (String?) -> Unit,
+    mainScope: kotlinx.coroutines.CoroutineScope
+) {
+    val context = LocalContext.current
+    var showNoInternetDialog by remember { mutableStateOf(false) }
+
+    if (showNoInternetDialog) {
+        NoInternetDialog(onDismiss = { showNoInternetDialog = false })
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(32.dp),
+        color = Color.White,
+        shadowElevation = 2.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = AppIcons.History,
+                    contentDescription = null,
+                    tint = PrimaryBlue,
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "AI Hydration Assessment",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextDark
+                )
+            }
+            Text(
+                text = "Analyze your overall drink habits and get custom feedback",
+                fontSize = 15.sp,
+                color = MutedForeground,
+                modifier = Modifier.padding(start = 40.dp, top = 2.dp)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            if (assessmentResult != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(PrimaryBlue.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = assessmentResult,
+                        fontSize = 15.sp,
+                        color = TextDark,
+                        lineHeight = 22.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            Button(
+                onClick = {
+                    if (!isConnected) {
+                        showNoInternetDialog = true
+                        return@Button
+                    }
+                    if (logsLast14DaysStr.trim().isEmpty()) {
+                        onAssessmentResultChange("You haven't logged any drinks in the last 14 days! Start logging your daily beverages on the Home screen so I can analyze your habits and provide personalized insights.")
+                        return@Button
+                    }
+                    onLoadingChange(true)
+                    val profileStr = """
+                        Username: ${userRecord?.username ?: "User"}
+                        Weight: ${userRecord?.weight ?: "Unknown"} kg
+                        Height: ${userRecord?.height ?: "Unknown"} cm
+                        Age: ${userRecord?.age ?: "Unknown"}
+                        Sex: ${userRecord?.sex ?: "Unknown"}
+                        Activity Level: ${userRecord?.activity ?: "Unknown"}
+                        Environment: ${userRecord?.environment ?: "Unknown"}
+                    """.trimIndent()
+                    
+                    mainScope.launch {
+                        try {
+                            val result = coach.analyzeHabitsAndRules(logsLast14DaysStr, profileStr)
+                            if (result != null) {
+                                onAssessmentResultChange(result.first)
+                                val repository = UserPreferencesRepository(context)
+                                repository.setPredictiveReminders(userRecord?.uid ?: "", result.second)
+                            } else {
+                                onAssessmentResultChange("Habit analysis completed. Keep drinking water regularly to maintain consistency!")
+                            }
+                        } catch (e: Exception) {
+                            onAssessmentResultChange("Unable to complete analysis. Let's aim to drink water throughout the day!")
+                        } finally {
+                            onLoadingChange(false)
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isConnected) PrimaryBlue else PrimaryBlue.copy(alpha = 0.5f)
+                )
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Icon(AppIcons.AICoach, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Analyze My Habits", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                }
+            }
         }
     }
 }
@@ -351,16 +671,20 @@ fun SmartGoalSetterCard(
 @Composable
 fun AIRecommendationsCard(
     coach: GeminiCoach,
-    isConnected: Boolean
+    isConnected: Boolean,
+    preferences: String,
+    onPreferencesChange: (String) -> Unit,
+    habits: String,
+    onHabitsChange: (String) -> Unit,
+    isLoading: Boolean,
+    onLoadingChange: (Boolean) -> Unit,
+    recommendation: String?,
+    onRecommendationChange: (String?) -> Unit,
+    mainScope: kotlinx.coroutines.CoroutineScope
 ) {
-    var preferences by remember { mutableStateOf("") }
-    var habits by remember { mutableStateOf("") }
-    var recommendation by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
     var showNoInternetDialog by remember { mutableStateOf(false) }
     
     val focusManager = LocalFocusManager.current
-    val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
 
     if (showNoInternetDialog) {
@@ -403,7 +727,7 @@ fun AIRecommendationsCard(
             Spacer(modifier = Modifier.height(8.dp))
             CoachTextArea(
                 value = preferences,
-                onValueChange = { preferences = it },
+                onValueChange = onPreferencesChange,
                 placeholder = "e.g., I like sparkling water...",
                 imeAction = ImeAction.Next,
                 keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
@@ -415,7 +739,7 @@ fun AIRecommendationsCard(
             Spacer(modifier = Modifier.height(8.dp))
             CoachTextArea(
                 value = habits,
-                onValueChange = { habits = it },
+                onValueChange = onHabitsChange,
                 placeholder = "e.g., I usually drink coffee in the morning...",
                 imeAction = ImeAction.Done,
                 keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
@@ -434,7 +758,7 @@ fun AIRecommendationsCard(
                         Icon(AppIcons.Lightbulb, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = recommendation!!,
+                            text = recommendation,
                             fontSize = 15.sp,
                             color = TextDark
                         )
@@ -450,16 +774,20 @@ fun AIRecommendationsCard(
                         return@Button
                     }
                     focusManager.clearFocus()
-                    isLoading = true
-                    scope.launch {
+                    if (preferences.trim().isEmpty() && habits.trim().isEmpty()) {
+                        onRecommendationChange("Please tell me a bit about your preferences or habits so I can give you personalized hydration tips! In the meantime, try to drink water consistently throughout the day and listen to your body's signals.")
+                        return@Button
+                    }
+                    onLoadingChange(true)
+                    mainScope.launch {
                         try {
                             val result = coach.getRecommendation(preferences.trim(), habits.trim())
-                            recommendation = result ?: "Could not get recommendation."
+                            onRecommendationChange(result ?: "Could not get recommendation.")
                         } catch (e: Exception) {
-                            recommendation = null
+                            onRecommendationChange(null)
                             android.widget.Toast.makeText(context, "Error getting recommendation: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                         } finally {
-                            isLoading = false
+                            onLoadingChange(false)
                         }
                     }
                 },

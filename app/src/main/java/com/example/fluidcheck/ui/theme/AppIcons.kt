@@ -58,6 +58,7 @@ object AppIcons {
     val Gender = Icons.Outlined.Transgender
     val Activity = Icons.Outlined.FitnessCenter
     val Weather = Icons.Outlined.WbSunny
+    val Location = Icons.Outlined.LocationOn
     
     // Misc / Social
     val Info = Icons.Outlined.Info
@@ -65,6 +66,7 @@ object AppIcons {
     val Schedule = Icons.Outlined.Schedule
     val Streak = Icons.Default.LocalFireDepartment
     val Goal = Icons.Default.Star
+
     val Notifications = Icons.Outlined.Notifications
     val Lightbulb = Icons.Outlined.Lightbulb
     val Psychology = Icons.Outlined.Psychology

@@ -268,21 +268,49 @@ class GuestRepository(private val context: Context) {
      * Resets guest streak to 0 if they failed to close their ring yesterday.
      */
     fun evaluateStreak() {
-        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("GMT+8")
-        }.format(Date())
+        }
+        val todayStr = sdf.format(Date())
         
         val calendar = Calendar.getInstance(TimeZone.getTimeZone("GMT+8"))
         calendar.add(Calendar.DAY_OF_YEAR, -1)
-        val yesterdayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
-            timeZone = TimeZone.getTimeZone("GMT+8")
-        }.format(calendar.time)
+        val yesterdayStr = sdf.format(calendar.time)
 
         val currentRecord = _guestUserRecordFlow.value ?: return
         val lastRingDate = currentRecord.lastRingClosedDate
-        
-        // If last ring not closed yesterday and not today, reset streak to 0
-        if (lastRingDate != yesterdayStr && lastRingDate != todayStr) {
+        val dailyGoal = currentRecord.dailyGoal ?: 3000
+        val databaseStreak = currentRecord.streak
+        val highestStreak = currentRecord.highestStreak
+        val totalRingsClosed = currentRecord.totalRingsClosed
+
+        if (lastRingDate == yesterdayStr || lastRingDate == todayStr) {
+            return
+        }
+
+        val yesterdayLogs = _guestLogsFlow.value.filter { it.date == yesterdayStr }
+        val yesterdayIntake = yesterdayLogs.sumOf { it.amount }
+
+        if (yesterdayIntake >= dailyGoal && dailyGoal > 0) {
+            val calendar2 = Calendar.getInstance(TimeZone.getTimeZone("GMT+8"))
+            calendar2.time = calendar.time
+            calendar2.add(Calendar.DAY_OF_YEAR, -1)
+            val dayBeforeYesterdayStr = sdf.format(calendar2.time)
+
+            val newStreak = if (lastRingDate == dayBeforeYesterdayStr) {
+                databaseStreak + 1
+            } else {
+                1
+            }
+
+            _guestUserRecordFlow.value = currentRecord.copy(
+                streak = newStreak,
+                lastRingClosedDate = yesterdayStr,
+                highestStreak = if (newStreak > highestStreak) newStreak else highestStreak,
+                totalRingsClosed = totalRingsClosed + 1
+            )
+            saveGuestRecordToPrefs()
+        } else {
             _guestUserRecordFlow.value = currentRecord.copy(streak = 0)
             saveGuestRecordToPrefs()
         }

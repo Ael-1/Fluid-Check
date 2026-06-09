@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit
 object NotificationScheduler {
     private const val TAG = "NotificationScheduler"
     private const val SMART_REMINDER_WORK_NAME = "smart_reminder_work"
+    private const val WEATHER_SYNC_WORK_NAME = "weather_sync_work"
     private const val ALARM_REQUEST_CODE = 2001
 
     /**
@@ -99,6 +100,38 @@ object NotificationScheduler {
         Log.d(TAG, "Smart reminders scheduled (KEEP policy)")
     }
 
+    /**
+     * Schedules periodic weather-based goal syncs via WorkManager.
+     * Runs every 3 hours if enabled.
+     */
+    fun scheduleWeatherSync(context: Context, userId: String) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val inputData = workDataOf("user_id" to userId)
+
+        val weatherRequest = PeriodicWorkRequestBuilder<WeatherSyncWorker>(
+            3, TimeUnit.HOURS
+        )
+            .setConstraints(constraints)
+            .setInputData(inputData)
+            .addTag(WEATHER_SYNC_WORK_NAME)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            WEATHER_SYNC_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            weatherRequest
+        )
+        Log.d(TAG, "Weather sync scheduled (KEEP policy)")
+    }
+
+    fun cancelWeatherSync(context: Context) {
+        WorkManager.getInstance(context).cancelUniqueWork(WEATHER_SYNC_WORK_NAME)
+        Log.d(TAG, "Weather sync cancelled")
+    }
+
     fun cancelAllReminders(context: Context) {
         // Cancel AlarmManager hydration reminder
         val intent = Intent(context, ReminderAlarmReceiver::class.java).apply {
@@ -113,8 +146,9 @@ object NotificationScheduler {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         alarmManager.cancel(pendingIntent)
 
-        // Cancel WorkManager smart reminder
+        // Cancel WorkManager smart reminders
         WorkManager.getInstance(context).cancelUniqueWork(SMART_REMINDER_WORK_NAME)
+        WorkManager.getInstance(context).cancelUniqueWork(WEATHER_SYNC_WORK_NAME)
         Log.d(TAG, "All reminders cancelled")
     }
 }

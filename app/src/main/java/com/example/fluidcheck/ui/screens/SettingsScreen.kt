@@ -2,6 +2,7 @@ package com.example.fluidcheck.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -11,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -20,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
 import com.example.fluidcheck.R
 import com.example.fluidcheck.ui.theme.*
+import kotlinx.coroutines.launch
 
 
 
@@ -43,7 +46,12 @@ fun SettingsScreen(
     reminderFrequency: String = "Every 1 hour",
     onToggleNotifications: (Boolean) -> Unit = {},
     onFrequencyChanged: (String) -> Unit = {},
-    profilePictureUrl: String = ""
+    profilePictureUrl: String = "",
+    onRequestLocationPermission: () -> Unit = {},
+    locationAccessEnabled: Boolean = false,
+    dynamicWeatherEnabled: Boolean = false,
+    onToggleLocationAccess: (Boolean) -> Unit = {},
+    onToggleWeatherGoalAdjustment: (Boolean) -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -78,6 +86,8 @@ fun SettingsScreen(
         )
     }
 
+
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -107,13 +117,21 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+
+
         if (!isAdminMode) {
             // Smart Reminders Section
             SmartRemindersSection(
+                userId = userId,
                 notificationsEnabled = notificationsEnabled,
                 frequency = reminderFrequency,
                 onToggleNotifications = onToggleNotifications,
-                onFrequencyChanged = onFrequencyChanged
+                onFrequencyChanged = onFrequencyChanged,
+                onRequestLocationPermission = onRequestLocationPermission,
+                locationAccessEnabled = locationAccessEnabled,
+                dynamicWeatherEnabled = dynamicWeatherEnabled,
+                onToggleLocationAccess = onToggleLocationAccess,
+                onToggleWeatherGoalAdjustment = onToggleWeatherGoalAdjustment
             )
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -489,10 +507,16 @@ fun StreakBadge(streak: Int) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartRemindersSection(
+    userId: String,
     notificationsEnabled: Boolean,
     frequency: String,
     onToggleNotifications: (Boolean) -> Unit,
-    onFrequencyChanged: (String) -> Unit
+    onFrequencyChanged: (String) -> Unit,
+    onRequestLocationPermission: () -> Unit = {},
+    locationAccessEnabled: Boolean,
+    dynamicWeatherEnabled: Boolean,
+    onToggleLocationAccess: (Boolean) -> Unit,
+    onToggleWeatherGoalAdjustment: (Boolean) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -527,36 +551,112 @@ fun SmartRemindersSection(
                 color = Color.White,
                 border = BorderStroke(1.dp, Color(0xFFF1F5F9))
             ) {
-                Row(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = AppIcons.Notifications,
-                        contentDescription = null,
-                        tint = PrimaryBlue,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    @Suppress("DEPRECATION")
-                    Text(
-                        text = stringResource(R.string.enable_reminders),
-                        fontSize = 16.sp,
-                        color = TextDark,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Switch(
-                        checked = notificationsEnabled,
-                        onCheckedChange = { onToggleNotifications(it) },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = PrimaryBlue,
-                            uncheckedThumbColor = Color.White,
-                            uncheckedTrackColor = Color.LightGray.copy(alpha = 0.5f),
-                            uncheckedBorderColor = Color.Transparent
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.Notifications,
+                            contentDescription = null,
+                            tint = PrimaryBlue,
+                            modifier = Modifier.size(24.dp)
                         )
-                    )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        @Suppress("DEPRECATION")
+                        Text(
+                            text = stringResource(R.string.enable_reminders),
+                            fontSize = 16.sp,
+                            color = TextDark,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = notificationsEnabled,
+                            onCheckedChange = { onToggleNotifications(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = PrimaryBlue,
+                                uncheckedThumbColor = Color.White,
+                                uncheckedTrackColor = Color.LightGray.copy(alpha = 0.5f),
+                                uncheckedBorderColor = Color.Transparent
+                            )
+                        )
+                    }
+
+                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+
+                    Row(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.Location,
+                            contentDescription = null,
+                            tint = PrimaryBlue,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Location Access for Weather",
+                            fontSize = 16.sp,
+                            color = TextDark,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = locationAccessEnabled,
+                            onCheckedChange = { enabled ->
+                                if (enabled) {
+                                    onRequestLocationPermission()
+                                } else {
+                                    onToggleLocationAccess(false)
+                                }
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = PrimaryBlue,
+                                uncheckedThumbColor = Color.White,
+                                uncheckedTrackColor = Color.LightGray.copy(alpha = 0.5f),
+                                uncheckedBorderColor = Color.Transparent
+                            )
+                        )
+                    }
+
+                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+
+                    Row(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.Weather,
+                            contentDescription = null,
+                            tint = PrimaryBlue,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Dynamic Weather Goal Adjustment",
+                            fontSize = 16.sp,
+                            color = TextDark,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = dynamicWeatherEnabled,
+                            onCheckedChange = { enabled ->
+                                onToggleWeatherGoalAdjustment(enabled)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = PrimaryBlue,
+                                uncheckedThumbColor = Color.White,
+                                uncheckedTrackColor = Color.LightGray.copy(alpha = 0.5f),
+                                uncheckedBorderColor = Color.Transparent
+                            )
+                        )
+                    }
                 }
             }
 

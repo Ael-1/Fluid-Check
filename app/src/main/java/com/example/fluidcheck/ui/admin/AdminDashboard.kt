@@ -55,6 +55,7 @@ import com.example.fluidcheck.ui.screens.PersonalRecordsContainer
 import com.example.fluidcheck.ui.screens.TimeRangeTabs
 import com.example.fluidcheck.ui.screens.DateNavigationBar
 import com.example.fluidcheck.ui.screens.HydrationLineChart
+import com.example.fluidcheck.ui.screens.HydrationDatePickerDialog
 import com.example.fluidcheck.ui.screens.getChartDataForRange
 import com.example.fluidcheck.ui.screens.generateYLabels
 import androidx.compose.ui.platform.LocalContext
@@ -730,7 +731,15 @@ fun EditUserDetailedDialog(
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Box(modifier = Modifier.weight(1f)) {
-                            ReadOnlyField("Current Streak", "${user.streak} days")
+                            val todayStr = remember {
+                                java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply {
+                                    timeZone = java.util.TimeZone.getTimeZone("GMT+8")
+                                }.format(java.util.Date())
+                            }
+                            val displayedUserStreak = remember(user, todayStr) {
+                                if (user.lastRingClosedDate == todayStr) maxOf(0, user.streak - 1) else user.streak
+                            }
+                            ReadOnlyField("Current Streak", "$displayedUserStreak days")
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Box(modifier = Modifier.weight(1f)) {
@@ -1038,6 +1047,7 @@ fun UserProgressChart(
 ) {
     var selectedTab by remember { mutableStateOf("Week") }
     var navOffset by remember { mutableIntStateOf(0) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(selectedTab) {
         navOffset = 0
@@ -1050,6 +1060,55 @@ fun UserProgressChart(
     val creationDate = remember(accountCreatedAt) {
         accountCreatedAt?.toDate()?.toInstant()?.atZone(PST_ZONE)?.toLocalDate()
             ?: LocalDate.now(PST_ZONE)
+    }
+
+    val today = remember { LocalDate.now(PST_ZONE) }
+
+    val selectedLocalDate = remember(selectedTab, navOffset) {
+        val todayNow = LocalDate.now(PST_ZONE)
+        val calculated = when (selectedTab) {
+            "Day" -> todayNow.plusDays(navOffset.toLong())
+            "Week" -> todayNow.plusWeeks(navOffset.toLong())
+            "Month" -> todayNow.plusMonths(navOffset.toLong())
+            "Year" -> todayNow.plusYears(navOffset.toLong())
+            else -> todayNow
+        }
+        if (calculated < creationDate) creationDate
+        else if (calculated > todayNow) todayNow
+        else calculated
+    }
+
+    if (showDatePicker) {
+        HydrationDatePickerDialog(
+            initialDate = selectedLocalDate,
+            creationDate = creationDate,
+            allLogs = allLogs,
+            dailyGoal = dailyGoal,
+            onDateSelected = { pickedDate ->
+                val todayNow = LocalDate.now(PST_ZONE)
+                navOffset = when (selectedTab) {
+                    "Day" -> java.time.temporal.ChronoUnit.DAYS.between(todayNow, pickedDate).toInt()
+                    "Week" -> {
+                        val todayMonday = todayNow.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                        val pickedMonday = pickedDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                        java.time.temporal.ChronoUnit.WEEKS.between(todayMonday, pickedMonday).toInt()
+                    }
+                    "Month" -> {
+                        val todayMonthStart = todayNow.with(TemporalAdjusters.firstDayOfMonth())
+                        val pickedMonthStart = pickedDate.with(TemporalAdjusters.firstDayOfMonth())
+                        java.time.temporal.ChronoUnit.MONTHS.between(todayMonthStart, pickedMonthStart).toInt()
+                    }
+                    "Year" -> {
+                        val todayYearStart = todayNow.with(TemporalAdjusters.firstDayOfYear())
+                        val pickedYearStart = pickedDate.with(TemporalAdjusters.firstDayOfYear())
+                        java.time.temporal.ChronoUnit.YEARS.between(todayYearStart, pickedYearStart).toInt()
+                    }
+                    else -> 0
+                }
+                showDatePicker = false
+            },
+            onDismissRequest = { showDatePicker = false }
+        )
     }
 
     val canGoNext = navOffset < 0
@@ -1104,7 +1163,8 @@ fun UserProgressChart(
                 onPrevious = { navOffset-- },
                 onNext = { navOffset++ },
                 isPreviousEnabled = canGoPrevious,
-                isNextEnabled = canGoNext
+                isNextEnabled = canGoNext,
+                onLabelClick = { showDatePicker = true }
             )
 
             Spacer(modifier = Modifier.height(24.dp))

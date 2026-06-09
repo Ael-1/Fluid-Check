@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -26,6 +27,8 @@ import com.example.fluidcheck.R
 import com.example.fluidcheck.model.ChartData
 import com.example.fluidcheck.model.FluidLog
 import com.example.fluidcheck.ui.theme.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import com.google.firebase.Timestamp
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -35,6 +38,9 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.util.*
 
+import java.time.YearMonth
+import java.time.temporal.ChronoUnit
+
 private val PST_ZONE = ZoneId.of("GMT+8")
 
 @Composable
@@ -42,13 +48,12 @@ fun ProgressScreen(
     userId: String,
     firestoreRepository: com.example.fluidcheck.repository.FirestoreRepository,
     dailyGoal: Int,
-    accountCreatedAt: Timestamp? = null
+    accountCreatedAt: Timestamp? = null,
+    allLogs: List<FluidLog>
 ) {
-    val allLogsFlow = remember(userId) { firestoreRepository.getFluidLogsFlow(userId) }
-    val allLogs by allLogsFlow.collectAsState(initial = emptyList())
-    
     var selectedTab by remember { mutableStateOf("Day") }
     var navOffset by remember { mutableIntStateOf(0) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     // Reset offset when tab changes
     LaunchedEffect(selectedTab) {
@@ -65,27 +70,29 @@ fun ProgressScreen(
             ?: LocalDate.now(PST_ZONE)
     }
 
+    val today = remember { LocalDate.now(PST_ZONE) }
+
     val canGoNext = navOffset < 0
     val canGoPrevious = remember(selectedTab, navOffset, creationDate) {
-        val today = LocalDate.now(PST_ZONE)
+        val todayNow = LocalDate.now(PST_ZONE)
         
         when (selectedTab) {
             "Day" -> {
-                val currentTargetDate = today.plusDays(navOffset.toLong())
+                val currentTargetDate = todayNow.plusDays(navOffset.toLong())
                 currentTargetDate.minusDays(1) >= creationDate
             }
             "Week" -> {
-                val currentTargetWeek = today.plusWeeks(navOffset.toLong())
+                val currentTargetWeek = todayNow.plusWeeks(navOffset.toLong())
                 val currentWeekStart = currentTargetWeek.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
                 currentWeekStart.minusDays(1) >= creationDate
             }
             "Month" -> {
-                val currentTargetMonth = today.plusMonths(navOffset.toLong())
+                val currentTargetMonth = todayNow.plusMonths(navOffset.toLong())
                 val currentMonthStart = currentTargetMonth.with(TemporalAdjusters.firstDayOfMonth())
                 currentMonthStart.minusDays(1) >= creationDate
             }
             "Year" -> {
-                val currentTargetYear = today.plusYears(navOffset.toLong())
+                val currentTargetYear = todayNow.plusYears(navOffset.toLong())
                 val currentYearStart = currentTargetYear.with(TemporalAdjusters.firstDayOfYear())
                 currentYearStart.minusDays(1) >= creationDate
             }
@@ -93,11 +100,97 @@ fun ProgressScreen(
         }
     }
 
+    val selectedLocalDate = remember(selectedTab, navOffset) {
+        val todayNow = LocalDate.now(PST_ZONE)
+        val calculated = when (selectedTab) {
+            "Day" -> todayNow.plusDays(navOffset.toLong())
+            "Week" -> todayNow.plusWeeks(navOffset.toLong())
+            "Month" -> todayNow.plusMonths(navOffset.toLong())
+            "Year" -> todayNow.plusYears(navOffset.toLong())
+            else -> todayNow
+        }
+        // Coerce within bounds
+        if (calculated < creationDate) creationDate
+        else if (calculated > todayNow) todayNow
+        else calculated
+    }
+
+    if (showDatePicker) {
+        HydrationDatePickerDialog(
+            initialDate = selectedLocalDate,
+            creationDate = creationDate,
+            allLogs = allLogs,
+            dailyGoal = dailyGoal,
+            onDateSelected = { pickedDate ->
+                val todayNow = LocalDate.now(PST_ZONE)
+                navOffset = when (selectedTab) {
+                    "Day" -> ChronoUnit.DAYS.between(todayNow, pickedDate).toInt()
+                    "Week" -> {
+                        val todayMonday = todayNow.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                        val pickedMonday = pickedDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                        ChronoUnit.WEEKS.between(todayMonday, pickedMonday).toInt()
+                    }
+                    "Month" -> {
+                        val todayMonthStart = todayNow.with(TemporalAdjusters.firstDayOfMonth())
+                        val pickedMonthStart = pickedDate.with(TemporalAdjusters.firstDayOfMonth())
+                        ChronoUnit.MONTHS.between(todayMonthStart, pickedMonthStart).toInt()
+                    }
+                    "Year" -> {
+                        val todayYearStart = todayNow.with(TemporalAdjusters.firstDayOfYear())
+                        val pickedYearStart = pickedDate.with(TemporalAdjusters.firstDayOfYear())
+                        ChronoUnit.YEARS.between(todayYearStart, pickedYearStart).toInt()
+                    }
+                    else -> 0
+                }
+                showDatePicker = false
+            },
+            onDismissRequest = { showDatePicker = false }
+        )
+    }
+
+    val weeklyGradeAndFeedback = remember(allLogs, dailyGoal) {
+        val todayNow = LocalDate.now(PST_ZONE)
+        var metGoalDays = 0
+        for (i in 0..6) {
+            val date = todayNow.minusDays(i.toLong())
+            val dateStr = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.US))
+            val intake = allLogs.filter { it.date == dateStr }.sumOf { it.amount }
+            if (intake >= dailyGoal) {
+                metGoalDays++
+            }
+        }
+        
+        val grade = when (metGoalDays) {
+            7 -> "A+"
+            6 -> "A"
+            5 -> "B+"
+            4 -> "B"
+            3 -> "C+"
+            2 -> "C"
+            1 -> "D"
+            else -> "F"
+        }
+        
+        val feedback = when (metGoalDays) {
+            7 -> "Outstanding! You met your daily hydration goal every single day this week. Your consistency is perfect, keep up the excellent work!"
+            6 -> "Excellent job! You reached your goal 6 out of 7 days. Just one minor slip, but you are maintaining great overall habits."
+            5 -> "Great effort! Meeting your goal 5 out of 7 days shows a strong habit. A little more focus on the weekend could secure a perfect score."
+            4 -> "Good job! You met your goal 4 out of 7 days. You are on the right track, but consistency can be improved by setting mid-day reminders."
+            3 -> "Fair week. You met your goal 3 out of 7 days. Try to keep a water bottle near your desk or set smart notifications to boost your intake."
+            2 -> "You reached your hydration goal 2 days this week. Let's aim for 4 days next week! Increasing your morning intake can help set a good pace."
+            1 -> "You met your goal only 1 day this week. Consistent hydration improves energy and focus. Try using the AI Coach to adjust your target."
+            else -> "No daily goals met this week. Don't worry, every week is a fresh start! Try starting with small frequent sips and use AI recommendations."
+        }
+        
+        Pair(grade, feedback)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(AppBackground)
             .padding(horizontal = 24.dp)
+            .verticalScroll(rememberScrollState())
     ) {
         @Suppress("DEPRECATION")
         Spacer(modifier = Modifier.height(32.dp))
@@ -151,7 +244,8 @@ fun ProgressScreen(
                     onPrevious = { navOffset-- },
                     onNext = { navOffset++ },
                     isPreviousEnabled = canGoPrevious,
-                    isNextEnabled = canGoNext
+                    isNextEnabled = canGoNext,
+                    onLabelClick = { showDatePicker = true }
                 )
 
                 Spacer(modifier = Modifier.height(40.dp))
@@ -169,6 +263,83 @@ fun ProgressScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // AI Weekly Scorecard Card
+        val (grade, feedback) = weeklyGradeAndFeedback
+        val gradeBgColor = when {
+            grade.startsWith("A") -> Color(0xFFE2FBE9)
+            grade.startsWith("B") -> Color(0xFFFFF4E5)
+            grade.startsWith("C") -> Color(0xFFFFFBE6)
+            grade.startsWith("D") -> Color(0xFFFFF2F2)
+            else -> Color(0xFFF1F5F9)
+        }
+        val gradeTextColor = when {
+            grade.startsWith("A") -> Color(0xFF1B803A)
+            grade.startsWith("B") -> Color(0xFFB76E00)
+            grade.startsWith("C") -> Color(0xFFD97706)
+            grade.startsWith("D") -> Color(0xFFEF4444)
+            else -> Color(0xFF64748B)
+        }
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(32.dp),
+            color = Color.White,
+            shadowElevation = 8.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = AppIcons.AICoach,
+                            contentDescription = null,
+                            tint = PrimaryBlue,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "AI Weekly Scorecard",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = TextDark
+                            )
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(gradeBgColor)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = grade,
+                            color = gradeTextColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = feedback,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        color = MutedForeground,
+                        lineHeight = 22.sp
+                    )
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
@@ -224,7 +395,8 @@ fun DateNavigationBar(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     isPreviousEnabled: Boolean,
-    isNextEnabled: Boolean
+    isNextEnabled: Boolean,
+    onLabelClick: () -> Unit
 ) {
     Surface(
         color = AccentBlue.copy(alpha = 0.3f),
@@ -251,7 +423,13 @@ fun DateNavigationBar(
                 )
             }
 
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onLabelClick() }
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+            ) {
                 Text(
                     text = stringResource(R.string.viewing),
                     fontSize = 10.sp,
@@ -281,6 +459,196 @@ fun DateNavigationBar(
             }
         }
     }
+}
+
+@Composable
+fun HydrationDatePickerDialog(
+    initialDate: LocalDate,
+    creationDate: LocalDate,
+    allLogs: List<FluidLog>,
+    dailyGoal: Int,
+    onDateSelected: (LocalDate) -> Unit,
+    onDismissRequest: () -> Unit
+) {
+    var currentMonth by remember { mutableStateOf(YearMonth.from(initialDate)) }
+    var selectedDate by remember { mutableStateOf(initialDate) }
+    val today = remember { LocalDate.now(PST_ZONE) }
+    val completedGoalColor = colorResource(id = R.color.water_blue_dark)
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            TextButton(
+                onClick = { onDateSelected(selectedDate) }
+            ) {
+                Text(stringResource(R.string.confirm), color = PrimaryBlue, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text(stringResource(R.string.cancel), color = MutedForeground)
+            }
+        },
+        title = {
+            Text(
+                text = "Select Date",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = TextDark
+                )
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Month Selector Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val prevEnabled = currentMonth.minusMonths(1).atEndOfMonth().isAfter(creationDate.minusDays(1))
+                    val nextEnabled = currentMonth.plusMonths(1).atDay(1).isBefore(today.plusDays(1))
+
+                    IconButton(
+                        onClick = { currentMonth = currentMonth.minusMonths(1) },
+                        enabled = prevEnabled
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.ArrowLeft,
+                            contentDescription = "Previous Month",
+                            tint = if (prevEnabled) TextDark else Color(0xFF94A3B8).copy(alpha = 0.3f)
+                        )
+                    }
+
+                    Text(
+                        text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = TextDark
+                    )
+
+                    IconButton(
+                        onClick = { currentMonth = currentMonth.plusMonths(1) },
+                        enabled = nextEnabled
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.ArrowRight,
+                            contentDescription = "Next Month",
+                            tint = if (nextEnabled) TextDark else Color(0xFF94A3B8).copy(alpha = 0.3f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Days of the Week Header
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    val daysOfWeek = listOf("M", "T", "W", "T", "F", "S", "S")
+                    daysOfWeek.forEach { day ->
+                        Text(
+                            text = day,
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = MutedForeground
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Calendar Grid
+                val firstOfMonth = currentMonth.atDay(1)
+                val dayOfWeekOffset = firstOfMonth.dayOfWeek.value - 1 // 0 for Monday, 6 for Sunday
+                val daysInMonth = currentMonth.lengthOfMonth()
+                
+                val totalCells = daysInMonth + dayOfWeekOffset
+                val rows = (totalCells + 6) / 7
+
+                Column {
+                    for (row in 0 until rows) {
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            for (col in 0 until 7) {
+                                val cellIndex = row * 7 + col
+                                val dayNum = cellIndex - dayOfWeekOffset + 1
+                                
+                                if (dayNum in 1..daysInMonth) {
+                                    val cellDate = currentMonth.atDay(dayNum)
+                                    val isSelectable = cellDate >= creationDate && cellDate <= today
+                                    val isSelected = cellDate == selectedDate
+                                    
+                                    // Calculate progress percentage
+                                    val dateStr = cellDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.getDefault()))
+                                    val dayLogs = allLogs.filter { it.date == dateStr }
+                                    val totalIntake = dayLogs.sumOf { it.amount }.toFloat()
+                                    val progressPct = if (dailyGoal > 0) (totalIntake / dailyGoal).coerceIn(0f, 1f) else 0f
+
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .aspectRatio(1f)
+                                            .padding(4.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(
+                                                if (isSelected) PrimaryBlue.copy(alpha = 0.15f)
+                                                else Color.Transparent
+                                            )
+                                            .clickable(enabled = isSelectable) {
+                                                selectedDate = cellDate
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (isSelectable) {
+                                            // Progress background representation (pie chart style)
+                                            Canvas(modifier = Modifier.fillMaxSize().padding(4.dp)) {
+                                                val size = this.size
+                                                val radius = size.minDimension / 2
+                                                
+                                                // Background soft progress circle (using AppBackground color)
+                                                drawCircle(
+                                                    color = AppBackground,
+                                                    radius = radius
+                                                )
+                                                
+                                                // Filled progress sector (pie slice)
+                                                if (progressPct > 0f) {
+                                                    val sweepAngle = progressPct * 360f
+                                                    val arcColor = if (progressPct >= 1f) completedGoalColor else AccentBlue
+                                                    drawArc(
+                                                        color = arcColor,
+                                                        startAngle = -90f,
+                                                        sweepAngle = sweepAngle,
+                                                        useCenter = true
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        Text(
+                                            text = dayNum.toString(),
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            fontSize = 13.sp,
+                                            color = when {
+                                                !isSelectable -> MutedForeground.copy(alpha = 0.3f)
+                                                isSelected -> PrimaryBlue
+                                                else -> TextDark
+                                            }
+                                        )
+                                    }
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    )
 }
 
 @Composable

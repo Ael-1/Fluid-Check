@@ -149,8 +149,8 @@
     <string name="admin_dashboard_title">Admin Dashboard</string>
     <string name="confirm_delete_title">Confirm Delete</string>
     <string name="confirm_delete_msg">Are you sure you want to delete this account?</string>
-    <string name="delete">DELETE</string>
-    <string name="cancel">CANCEL</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
     <string name="search_users_placeholder">Search users...</string>
     <string name="user_directory">User Directory</string>
     <string name="user_directory_subtitle">Manage application users and roles.</string>

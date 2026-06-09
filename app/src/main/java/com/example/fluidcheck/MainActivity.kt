@@ -121,9 +121,24 @@ class MainActivity : ComponentActivity() {
                                     Manifest.permission.POST_NOTIFICATIONS
                                 )
                                 // If false here, it means the permission framework won't show a dialog anymore
-                                if (!shouldShowRationale) {
+                                 if (!shouldShowRationale) {
                                     showPermissionDeniedDialog = true
                                 }
+                            }
+                        }
+                    }
+                )
+
+                val locationPermissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestMultiplePermissions(),
+                    onResult = { permissions ->
+                        val fineGranted = permissions[android.Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+                        val coarseGranted = permissions[android.Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+                        val isGranted = fineGranted || coarseGranted
+                        if (currentUserId.isNotEmpty()) {
+                            scope.launch {
+                                val userPrefsRepository = com.example.fluidcheck.repository.UserPreferencesRepository(this@MainActivity)
+                                userPrefsRepository.setLocationAccessEnabled(currentUserId, isGranted)
                             }
                         }
                     }
@@ -551,6 +566,14 @@ class MainActivity : ComponentActivity() {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                 explicitPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                             }
+                        },
+                        onRequestLocationPermission = {
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                            )
                         },
                         onGoogleVerifyAccount = { guestRecord ->
                             pendingVerificationGuestRecord = guestRecord
