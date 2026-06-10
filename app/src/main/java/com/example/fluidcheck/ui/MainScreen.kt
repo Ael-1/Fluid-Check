@@ -48,7 +48,8 @@ import com.example.fluidcheck.ui.screens.AboutDeveloperScreen
 import com.example.fluidcheck.ui.auth.SignUpScreen
 import com.example.fluidcheck.ui.auth.VerifyAccountScreen
 import com.example.fluidcheck.ui.admin.AdminDashboard
-import com.example.fluidcheck.ui.theme.AppBackground
+import com.example.fluidcheck.ui.theme.AppBackgroundContainer
+import com.example.fluidcheck.ui.theme.BackgroundType
 import com.example.fluidcheck.ui.theme.AppIcons
 import com.example.fluidcheck.ui.theme.PrimaryBlue
 import com.example.fluidcheck.ui.theme.TextDark
@@ -102,6 +103,19 @@ fun MainScreen(
 
     val measurementPreferencesFlow = remember(userId) { repository.getMeasurementPreferences(userId) }
     val measurementPreferences by measurementPreferencesFlow.collectAsState(initial = com.example.fluidcheck.util.MeasurementPreferences())
+
+    // UI Customization Flows
+    val appThemeFlow = remember(userId) { repository.getAppTheme(userId) }
+    val appTheme by appThemeFlow.collectAsState(initial = "LIGHT")
+    
+    val appBackgroundFlow = remember(userId) { repository.getAppBackground(userId) }
+    val appBackground by appBackgroundFlow.collectAsState(initial = "NONE")
+    
+    val progressMeterStyleFlow = remember(userId) { repository.getProgressMeterStyle(userId) }
+    val progressMeterStyle by progressMeterStyleFlow.collectAsState(initial = "RING")
+    
+    val appIconFlow = remember(userId) { repository.getAppIcon(userId) }
+    val appIcon by appIconFlow.collectAsState(initial = "DEFAULT")
 
     // Use userId (UID) for synchronization as document ID
     val userRecordFlow = remember(userId) { firestoreRepository.getUserRecordFlow(userId) }
@@ -509,15 +523,20 @@ fun MainScreen(
             }
         }
     ) { innerPadding ->
-        Box(
+        val bgType = try { BackgroundType.valueOf(appBackground) } catch (e: Exception) { BackgroundType.NONE }
+        AppBackgroundContainer(
+            backgroundType = bgType,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(AppBackground)
-                .pointerInput(Unit) {
-                    detectTapGestures(onTap = { focusManager.clearFocus() })
-                }
         ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = { focusManager.clearFocus() })
+                    }
+            ) {
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = PrimaryBlue)
@@ -599,7 +618,18 @@ fun MainScreen(
                                         android.widget.Toast.makeText(context, "Unexpected error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                                     }
                                 }
-                            }
+                            },
+                            userRecord = userRecord,
+                            onNavigateToProgress = {
+                                navController.navigate(NavRoutes.Progress.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            progressMeterStyle = progressMeterStyle
                         )
                     }
                     composable(NavRoutes.Progress.route) { 
@@ -611,7 +641,34 @@ fun MainScreen(
                             dailyGoal = currentGoal,
                             accountCreatedAt = userRecord?.createdAt,
                             allLogs = allLogs ?: emptyList(),
-                            measurementPreferences = measurementPreferences
+                            measurementPreferences = measurementPreferences,
+                            userRecord = userRecord,
+                            isConnected = isConnected,
+                            onAcceptMission = { missionId ->
+                                val result = firestoreRepository.acceptMission(userId, missionId)
+                                if (result.isSuccess) {
+                                    android.widget.Toast.makeText(context, "Mission accepted!", android.widget.Toast.LENGTH_SHORT).show()
+                                } else {
+                                    android.widget.Toast.makeText(context, "Failed to accept mission.", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            onAbortMission = { missionId ->
+                                val result = firestoreRepository.abortMission(userId, missionId)
+                                if (result.isSuccess) {
+                                    android.widget.Toast.makeText(context, "Mission aborted.", android.widget.Toast.LENGTH_SHORT).show()
+                                } else {
+                                    android.widget.Toast.makeText(context, "Failed to abort mission.", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            onCompleteMission = { missionId ->
+                                val result = firestoreRepository.completeMission(userId, missionId)
+                                if (result.isSuccess) {
+                                    android.widget.Toast.makeText(context, "Mission completed! Rewards claimed.", android.widget.Toast.LENGTH_SHORT).show()
+                                } else {
+                                    android.widget.Toast.makeText(context, "Failed to complete mission.", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            onNavigateToInventory = { navController.navigate(NavRoutes.Inventory.route) }
                         )
                     }
                     composable(NavRoutes.AICoach.route) { 
@@ -824,6 +881,37 @@ fun MainScreen(
                                             android.widget.Toast.makeText(context, "Failed to restore: ${result.exceptionOrNull()?.message}", android.widget.Toast.LENGTH_LONG).show()
                                         }
                                     }
+                                },
+                                onNavigateToInventory = { navController.navigate(NavRoutes.Inventory.route) },
+                                autoShieldEnabled = userRecord?.autoShieldEnabled ?: false,
+                                onToggleAutoShield = { enabled ->
+                                    scope.launch {
+                                        try {
+                                            val result = firestoreRepository.setAutoShieldEnabled(userId, enabled)
+                                            if (result.isFailure) {
+                                                android.widget.Toast.makeText(context, "Error updating Auto-Shield settings", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                        } catch (e: Exception) {
+                                            android.widget.Toast.makeText(context, "Unexpected error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                appTheme = appTheme,
+                                onAppThemeChanged = { newTheme ->
+                                    scope.launch { repository.setAppTheme(userId, newTheme) }
+                                },
+                                appBackground = appBackground,
+                                onAppBackgroundChanged = { newBg ->
+                                    scope.launch { repository.setAppBackground(userId, newBg) }
+                                },
+                                progressMeterStyle = progressMeterStyle,
+                                onProgressMeterStyleChanged = { newStyle ->
+                                    scope.launch { repository.setProgressMeterStyle(userId, newStyle) }
+                                },
+                                appIcon = appIcon,
+                                onAppIconChanged = { newIcon ->
+                                    scope.launch { repository.setAppIcon(userId, newIcon) }
+                                    com.example.fluidcheck.util.AppIconManager.changeAppIcon(context, newIcon)
                                 }
                             )
                     }
@@ -863,10 +951,36 @@ fun MainScreen(
                             measurementPreferences = measurementPreferences
                         )
                     }
+                    composable(NavRoutes.Inventory.route) {
+                        val currentRecord = userRecord
+                        if (currentRecord != null) {
+                            com.example.fluidcheck.ui.screens.InventoryScreen(
+                                userRecord = currentRecord,
+                                onBack = { navController.popBackStack() },
+                                onToggleAutoShield = { enabled ->
+                                    scope.launch {
+                                        try {
+                                            val result = firestoreRepository.setAutoShieldEnabled(userId, enabled)
+                                            if (result.isFailure) {
+                                                android.widget.Toast.makeText(context, "Error updating Auto-Shield settings", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                        } catch (e: Exception) {
+                                            android.widget.Toast.makeText(context, "Unexpected error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            )
+                        } else {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    }
                 }
             }
         }
     }
+}
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

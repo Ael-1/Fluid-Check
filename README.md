@@ -19,6 +19,12 @@ FluidCheck is an Android application designed to help users manage their hydrati
   - *Moderator*: Read-only directory access and system analytics view for tracking application metrics.
   - *Premium User*: Access to all premium features and unlimited cloud sync capabilities.
   - *Free User (Standard)*: Basic logging features and 7-day cloud history recovery.
+- **Gamification & Achievements System:** Integrates structured daily/weekly missions and collectible milestone badges (e.g., "Water Warrior", "Streak Master") to incentivize consistent hydration. Includes a real-time Active Mission Tracker on the HomeScreen dashboard and a dedicated Inventory & Badges screen. *Purpose: Boosts user retention, hydration discipline, and interactive engagement.*
+- **App UI Customization Hub (WIP - Premium Feature):** Unlocks deep personalization controls for premium users to tailor their visual environment:
+  - *Dynamic App Themes (WIP)*: Dynamic theme swapping across 10 palettes including Light/Dark modes, Ocean Blue, Sunset Orange, Midnight Purple, AMOLED Pitch Black, Forest Green, Cyberpunk Neon, Pastel Spring, Classic Sepia, and Cyberpunk Neon.
+  - *Alternative Progress Meters (WIP)*: Replaces the standard Progress Ring with Bottle Fill, Wave Animation, Horizontal Line, Segmented Battery, Dot Matrix, or Liquid Drop gauges.
+  - *Custom Backgrounds (WIP)*: Renders custom solid colors, blurred gradients, or subtle patterns globally.
+  - *Launcher Icon Switching (WIP)*: Dynamic application launcher icon swaps to match chosen themes.
 - **AI-Powered Personalized Goals:** Get custom daily water intake targets calculated by Gemini AI.
 - **Smart Hydration Coach:** AI-driven personalized recommendations based on your preferences and habits.
 - **Profile Photo Management:** Sophisticated image handling using **uCrop** for precision editing and **ImgBB** for cloud hosting, featuring full offline support.

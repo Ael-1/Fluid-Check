@@ -72,18 +72,25 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-            FluidCheckTheme {
-                val authRepository = remember { AuthRepository() }
-                val firestoreRepository = remember { FirestoreRepository(context) }
-                val scope = rememberCoroutineScope()
+            val authRepository = remember { AuthRepository() }
+            val firestoreRepository = remember { FirestoreRepository(context) }
+            val scope = rememberCoroutineScope()
 
+            var isLoggedIn by rememberSaveable { mutableStateOf(authRepository.isUserLoggedIn()) }
+            val currentUserId = if (isLoggedIn && authRepository.currentUser == null) "GUEST" else authRepository.currentUser?.uid ?: ""
+
+            val userPrefsRepository = remember { com.example.fluidcheck.repository.UserPreferencesRepository(context) }
+            val appThemeFlow = remember(currentUserId) { userPrefsRepository.getAppTheme(currentUserId) }
+            val appThemeState by appThemeFlow.collectAsState(initial = "LIGHT")
+            
+            val themeId = try { com.example.fluidcheck.ui.theme.AppThemeId.valueOf(appThemeState) } catch (e: Exception) { com.example.fluidcheck.ui.theme.AppThemeId.LIGHT }
+
+            FluidCheckTheme(themeId = themeId) {
                 // Network connectivity tracking
                 val networkMonitor = remember { com.example.fluidcheck.util.NetworkMonitor(context) }
                 val isConnected by networkMonitor.isConnected.collectAsState(initial = true)
 
                 // Auth status derived from repository
-                var isLoggedIn by rememberSaveable { mutableStateOf(authRepository.isUserLoggedIn()) }
-                val currentUserId = if (isLoggedIn && authRepository.currentUser == null) "GUEST" else authRepository.currentUser?.uid ?: ""
 
                 val permissionLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission(),

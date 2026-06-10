@@ -50,6 +50,8 @@ import com.example.fluidcheck.model.ALL_FLUID_TYPES
 import com.example.fluidcheck.model.DEFAULT_QUICK_ADD_CONFIGS
 import com.example.fluidcheck.model.getIconForFluidType
 import com.example.fluidcheck.ui.theme.*
+import com.example.fluidcheck.ui.components.ProgressMeterRouter
+import com.example.fluidcheck.ui.components.ProgressMeterStyle
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -73,7 +75,10 @@ fun HomeScreen(
     onUpdateQuickAdd: (List<QuickAddConfig>) -> Unit,
     measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences = com.example.fluidcheck.util.MeasurementPreferences(),
     userRole: String = "FREE USER",
-    onPremiumFeatureClick: () -> Unit = {}
+    onPremiumFeatureClick: () -> Unit = {},
+    userRecord: com.example.fluidcheck.model.UserRecord? = null,
+    onNavigateToProgress: () -> Unit = {},
+    progressMeterStyle: String = "RING"
 ) {
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val allLogsFlow = remember(userId) { firestoreRepository.getFluidLogsFlow(userId) }
@@ -210,7 +215,10 @@ fun HomeScreen(
                     onTapBackground = dismissSelection,
                     volumeUnit = measurementPreferences.volume,
                     userRole = userRole,
-                    onPremiumFeatureClick = onPremiumFeatureClick
+                    onPremiumFeatureClick = onPremiumFeatureClick,
+                    userRecord = userRecord,
+                    onNavigateToProgress = onNavigateToProgress,
+                    progressMeterStyle = progressMeterStyle
                 )
             }
             
@@ -335,7 +343,10 @@ fun LazyItemScope.HeroSection(
     onTapBackground: () -> Unit,
     volumeUnit: VolumeUnit,
     userRole: String = "FREE USER",
-    onPremiumFeatureClick: () -> Unit = {}
+    onPremiumFeatureClick: () -> Unit = {},
+    userRecord: com.example.fluidcheck.model.UserRecord? = null,
+    onNavigateToProgress: () -> Unit = {},
+    progressMeterStyle: String = "RING"
 ) {
     val gradient = Brush.verticalGradient(
         colors = listOf(GradientStart, GradientMid, GradientEnd)
@@ -374,7 +385,9 @@ fun LazyItemScope.HeroSection(
                     .aspectRatio(1f),
                 contentAlignment = Alignment.Center
             ) {
-                HeroProgressRing(
+                val styleEnum = try { ProgressMeterStyle.valueOf(progressMeterStyle) } catch (e: Exception) { ProgressMeterStyle.RING }
+                ProgressMeterRouter(
+                    style = styleEnum,
                     progress = progress,
                     totalIntake = totalIntake,
                     dailyGoal = dailyGoal,
@@ -394,6 +407,14 @@ fun LazyItemScope.HeroSection(
                     .padding(top = 24.dp)
             ) {
                 StreakPill(days = streakDays, onClick = { if (selectionMode) onTapBackground() })
+                
+                if (userRole != "FREE USER" && userRecord != null && userRecord.activeMissions.isNotEmpty()) {
+                    com.example.fluidcheck.ui.components.ActiveMissionTracker(
+                        activeMissions = userRecord.activeMissions,
+                        userRole = userRole,
+                        onNavigateToProgress = onNavigateToProgress
+                    )
+                }
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 

@@ -10,4 +10,5 @@ sealed class NavRoutes(val route: String) {
     object EditProfile : NavRoutes("edit_profile")
     object AboutDeveloper : NavRoutes("about_developer")
     object VerifyAccount : NavRoutes("verify_account")
+    object Inventory : NavRoutes("inventory")
 }

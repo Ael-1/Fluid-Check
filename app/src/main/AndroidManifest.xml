@@ -31,10 +31,100 @@
             tools:ignore="LockedOrientationActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity-alias
+            android:name=".MainActivityDark"
+            android:targetActivity=".MainActivity"
+            android:icon="@drawable/fluid_check_icon"
+            android:roundIcon="@drawable/fluid_check_icon"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        
+        <activity-alias
+            android:name=".MainActivityMonochrome"
+            android:targetActivity=".MainActivity"
+            android:icon="@drawable/fluid_check_icon"
+            android:roundIcon="@drawable/fluid_check_icon"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityOcean"
+            android:targetActivity=".MainActivity"
+            android:icon="@drawable/fluid_check_icon"
+            android:roundIcon="@drawable/fluid_check_icon"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivitySunset"
+            android:targetActivity=".MainActivity"
+            android:icon="@drawable/fluid_check_icon"
+            android:roundIcon="@drawable/fluid_check_icon"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityNeon"
+            android:targetActivity=".MainActivity"
+            android:icon="@drawable/fluid_check_icon"
+            android:roundIcon="@drawable/fluid_check_icon"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityGold"
+            android:targetActivity=".MainActivity"
+            android:icon="@drawable/fluid_check_icon"
+            android:roundIcon="@drawable/fluid_check_icon"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityMinimal"
+            android:targetActivity=".MainActivity"
+            android:icon="@drawable/fluid_check_icon"
+            android:roundIcon="@drawable/fluid_check_icon"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <receiver
             android:name=".util.BootReceiver"

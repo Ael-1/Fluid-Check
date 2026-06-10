@@ -3,6 +3,9 @@ package com.example.fluidcheck.repository
 import com.example.fluidcheck.model.FluidLog
 import com.example.fluidcheck.model.QuickAddConfig
 import com.example.fluidcheck.model.UserRecord
+import com.example.fluidcheck.model.MissionPool
+import com.example.fluidcheck.model.ActiveMission
+import com.example.fluidcheck.model.MissionDifficulty
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -200,7 +203,19 @@ class FirestoreRepository(private val context: Context? = null) {
             totalRingsClosed = (document.getLong("totalRingsClosed") ?: 0L).toInt(),
             createdAt = document.getTimestamp("createdAt"),
             dailyGoal = document.getLong("dailyGoal")?.toInt(),
-            emailVerified = document.getBoolean("emailVerified") ?: false
+            emailVerified = document.getBoolean("emailVerified") ?: false,
+            
+            // Gamification
+            streakShields = document.getLong("streakShields")?.toInt() ?: 0,
+            shieldFragments = document.getLong("shieldFragments")?.toInt() ?: 0,
+            autoShieldEnabled = document.getBoolean("autoShieldEnabled") ?: false,
+            missionBoardDate = document.getString("missionBoardDate") ?: "",
+            boardMissionIds = document.get("boardMissionIds") as? List<String> ?: emptyList(),
+            activeMissions = document.get("activeMissions") as? List<Map<String, Any>> ?: emptyList(),
+            completedMissionsToday = document.get("completedMissionsToday") as? List<String> ?: emptyList(),
+            abortedMissionsToday = document.get("abortedMissionsToday") as? List<String> ?: emptyList(),
+            earnedBadges = document.get("earnedBadges") as? Map<String, Int> ?: emptyMap(),
+            earnedMilestones = document.get("earnedMilestones") as? List<String> ?: emptyList()
         )
     }
 
@@ -211,7 +226,14 @@ class FirestoreRepository(private val context: Context? = null) {
         return try {
             val document = usersCollection.document(uid).get().await()
             if (document.exists()) {
-                mapDocumentToUserRecord(document)
+                val record = mapDocumentToUserRecord(document)
+                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("GMT+8") }
+                val todayStr = sdf.format(Date())
+                if (record.missionBoardDate != todayStr && record.role != "FREE USER") {
+                    generateDailyMissionBoard(uid)
+                    return mapDocumentToUserRecord(usersCollection.document(uid).get().await())
+                }
+                record
             } else {
                 null
             }
@@ -247,6 +269,16 @@ class FirestoreRepository(private val context: Context? = null) {
         }
     }
 
+    suspend fun setAutoShieldEnabled(uid: String, enabled: Boolean): Result<Unit> {
+        if (uid == "GUEST") return Result.success(Unit)
+        return try {
+            usersCollection.document(uid).update("autoShieldEnabled", enabled).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun saveFluidLog(uid: String, log: FluidLog): Result<Unit> {
         if (uid == "GUEST") {
             guestRepository?.saveFluidLog(log)
@@ -261,6 +293,10 @@ class FirestoreRepository(private val context: Context? = null) {
             batch.set(logRef, log)
             
             batch.commit().await()
+            
+            // GAMIFICATION: Update active mission progress after log is saved
+            checkMissionProgress(uid)
+            
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -489,9 +525,13 @@ class FirestoreRepository(private val context: Context? = null) {
             val databaseStreak = userDoc.getLong("streak")?.toInt() ?: 0
             val highestStreak = userDoc.getLong("highestStreak")?.toInt() ?: 0
             val totalRingsClosed = userDoc.getLong("totalRingsClosed")?.toInt() ?: 0
+            val autoShieldEnabled = userDoc.getBoolean("autoShieldEnabled") ?: false
+            val streakShields = userDoc.getLong("streakShields")?.toInt() ?: 0
 
-            // If the last evaluated date was already yesterday or today, we don't need to re-evaluate yesterday
-            if (lastRingDate == yesterdayStr || lastRingDate == todayStr) {
+            val lastEvaluatedDate = userDoc.getString("lastEvaluatedDate") ?: ""
+
+            // If the last evaluated date was already today, we don't need to re-evaluate
+            if (lastEvaluatedDate == todayStr) {
                 return Result.success(Unit)
             }
 
@@ -522,9 +562,47 @@ class FirestoreRepository(private val context: Context? = null) {
                 }
                 userRef.update(updates).await()
             } else {
-                // Yesterday's goal was not met, reset streak to 0
-                userRef.update("streak", 0).await()
+                // Yesterday's goal was not met
+                if (autoShieldEnabled && streakShields > 0) {
+                    // Auto-use a streak shield to protect streak
+                    val updates = mapOf(
+                        "streakShields" to streakShields - 1,
+                        "lastRingClosedDate" to yesterdayStr // Fake closing the ring to prevent streak drop tomorrow
+                    )
+                    userRef.update(updates).await()
+                } else {
+                    // Reset streak to 0
+                    userRef.update("streak", 0).await()
+                }
             }
+            // Gamification Daily Reset: Retain multi-day missions, clear single-day or expired
+            val activeData = userDoc.get("activeMissions") as? List<Map<String, Any>> ?: emptyList()
+            val currentTime = System.currentTimeMillis()
+            val DAY_IN_MS = 24L * 60 * 60 * 1000
+            
+            val retainedMissions = activeData.filter { data ->
+                val missionId = data["missionId"] as? String ?: return@filter false
+                val completed = data["completed"] as? Boolean ?: false
+                val aborted = data["aborted"] as? Boolean ?: false
+                val acceptedAt = (data["acceptedAt"] as? Number)?.toLong() ?: currentTime
+                
+                val missionDef = com.example.fluidcheck.model.MissionPool.getMission(missionId)
+                if (missionDef == null || completed || aborted) {
+                    false
+                } else {
+                    val expirationTime = acceptedAt + (missionDef.difficulty.durationDays * DAY_IN_MS)
+                    currentTime <= expirationTime
+                }
+            }
+            
+            userRef.update(
+                mapOf(
+                    "activeMissions" to retainedMissions,
+                    "completedMissionsToday" to emptyList<String>(),
+                    "abortedMissionsToday" to emptyList<String>(),
+                    "lastEvaluatedDate" to todayStr
+                )
+            ).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -864,6 +942,229 @@ class FirestoreRepository(private val context: Context? = null) {
                     val id = reminder["id"]?.toString() ?: UUID.randomUUID().toString()
                     val docRef = subRef.document(id)
                     batch.set(docRef, reminder)
+                }
+            }.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // ── GAMIFICATION: Mission Board Management ──
+    suspend fun generateDailyMissionBoard(userId: String): Result<Unit> {
+        if (userId == "GUEST" || userId.isEmpty()) return Result.success(Unit)
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("GMT+8") }
+        val todayStr = sdf.format(Date())
+        return try {
+            // Randomly select missions based on probabilities
+            val selectedMissions = mutableListOf<String>()
+            val pool = MissionPool.missions.toMutableList()
+            pool.shuffle()
+            for (i in 0 until 10) {
+                if (pool.isEmpty()) break
+                selectedMissions.add(pool.removeAt(0).id) // Simplified for now, should use weighted selection ideally
+            }
+            usersCollection.document(userId).update(
+                mapOf(
+                    "missionBoardDate" to todayStr,
+                    "boardMissionIds" to selectedMissions,
+                    // Keep multi-day active missions
+                )
+            ).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun acceptMission(userId: String, missionId: String): Result<Unit> {
+        if (userId == "GUEST" || userId.isEmpty()) return Result.success(Unit)
+        return try {
+            val userRef = usersCollection.document(userId)
+            db.runTransaction { transaction ->
+                val snapshot = transaction.get(userRef)
+                val activeData = snapshot.get("activeMissions") as? List<Map<String, Any>> ?: emptyList()
+                if (activeData.size >= 5) throw Exception("Max active missions reached")
+                
+                val newMission = mapOf(
+                    "missionId" to missionId,
+                    "progress" to 0,
+                    "completed" to false,
+                    "aborted" to false,
+                    "acceptedAt" to System.currentTimeMillis()
+                )
+                val newList = activeData + newMission
+                transaction.update(userRef, "activeMissions", newList)
+            }.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun abortMission(userId: String, missionId: String): Result<Unit> {
+        if (userId == "GUEST" || userId.isEmpty()) return Result.success(Unit)
+        return try {
+            val userRef = usersCollection.document(userId)
+            db.runTransaction { transaction ->
+                val snapshot = transaction.get(userRef)
+                val activeData = snapshot.get("activeMissions") as? List<Map<String, Any>> ?: emptyList()
+                val abortedList = snapshot.get("abortedMissionsToday") as? List<String> ?: emptyList()
+                
+                val newList = activeData.filter { it["missionId"] != missionId }
+                
+                transaction.update(userRef, mapOf(
+                    "activeMissions" to newList,
+                    "abortedMissionsToday" to abortedList + missionId
+                ))
+            }.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun completeMission(userId: String, missionId: String): Result<Unit> {
+        if (userId == "GUEST" || userId.isEmpty()) return Result.success(Unit)
+        return try {
+            val missionDef = MissionPool.getMission(missionId) ?: return Result.failure(Exception("Mission not found"))
+            val userRef = usersCollection.document(userId)
+            
+            db.runTransaction { transaction ->
+                val snapshot = transaction.get(userRef)
+                val activeData = snapshot.get("activeMissions") as? List<Map<String, Any>> ?: emptyList()
+                val completedList = snapshot.get("completedMissionsToday") as? List<String> ?: emptyList()
+                
+                val newList = activeData.filter { it["missionId"] != missionId }
+                
+                val updates = mutableMapOf<String, Any>(
+                    "activeMissions" to newList,
+                    "completedMissionsToday" to completedList + missionId
+                )
+                
+                // Add badge
+                val earnedBadges = (snapshot.get("earnedBadges") as? Map<String, Number>)?.toMutableMap() ?: mutableMapOf()
+                val currentCount = earnedBadges[missionDef.badgeId]?.toInt() ?: 0
+                earnedBadges[missionDef.badgeId] = currentCount + 1
+                updates["earnedBadges"] = earnedBadges
+                
+                // Roll for shield fragments
+                if (Math.random() <= missionDef.difficulty.shieldFragmentChance) {
+                    val currentFragments = (snapshot.getLong("shieldFragments") ?: 0).toInt()
+                    val currentShields = (snapshot.getLong("streakShields") ?: 0).toInt()
+                    if (currentFragments + 1 >= 10) {
+                        updates["shieldFragments"] = currentFragments + 1 - 10
+                        updates["streakShields"] = currentShields + 1
+                    } else {
+                        updates["shieldFragments"] = currentFragments + 1
+                    }
+                }
+                
+                transaction.update(userRef, updates)
+            }.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun checkMissionProgress(userId: String) {
+        if (userId == "GUEST" || userId.isEmpty()) return
+        try {
+            val userRef = usersCollection.document(userId)
+            val userDoc = userRef.get().await()
+            val activeData = userDoc.get("activeMissions") as? List<Map<String, Any>> ?: return
+            if (activeData.isEmpty()) return
+            
+            // Find the earliest accepted time among active missions
+            val currentTime = System.currentTimeMillis()
+            val earliestAcceptedAt = activeData.minOfOrNull { (it["acceptedAt"] as? Number)?.toLong() ?: currentTime } ?: currentTime
+            
+            // Fetch all logs since the earliest accepted time
+            val querySnapshot = userRef.collection("fluid_logs")
+                .whereGreaterThanOrEqualTo("id", earliestAcceptedAt)
+                .get().await()
+            val recentLogs = querySnapshot.toObjects(FluidLog::class.java)
+            
+            val dailyGoal = userDoc.getLong("dailyGoal")?.toInt() ?: 3000
+            
+            val updatedMissions = activeData.map { data ->
+                val missionId = data["missionId"] as? String ?: return@map data
+                val missionDef = MissionPool.getMission(missionId) ?: return@map data
+                val acceptedAt = (data["acceptedAt"] as? Number)?.toLong() ?: currentTime
+                
+                // Only consider logs that occurred AFTER this specific mission was accepted
+                val missionLogs = recentLogs.filter { it.id >= acceptedAt }
+                
+                val totalVolume = missionLogs.sumOf { it.amount }
+                val logCount = missionLogs.size
+                var progress = 0
+                
+                when (missionDef.targetType) {
+                    com.example.fluidcheck.model.MissionTargetType.TOTAL_VOLUME -> progress = totalVolume
+                    com.example.fluidcheck.model.MissionTargetType.LOG_COUNT -> progress = logCount
+                    com.example.fluidcheck.model.MissionTargetType.GOAL_PERCENTAGE -> {
+                        progress = if (dailyGoal > 0) (totalVolume * 100 / dailyGoal) else 0
+                    }
+                    com.example.fluidcheck.model.MissionTargetType.FLUID_TYPE_VOLUME -> {
+                        progress = missionLogs.filter { it.type == missionDef.targetFluidType }.sumOf { it.amount }
+                    }
+                    com.example.fluidcheck.model.MissionTargetType.FLUID_VARIETY -> {
+                        progress = missionLogs.map { it.type }.distinct().size
+                    }
+                    com.example.fluidcheck.model.MissionTargetType.SINGLE_LOG_AMOUNT -> {
+                        progress = missionLogs.maxOfOrNull { it.amount } ?: 0
+                    }
+                    com.example.fluidcheck.model.MissionTargetType.TIME_WINDOW -> {
+                        // Simplified check - just counting logs that match the requirement
+                        progress = missionLogs.filter {
+                            val hour = it.time.split(":")[0].toIntOrNull() ?: 12
+                            val isAm = it.time.contains("AM")
+                            val hr24 = if (isAm) (if (hour == 12) 0 else hour) else (if (hour == 12) 12 else hour + 12)
+                            if (missionDef.isBeforeHour) hr24 < (missionDef.targetHour ?: 24) else hr24 >= (missionDef.targetHour ?: 0)
+                        }.sumOf { it.amount }
+                    }
+                }
+                
+                if (progress >= missionDef.targetValue) {
+                    data.toMutableMap().apply { 
+                        put("progress", Math.min(progress, missionDef.targetValue))
+                    }
+                } else {
+                    data.toMutableMap().apply { put("progress", progress) }
+                }
+            }
+            
+            userRef.update("activeMissions", updatedMissions).await()
+        } catch (e: Exception) {
+            // Ignore for now
+        }
+    }
+
+    // ── GAMIFICATION: Inventory & Milestone Management ──
+    suspend fun toggleAutoShield(userId: String, enabled: Boolean): Result<Unit> {
+        if (userId == "GUEST" || userId.isEmpty()) return Result.success(Unit)
+        return try {
+            usersCollection.document(userId).update("autoShieldEnabled", enabled).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun awardMilestoneBadge(userId: String, badgeId: String): Result<Unit> {
+        if (userId == "GUEST" || userId.isEmpty()) return Result.success(Unit)
+        return try {
+            db.runTransaction { transaction ->
+                val userRef = usersCollection.document(userId)
+                val snapshot = transaction.get(userRef)
+                val milestones = snapshot.get("earnedMilestones") as? List<String> ?: emptyList()
+                
+                if (!milestones.contains(badgeId)) {
+                    transaction.update(userRef, "earnedMilestones", milestones + badgeId)
+                    val earnedBadges = (snapshot.get("earnedBadges") as? Map<String, Number>)?.toMutableMap() ?: mutableMapOf()
+                    earnedBadges[badgeId] = 1
+                    transaction.update(userRef, "earnedBadges", earnedBadges)
                 }
             }.await()
             Result.success(Unit)

@@ -41,6 +41,10 @@ class UserPreferencesRepository(private val context: Context) {
         fun volumeUnitKey(userId: String) = stringPreferencesKey(sanitize("${userId}_volume_unit"))
         fun weightUnitKey(userId: String) = stringPreferencesKey(sanitize("${userId}_weight_unit"))
         fun heightUnitKey(userId: String) = stringPreferencesKey(sanitize("${userId}_height_unit"))
+        fun appThemeKey(userId: String) = stringPreferencesKey(sanitize("${userId}_app_theme"))
+        fun appBackgroundKey(userId: String) = stringPreferencesKey(sanitize("${userId}_app_background"))
+        fun progressMeterStyleKey(userId: String) = stringPreferencesKey(sanitize("${userId}_progress_meter_style"))
+        fun appIconKey(userId: String) = stringPreferencesKey(sanitize("${userId}_app_icon"))
     }
 
     fun getUserRecord(userId: String): Flow<UserRecord> = context.dataStore.data.map { preferences ->
@@ -147,7 +151,7 @@ class UserPreferencesRepository(private val context: Context) {
     }
 
     fun getStoredRole(userId: String): Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[PreferencesKeys.roleKey(userId)] ?: "FREE USER"
+        preferences[PreferencesKeys.roleKey(userId)] ?: ""
     }
 
     suspend fun saveStoredRole(userId: String, role: String) {
@@ -232,6 +236,48 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setHeightUnit(userId: String, unit: HeightUnit) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.heightUnitKey(userId)] = unit.name
+        }
+    }
+
+    // --- App UI Customization ---
+
+    fun getAppTheme(userId: String): Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.appThemeKey(userId)] ?: "LIGHT"
+    }
+
+    suspend fun setAppTheme(userId: String, themeId: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.appThemeKey(userId)] = themeId
+        }
+    }
+
+    fun getAppBackground(userId: String): Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.appBackgroundKey(userId)] ?: "NONE"
+    }
+
+    suspend fun setAppBackground(userId: String, backgroundType: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.appBackgroundKey(userId)] = backgroundType
+        }
+    }
+
+    fun getProgressMeterStyle(userId: String): Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.progressMeterStyleKey(userId)] ?: "RING"
+    }
+
+    suspend fun setProgressMeterStyle(userId: String, style: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.progressMeterStyleKey(userId)] = style
+        }
+    }
+
+    fun getAppIcon(userId: String): Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.appIconKey(userId)] ?: "DEFAULT"
+    }
+
+    suspend fun setAppIcon(userId: String, iconVariant: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.appIconKey(userId)] = iconVariant
         }
     }
 }

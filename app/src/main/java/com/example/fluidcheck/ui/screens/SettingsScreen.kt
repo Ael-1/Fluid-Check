@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
 import com.example.fluidcheck.R
 import com.example.fluidcheck.ui.theme.*
-
+import com.example.fluidcheck.ui.components.ProgressMeterStyle
 import com.example.fluidcheck.util.MeasurementUtils
 import kotlinx.coroutines.launch
 
@@ -61,7 +61,18 @@ fun SettingsScreen(
     smartRemindersEnabled: Boolean = true,
     onToggleSmartReminders: (Boolean) -> Unit = {},
     onSubscribe: (String) -> Unit = {},
-    onRestorePurchases: () -> Unit = {}
+    onRestorePurchases: () -> Unit = {},
+    onNavigateToInventory: () -> Unit = {},
+    autoShieldEnabled: Boolean = false,
+    onToggleAutoShield: (Boolean) -> Unit = {},
+    appTheme: String = "LIGHT",
+    onAppThemeChanged: (String) -> Unit = {},
+    appBackground: String = "NONE",
+    onAppBackgroundChanged: (String) -> Unit = {},
+    progressMeterStyle: String = "RING",
+    onProgressMeterStyleChanged: (String) -> Unit = {},
+    appIcon: String = "DEFAULT",
+    onAppIconChanged: (String) -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -160,8 +171,10 @@ fun SettingsScreen(
                 username = username,
                 streak = streak,
                 profilePictureUrl = profilePictureUrl,
+                userRole = userRole,
                 onEditProfile = onEditProfile,
-                onVerifyAccount = onVerifyAccount
+                onVerifyAccount = onVerifyAccount,
+                onNavigateToInventory = onNavigateToInventory
             )
         }
 
@@ -289,6 +302,316 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(24.dp))
         }
 
+        // Auto-Shield Section
+        if (!isAdminMode && userRole != "FREE USER") {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                color = Color.White,
+                shadowElevation = 2.dp,
+                border = BorderStroke(1.dp, Color(0xFFF1F5F9))
+            ) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    Text(
+                        text = "Gamification",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextDark
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Auto-use Streak Shield", fontWeight = FontWeight.SemiBold, color = TextDark)
+                            Text(
+                                "Automatically consume a shield at midnight if you missed your goal to preserve your streak.",
+                                fontSize = 12.sp,
+                                color = MutedForeground,
+                                lineHeight = 16.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Switch(
+                            checked = autoShieldEnabled,
+                            onCheckedChange = { onToggleAutoShield(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = PrimaryBlue,
+                                uncheckedThumbColor = Color.White,
+                                uncheckedTrackColor = Color.LightGray.copy(alpha = 0.5f),
+                                uncheckedBorderColor = Color.Transparent
+                            )
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        // Customization Hub
+        val isPremium = userRole != "FREE USER" && userRole != "GUEST"
+
+        var showThemeDialog by remember { mutableStateOf(false) }
+        var showBackgroundDialog by remember { mutableStateOf(false) }
+        var showMeterDialog by remember { mutableStateOf(false) }
+        var showIconDialog by remember { mutableStateOf(false) }
+
+        if (showThemeDialog) {
+            AlertDialog(
+                onDismissRequest = { showThemeDialog = false },
+                title = { Text("Select App Theme") },
+                text = {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        AppThemeId.values().forEach { theme ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        showThemeDialog = false
+                                        onAppThemeChanged(theme.name)
+                                    }
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = appTheme == theme.name,
+                                    onClick = null
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(theme.displayName)
+                            }
+                        }
+                    }
+                },
+                confirmButton = { TextButton(onClick = { showThemeDialog = false }) { Text("Close") } }
+            )
+        }
+
+        if (showBackgroundDialog) {
+            AlertDialog(
+                onDismissRequest = { showBackgroundDialog = false },
+                title = { Text("Select Background") },
+                text = {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        BackgroundType.values().forEach { bg ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        showBackgroundDialog = false
+                                        onAppBackgroundChanged(bg.name)
+                                    }
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = appBackground == bg.name,
+                                    onClick = null
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(bg.displayName)
+                            }
+                        }
+                    }
+                },
+                confirmButton = { TextButton(onClick = { showBackgroundDialog = false }) { Text("Close") } }
+            )
+        }
+
+        if (showMeterDialog) {
+            AlertDialog(
+                onDismissRequest = { showMeterDialog = false },
+                title = { Text("Select Progress Meter") },
+                text = {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        ProgressMeterStyle.values().forEach { meter ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        showMeterDialog = false
+                                        onProgressMeterStyleChanged(meter.name)
+                                    }
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = progressMeterStyle == meter.name,
+                                    onClick = null
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(meter.displayName)
+                            }
+                        }
+                    }
+                },
+                confirmButton = { TextButton(onClick = { showMeterDialog = false }) { Text("Close") } }
+            )
+        }
+
+        if (showIconDialog) {
+            AlertDialog(
+                onDismissRequest = { showIconDialog = false },
+                title = { Text("Select App Icon") },
+                text = {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        listOf("DEFAULT", "DARK", "MONOCHROME", "OCEAN", "SUNSET", "NEON", "GOLD", "MINIMAL").forEach { iconVariant ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        showIconDialog = false
+                                        onAppIconChanged(iconVariant)
+                                    }
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = appIcon == iconVariant,
+                                    onClick = null
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(iconVariant.lowercase().replaceFirstChar { it.uppercase() })
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "Note: Changing the app icon will briefly force-close the app to apply the new icon to your launcher.",
+                            color = WarningAmber,
+                            fontSize = 12.sp
+                        )
+                    }
+                },
+                confirmButton = { TextButton(onClick = { showIconDialog = false }) { Text("Close") } }
+            )
+        }
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = Color.White,
+            shadowElevation = 2.dp,
+            border = BorderStroke(1.dp, Color(0xFFF1F5F9))
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Customization",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextDark
+                    )
+                    if (!isPremium) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            color = Gold.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = "PRO",
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Amber700
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Theme Setting
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (isPremium) showThemeDialog = true else showPremiumDialog = true
+                        }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(AppIcons.FormatPaint, contentDescription = null, tint = if(isPremium) PrimaryBlue else MutedForeground)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text("App Theme", fontWeight = FontWeight.SemiBold, color = TextDark)
+                            Text(AppThemeId.valueOf(appTheme).displayName, fontSize = 12.sp, color = MutedForeground)
+                        }
+                    }
+                }
+                HorizontalDivider(color = Slate50)
+
+                // Background Setting
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (isPremium) showBackgroundDialog = true else showPremiumDialog = true
+                        }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(AppIcons.Image, contentDescription = null, tint = if(isPremium) PrimaryBlue else MutedForeground)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text("App Background", fontWeight = FontWeight.SemiBold, color = TextDark)
+                            Text(BackgroundType.valueOf(appBackground).displayName, fontSize = 12.sp, color = MutedForeground)
+                        }
+                    }
+                }
+                HorizontalDivider(color = Slate50)
+
+                // Progress Meter Setting
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (isPremium) showMeterDialog = true else showPremiumDialog = true
+                        }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(AppIcons.PieChart, contentDescription = null, tint = if(isPremium) PrimaryBlue else MutedForeground)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text("Progress Meter Style", fontWeight = FontWeight.SemiBold, color = TextDark)
+                            Text(ProgressMeterStyle.valueOf(progressMeterStyle).displayName, fontSize = 12.sp, color = MutedForeground)
+                        }
+                    }
+                }
+                HorizontalDivider(color = Slate50)
+
+                // App Icon Setting
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (isPremium) showIconDialog = true else showPremiumDialog = true
+                        }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(AppIcons.Goal, contentDescription = null, tint = if(isPremium) PrimaryBlue else MutedForeground)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text("App Icon", fontWeight = FontWeight.SemiBold, color = TextDark)
+                            Text(appIcon.lowercase().replaceFirstChar { it.uppercase() }, fontSize = 12.sp, color = MutedForeground)
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+
         // System Status Section
         SystemStatusSection(
             isConnected = isConnected,
@@ -392,8 +715,10 @@ fun ProfileHeader(
     username: String,
     streak: Int,
     profilePictureUrl: String = "",
+    userRole: String = "FREE USER",
     onEditProfile: () -> Unit,
-    onVerifyAccount: () -> Unit
+    onVerifyAccount: () -> Unit,
+    onNavigateToInventory: () -> Unit = {}
 ) {
     val displayName = username.ifEmpty { "User" }.replaceFirstChar { it.uppercase() }
     val isGuest = userId.equals("GUEST", ignoreCase = true) || username.equals("Guest", ignoreCase = true)
@@ -468,6 +793,24 @@ fun ProfileHeader(
                     .fillMaxWidth()
                     .padding(24.dp)
             ) {
+                if (userRole != "FREE USER") {
+                    Button(
+                        onClick = onNavigateToInventory,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                    ) {
+                        Text(
+                            text = "My Inventory & Badges",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
                 OutlinedButton(
                     onClick = onEditProfile,
                     modifier = Modifier

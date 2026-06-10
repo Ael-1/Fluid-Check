@@ -58,7 +58,26 @@ data class UserRecord(
     val totalRingsClosed: Int = 0,
     val createdAt: Timestamp? = null,
     val emailVerified: Boolean = false,
-    val premiumEndDate: Long? = null
+    val premiumEndDate: Long? = null,
+    
+    // ── Gamification (Section 16) ──
+    val streakShields: Int = 0,
+    val shieldFragments: Int = 0,
+    val autoShieldEnabled: Boolean = false,
+    val earnedBadges: Map<String, Int> = emptyMap(),
+    val earnedMilestones: List<String> = emptyList(),
+    
+    val missionBoardDate: String = "",
+    val boardMissionIds: List<String> = emptyList(),
+    val activeMissions: List<Map<String, Any>> = emptyList(),
+    val completedMissionsToday: List<String> = emptyList(),
+    val abortedMissionsToday: List<String> = emptyList(),
+    
+    val earlyBirdStreak: Int = 0,
+    val perfectWeekStreak: Int = 0,
+    val hydrationMasterStreak: Int = 0,
+    val weekendWarriorWeeks: Int = 0,
+    val nightOwlStreak: Int = 0
 ) {
     fun isEmpty(): Boolean {
         return weight.isEmpty() && height.isEmpty() && age.isEmpty() && 

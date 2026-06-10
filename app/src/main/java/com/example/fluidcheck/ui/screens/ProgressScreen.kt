@@ -52,7 +52,13 @@ fun ProgressScreen(
     allLogs: List<FluidLog>,
     measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences = com.example.fluidcheck.util.MeasurementPreferences(),
     userRole: String = "FREE USER",
-    onPremiumFeatureClick: () -> Unit = {}
+    userRecord: com.example.fluidcheck.model.UserRecord? = null,
+    isConnected: Boolean,
+    onPremiumFeatureClick: () -> Unit = {},
+    onAcceptMission: suspend (String) -> Unit = {},
+    onAbortMission: suspend (String) -> Unit = {},
+    onCompleteMission: suspend (String) -> Unit = {},
+    onNavigateToInventory: () -> Unit = {}
 ) {
     var selectedTab by remember { mutableStateOf("Day") }
     var navOffset by remember { mutableIntStateOf(0) }
@@ -373,6 +379,24 @@ fun ProgressScreen(
                     )
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // GAMIFICATION: Mission Board Section
+        if (userRole != "FREE USER" && userRecord != null) {
+            com.example.fluidcheck.ui.components.MissionBoardSection(
+                userRole = userRole,
+                boardMissionIds = userRecord.boardMissionIds,
+                activeMissions = userRecord.activeMissions,
+                completedMissionsToday = userRecord.completedMissionsToday,
+                abortedMissionsToday = userRecord.abortedMissionsToday,
+                isConnected = isConnected,
+                onAcceptMission = onAcceptMission,
+                onAbortMission = onAbortMission,
+                onCompleteMission = onCompleteMission,
+                onNavigateToInventory = onNavigateToInventory
+            )
         }
 
         Spacer(modifier = Modifier.height(32.dp))

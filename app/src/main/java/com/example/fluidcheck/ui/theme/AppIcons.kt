@@ -76,4 +76,6 @@ object AppIcons {
     val Phone = Icons.Default.Phone
     val Code = Icons.Default.Code
     val Facebook = Icons.Default.Facebook
+    val FormatPaint = Icons.Outlined.FormatPaint
+    val PieChart = Icons.Outlined.PieChart
 }

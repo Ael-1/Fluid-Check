@@ -1,6 +1,6 @@
 # FluidCheck Development Plan
 
-## 1. Application wide feature
+## 1. Application wide feature \\DONE
 
 1. Offline Support & Quota Optimization: Refactor all `runTransaction` operations in `FirestoreRepository` to use `WriteBatch` and `FieldValue.increment()`. This enables offline writes and eliminates unnecessary read operations currently used to calculate totals, directly addressing the "Read quota exceeded" issue. \*\*DONE
 2. Real-time Connectivity Tracking: Implement a `NetworkMonitor` utility to provide a reactive `StateFlow<Boolean>` for internet availability across the UI. \*\*DONE
@@ -20,7 +20,7 @@
 14. Role Change Detection on Cold Start: Persist the user's last-known role to `DataStore` (e.g., `UserPreferencesRepository`). On app launch, compare the stored role against the Firestore-fetched role. If they differ, show the "Your role has been updated to [NEW_ROLE]" dialog and update the stored role. This covers role changes that occur while the app is completely closed. \*\*DONE
 15. Fix Offline Intake Feedback: When logging a fluid intake (via manual log or Quick Add) while offline, the feedback message ("Saved locally. Will sync once online.") does not appear. Debug the `isConnected` state in `MainScreen` to ensure it reflects the correct network status at the time the log is saved. Verify the Snackbar is displayed for both `saveFluidLog` (new logs) and Quick Add operations. Also check that the Quick Add callback in `HomeScreen` triggers the same offline feedback path as manual logging. \*\*DONE
 
-## 2. Home screen \\DONE
+## 2. Home screen \*\*DONE
 
 1. Users can UPDATE daily goal \*\*DONE
 2. Users can CREATE new log drink, then log drink is stored in Firestore (fluid type, amount and log date) \*\*DONE
@@ -42,8 +42,8 @@
 
 1. READ Firestore to see the date and amount of their log drink which is then displayed in Your Progress \*\*DONE
 2. Weekly Habits Scorecard (AI Progress Rating):
-   - Data & Trigger: Compile the user's logged intake data from the last 7 days.
-   - AI Processing: Send this weekly intake history to `GeminiCoach` (using Gemini 3 Flash Live model). Instruct the AI to compute a comprehensive Weekly Hydration Rating (e.g., "A", "B+", etc.) and provide a concise, personal summary of successes (e.g., "Hit goal 6/7 days") and gaps (e.g., "Weekend intake was low").
+   - Data & Trigger: Compile the user's logged intake data from the last 7 days. \*\*DONE
+   - AI Processing: Send this weekly intake history to `GeminiCoach` (using Gemini 3 Flash Live model). Instruct the AI to compute a comprehensive Weekly Hydration Rating (e.g., "A", "B+", etc.) and provide a concise, personal summary of successes (e.g., "Hit goal 6/7 days") and gaps (e.g., "Weekend intake was low"). \*\*DONE
    - UI Display: In `ProgressScreen.kt`, add an "AI Weekly Scorecard" section. Display a large visual grade badge with dynamic colors matching the rating, alongside the AI's feedback text. \*\*DONE
 
 ## 4. AI Coach screen \*\*DONE
@@ -116,7 +116,7 @@
 1. Moderator CANNOT UPDATE user's role (admin or user) or any user data \*\*DONE
 2. and DELETE users and any user features of the admin \*\*DONE
 
-## 9. Sign in/Sign up
+## 9. Sign in/Sign up \*\*DONE
 
 1. Create a button continue as guest. this user is a 'GUEST' this type of user is not stored in the database. Any data and information from these users are stored only on their device. For every device, there is 1 guest user created. Regardless of how many users (from database) that are being logged in on a device that has a guest user, the guest user can still be logged in as long as user from that device will press continue as guest \*\*DONE
 2. Multi-Identifier Sign-In: In `LoginScreen`, change input label to 'Email or Username'. Update backend logic to support lookup: if input contains '@', treat as email; otherwise, query Firestore for username to resolve the email before authenticating. \*\*DONE
@@ -131,7 +131,7 @@
 2. According to the dropdown list options from the reminder frequency, the user can choose from every 30 min, 1 hr, 2 hrs, and 4 hrs. Picking an option should also be stored in the database (if there is no internet connection, when choosing, store locally until there is connection in the database, store it.) \*\*DONE
 3. Add random notifications for the app too. Like reminders that they haven't finished their progress ring, or their streak is about to break, etc. (Add more notification that is relevant for the user). \*\*DONE
 
-## 11. User Fields and Keyboard Behaviors (This will apply to ALL user fields inside the app)
+## 11. User Fields and Keyboard Behaviors (This will apply to ALL user fields inside the app) \*\*DONE
 
 1. Global Keyboard Dismissal: Tapping anywhere outside a text field should hide the keyboard. Use `Modifier.pointerInput` with `detectTapGestures` calling `clearFocus()` on the root composable. \*\*DONE
 2. Smart Keyboard Actions: Configure `KeyboardActions` app-wide: 'Next' moves focus to the next field; 'Done' triggers the primary action. Set appropriate `ImeAction` (Next/Done) for all forms. \*\*DONE
@@ -148,7 +148,7 @@
 7. Initial Setup Keyboard Polish: Apply Tasks 11.1 through 11.5 to `InitialSetupScreen.kt`: global keyboard dismissal on the root composable, `singleLine = true` for all text fields, correct `KeyboardType` (Number for Weight/Height/Age), `ImeAction.Next`/`Done` flow, and `.trim()` on submission. Dropdown fields (Sex, Activity, Environment) should be skipped in the focus chain (see Task 11.8). \*\*DONE
 8. Custom Focus Order for Personal Records: In both `AICoachScreen` and `InitialSetupScreen`, use `FocusRequester` to define a custom focus chain: Weight → Height → Age → Done. Pressing "Next" on the Height field should skip the Sex dropdown and jump directly to the Age field. Pressing "Done" on the Age field should dismiss the keyboard. \*\*DONE
 
-## 12. Security & Validation Polish
+## 12. Security & Validation Polish \*\*DONE
 
 1. Admin Self-Guard: Prevent admins from demoting or deleting their own account within the Admin Dashboard to avoid accidental lockout. \*\*DONE
 2. Numeric Range Validation: Enforce reasonable limits on all numeric inputs (e.g., Weight 1–500kg, Height 30–300cm, Age 1–150, Daily Goal 100–20000ml). \*\*DONE
@@ -156,7 +156,7 @@
 4. Google Account Restrictions: For accounts created via Google Sign-In, disable the ability to edit username and password in 'Edit Profile'. These fields should be read-only for Google-authenticated users. \*\*DONE
 5. Password Consistency: Enforce the same 6-character minimum length for password updates in Edit Profile as used in the Sign Up flow. \*\*DONE
 
-## 13. Email Verification
+## 13. Email Verification \*\*DONE
 
 1. Verify Current Email Address: Add a "Verify Email" button in `EditProfileScreen` inside `ProfileSettingsContainer`, below the email field (visible only when `!isGoogleUser && authRepository.currentUser?.isEmailVerified == false`). When tapped, call a new `AuthRepository.sendEmailVerification()` method (wrapping `auth.currentUser?.sendEmailVerification()?.await()`). On success, show feedback via `statusDialogData` (the existing AlertDialog pattern used throughout the screen): "Verification email sent. Please check your inbox." If the email is already verified, hide the button entirely and optionally show a small "✓ Verified" label. \*\*DONE
 2. Verify-Before-Update Email Flow: Replace the current `AuthRepository.updateEmail()` (which calls the deprecated `auth.currentUser?.updateEmail()`) with a new `AuthRepository.verifyBeforeUpdateEmail(newEmail)` method (wrapping `auth.currentUser?.verifyBeforeUpdateEmail(newEmail)?.await()`). In `EditProfileScreen`, update the email save block (currently at Step 3 in the save flow, around line 615–625) to call `verifyBeforeUpdateEmail()` instead of `updateEmail()`. On success, show via `statusDialogData`: "A verification email has been sent to [newEmail]. Your email will update after you verify it." **Crucially**, do **not** write the new email to the Firestore user record in `newRecord.copy()` (currently line 648) — keep the old email until Firebase Auth confirms the change on next sign-in. The existing re-authentication flow (`showReauthDialog`) already gates email changes, so no additional re-auth logic is needed. Google Sign-In users are already excluded (their email field is read-only per Task 12.4). \*\*DONE
@@ -415,12 +415,12 @@ val Typography = Typography(
 
 **WHEN PROCEEDING TO EXECUTE ALL TASKS UNDER SECTION 14, ENSURE THAT AFTER EXECUTING, EVERYTHING IS STABLE AND WORKING AS IT WAS BEFORE, IF THERE WILL BE CHANGES EVEN IN THE SLIGHTEST WAY, REVERT AND FIND OTHER WAYS SO IT WILL WORK AS IT WAS BEFORE.**
 
-## 15. Role Addition and Hierarchy
+## 15. Role Addition and Hierarchy \*\*DONE
 
-1. **Role Renaming:** Rename the existing "USER" role to "FREE USER".
-2. **New Role:** Create a new role named "PREMIUM USER".
-3. **Role Hierarchy:** The new system hierarchy is: `ADMIN > MODERATOR > PREMIUM USER > FREE USER`.
-4. **FREE USER Privileges & Restrictions:**
+1. **Role Renaming:** Rename the existing "USER" role to "FREE USER". \*\*DONE
+2. **New Role:** Create a new role named "PREMIUM USER". \*\*DONE
+3. **Role Hierarchy:** The new system hierarchy is: `ADMIN > MODERATOR > PREMIUM USER > FREE USER`. \*\*DONE
+4. **FREE USER Privileges & Restrictions:** \*\*DONE
    - **Fluid Logging:** Can only log "Water", "Coffee", and "Tea". Other fluid types remain visible in the UI but trigger a paywall dialog when pressed.
    - **Progress Viewing:** Limited to a 7-day lookback window.
      - _Daily View:_ Users can only navigate back up to 7 days; navigating further triggers the paywall.
@@ -436,7 +436,7 @@ val Typography = Typography(
    - **Customization:** No access to UI themes, custom logos, or custom progress meters.
    - **Advertisements:** Ads are enabled (Feature will be elaborated more in section 18).
 
-5. **PREMIUM USER Privileges:**
+5. **PREMIUM USER Privileges:** \*\*DONE
    - **UI Cleanliness:** The "Upgrade to Premium" button is removed from the Settings Screen.
    - **Fluid Logging:** Unlocked access to log all fluid types, plus the ability to create custom fluid types.
    - **Progress Viewing:** Unlimited historical access. Can view Daily, Weekly, Monthly, and Yearly progress dating back to account creation.
@@ -450,8 +450,8 @@ val Typography = Typography(
    - **App Customization:** Exclusive access to UI skins (e.g., dark mode), custom app logos, changeable backgrounds, and alternative Progress meter UI designs (Feature will be elaborated more in section 17).
    - **Advertisements:** Completely ad-free experience.
 
-6. **MODERATOR Privileges:** Inherits all PREMIUM USER privileges in addition to their existing moderator tools.
-7. **ADMIN Privileges:** Inherits all PREMIUM USER privileges in addition to their existing admin tools.
+6. **MODERATOR Privileges:** Inherits all PREMIUM USER privileges in addition to their existing moderator tools. \*\*DONE
+7. **ADMIN Privileges:** Inherits all PREMIUM USER privileges in addition to their existing admin tools. \*\*DONE
 
 ## 16. Enhanced Gamification
 
@@ -495,12 +495,31 @@ val Typography = Typography(
 3. **Active Mission Tracker (Home Screen):**
    - **Quick View UI:** Add a compact widget to the Home Screen that displays the real-time progress of the user's currently active missions (up to 5).
 
-## 17. App UI Customization
+## 17. App UI Customization (Premium Feature)
 
-1. Develop multiple themes like (Light mode, Dark mode, etc.). Ensure that these themes looks good, texts are clearly visible, icons and background fit perfectly for its palette.
-2. Develop multiple app logo colors and background colors.
-3. Aside from a Progress Ring develop multiple progress meter for the daily goal intake. (UI is the only thing that changed from this any logic and concept of the progress ring will be the same)
-4. With these Customizations, add a container section "Customization" in the Settings screen where users can select an app theme in a dropdown list in which if one is selected, will change the theme dynamically. An app logo with a dialog box showing different app logos, and Progress meter UI with a dropdown list.
+1. **Global App Themes:**
+   - **Theme Variety:** Develop multiple cohesive UI themes to provide extensive personalization. Examples: Light Mode, Dark Mode, AMOLED Pitch Black, Ocean Blue, Sunset Orange, Forest Green, Midnight Purple, Pastel Spring, Classic Sepia, and Cyberpunk Neon.
+   - **Quality Assurance:** Ensure high contrast, text readability, and perfect icon/background color pairing for each theme palette.
+
+2. **Custom Icons and Backgrounds:**
+   - **App Logos:** Provide multiple alternative color variations of the app logo that users can set as their device launcher icon. *CRITICAL:* Do not create or source entirely new icon designs. Strictly use the existing, original app icon and apply modifications to it (e.g., recoloring, color inversion, adding a gradient background, or creating a sleek monochrome version).
+   - **App Backgrounds:** Provide a wide selection of custom backgrounds for the app's main screens. Varieties should include solid colors, soft blurred gradients, subtle geometric patterns, and minimal dynamic particle effects.
+
+3. **Progress Meter Variants:**
+   - **Alternative Designs:** In addition to the default "Progress Ring", develop several alternative visual representations for the daily goal intake meter. Examples:
+     - A vertical "bottle fill" liquid bar.
+     - A dynamic wave animation that rises as the user drinks.
+     - A minimalist horizontal line gauge.
+     - A segmented battery-style meter.
+     - A geometric dot matrix grid that lights up.
+     - A liquid drop counter.
+   - **Logic Preservation:** These alternatives are strictly UI replacements. The underlying logic, state management, and daily goal calculations remain identical to the original Progress Ring.
+
+4. **Settings Integration (Customization Hub):**
+   - **UI Section:** Add a new "Customization" container card within the Settings Screen.
+   - **Theme Selector:** Implement a dropdown menu allowing users to instantly and dynamically change the active app theme.
+   - **App Logo Selector:** Add a button that opens a dialog box displaying a grid of alternative app logos. Tapping a logo applies it.
+   - **Progress Meter Selector:** Implement a dropdown menu allowing users to toggle between the different progress meter UI styles across the app.
 
 ## 18. Ads
 
