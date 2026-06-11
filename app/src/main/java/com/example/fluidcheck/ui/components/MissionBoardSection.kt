@@ -24,8 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import com.example.fluidcheck.model.MissionPool
-import com.example.fluidcheck.ui.theme.PrimaryBlue
-import com.example.fluidcheck.ui.theme.TextDark
 
 @Composable
 fun MissionBoardSection(
@@ -42,6 +40,7 @@ fun MissionBoardSection(
 ) {
     if (userRole == "FREE USER") return
     
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     var missionToAccept by remember { mutableStateOf<String?>(null) }
     var missionToAbort by remember { mutableStateOf<String?>(null) }
     var showOfflineError by remember { mutableStateOf(false) }
@@ -52,9 +51,9 @@ fun MissionBoardSection(
             .fillMaxWidth()
             .wrapContentHeight(),
         shape = RoundedCornerShape(32.dp),
-        color = Color.White,
+        color = themeColors.cardBackground,
         shadowElevation = 8.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder)
     ) {
         Column(
             modifier = Modifier
@@ -69,7 +68,7 @@ fun MissionBoardSection(
                 Text(
                     text = "🎯 Missions",
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = TextDark
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "Active: ${activeMissions.size}/5",
@@ -87,7 +86,7 @@ fun MissionBoardSection(
                     if (isConnected) {
                         // Skeleton load screen
                         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = PrimaryBlue)
+                            CircularProgressIndicator(color = androidx.compose.material3.MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.height(16.dp))
                             Text("Retrieving your missions...", color = Color.Gray)
                         }
@@ -103,9 +102,12 @@ fun MissionBoardSection(
                     }
                 }
 
-                // Sort missions: Accepted missions first
+                // Sort missions: Active, completed, or aborted missions first
                 val sortedMissionIds = boardMissionIds.sortedByDescending { missionId ->
-                    if (activeMissions.any { it["missionId"] == missionId }) 1 else 0
+                    val isActive = activeMissions.any { it["missionId"] == missionId }
+                    val isCompleted = completedMissionsToday.contains(missionId)
+                    val isAborted = abortedMissionsToday.contains(missionId)
+                    if (isActive || isCompleted || isAborted) 1 else 0
                 }
 
                 sortedMissionIds.forEachIndexed { index, missionId ->
@@ -127,10 +129,24 @@ fun MissionBoardSection(
                                 val activeMissionData = activeMissions.find { it["missionId"] == missionId }
                                 val acceptedAt = (activeMissionData?.get("acceptedAt") as? Number)?.toLong() ?: 0L
                                 val timeLeftStr = if (isActive && acceptedAt > 0) {
-                                    val expiration = acceptedAt + (missionDef.difficulty.durationDays * 24L * 60 * 60 * 1000)
+                                    val expiration = com.example.fluidcheck.model.getMissionExpirationTime(acceptedAt, missionDef)
                                     val msLeft = expiration - System.currentTimeMillis()
-                                    val daysLeft = Math.ceil(msLeft / (24.0 * 60 * 60 * 1000)).toInt().coerceAtLeast(1)
-                                    " • ${daysLeft}d left"
+                                    if (msLeft <= 0) {
+                                        " • Expired"
+                                    } else {
+                                        val hoursLeft = msLeft / (1000 * 60 * 60)
+                                        if (hoursLeft < 24) {
+                                            if (hoursLeft < 1) {
+                                                val minsLeft = msLeft / (1000 * 60)
+                                                " • ${minsLeft}m left"
+                                            } else {
+                                                " • ${hoursLeft}h left"
+                                            }
+                                        } else {
+                                            val daysLeft = Math.ceil(msLeft / (24.0 * 60 * 60 * 1000)).toInt().coerceAtLeast(1)
+                                            " • ${daysLeft}d left"
+                                        }
+                                    }
                                 } else if (missionDef.difficulty.durationDays > 1) {
                                     " • ${missionDef.difficulty.durationDays}d"
                                 } else ""
@@ -157,7 +173,7 @@ fun MissionBoardSection(
                         Text(
                             text = missionDef.title,
                             style = MaterialTheme.typography.titleMedium,
-                            color = TextDark
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
@@ -170,8 +186,26 @@ fun MissionBoardSection(
                         if (isActive) {
                             val activeData = activeMissions.find { it["missionId"] == missionId }
                             val progress = (activeData?.get("progress") as? Number)?.toInt() ?: 0
-                            
-                            if (progress >= missionDef.targetValue) {
+                            val isFailed = (activeData?.get("failed") as? Boolean) == true
+                            if (isFailed) {
+                                Button(
+                                    onClick = { },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = false,
+                                    colors = ButtonDefaults.buttonColors(disabledContainerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant, disabledContentColor = Color.Red.copy(alpha = 0.6f))
+                                ) {
+                                    Text("Failed ✗")
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    Text(
+                                        "Abort",
+                                        fontSize = 12.sp,
+                                        color = Color.Red.copy(alpha = 0.8f),
+                                        modifier = Modifier.clickable { missionToAbort = missionId }.padding(4.dp)
+                                    )
+                                }
+                            } else if (progress >= missionDef.targetValue) {
                                 Button(
                                     onClick = { scope.launch { onCompleteMission(missionId) } },
                                     modifier = Modifier.fillMaxWidth(),
@@ -185,7 +219,7 @@ fun MissionBoardSection(
                                         progress = { if (missionDef.targetValue > 0) progress.toFloat() / missionDef.targetValue else 0f },
                                         modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
                                         color = Color(missionDef.difficulty.badgeRarity.color),
-                                        trackColor = Color(0xFFF1F5F9)
+                                        trackColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
                                     )
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -207,7 +241,7 @@ fun MissionBoardSection(
                                 onClick = { },
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = false,
-                                colors = ButtonDefaults.buttonColors(disabledContainerColor = Color(0xFFF1F5F9), disabledContentColor = Color(0xFF22C55E))
+                                colors = ButtonDefaults.buttonColors(disabledContainerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant, disabledContentColor = Color(0xFF22C55E))
                             ) {
                                 Text("Completed ✓")
                             }
@@ -216,7 +250,7 @@ fun MissionBoardSection(
                                 onClick = { },
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = false,
-                                colors = ButtonDefaults.buttonColors(disabledContainerColor = Color(0xFFF1F5F9), disabledContentColor = Color.Red.copy(alpha = 0.5f))
+                                colors = ButtonDefaults.buttonColors(disabledContainerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant, disabledContentColor = Color.Red.copy(alpha = 0.5f))
                             ) {
                                 Text("Aborted ✗")
                             }
@@ -230,7 +264,7 @@ fun MissionBoardSection(
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                                colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary),
                                 enabled = activeMissions.size < 5
                             ) {
                                 Text(if (activeMissions.size >= 5) "Board Full" else "Accept Mission")
@@ -239,11 +273,13 @@ fun MissionBoardSection(
                     }
                     if (index < sortedMissionIds.size - 1) {
                         val nextMissionId = sortedMissionIds[index + 1]
-                        val nextIsActive = activeMissions.any { it["missionId"] == nextMissionId }
-                        if (isActive && !nextIsActive) {
-                            Divider(color = Color.DarkGray.copy(alpha = 0.6f), thickness = 4.dp)
+                        val nextIsActiveOrFinished = activeMissions.any { it["missionId"] == nextMissionId } || completedMissionsToday.contains(nextMissionId) || abortedMissionsToday.contains(nextMissionId)
+                        val currentIsActiveOrFinished = isActive || isCompleted || isAborted
+                        
+                        if (currentIsActiveOrFinished && !nextIsActiveOrFinished) {
+                            HorizontalDivider(color = Color.DarkGray.copy(alpha = 0.6f), thickness = 4.dp)
                         } else {
-                            Divider(color = Color(0xFFCBD5E1), thickness = 2.dp)
+                            HorizontalDivider(color = Color(0xFFCBD5E1), thickness = 2.dp)
                         }
                     }
                 }
@@ -353,7 +389,7 @@ fun MissionBoardSection(
                                 }
                             },
                             enabled = !isAccepting,
-                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                            colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary)
                         ) {
                             if (isAccepting) {
                                 androidx.compose.material3.CircularProgressIndicator(

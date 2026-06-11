@@ -138,7 +138,7 @@ fun InitialSetupScreen(
                         text = stringResource(R.string.personal_records_title),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextDark,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -148,7 +148,7 @@ fun InitialSetupScreen(
                     Text(
                         text = "You can skip this setup and change these settings anytime later in the app.",
                         fontSize = 13.sp,
-                        color = MutedForeground,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 18.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
@@ -160,7 +160,7 @@ fun InitialSetupScreen(
                         text = "Measurement System",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextDark,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                     Row(modifier = Modifier.fillMaxWidth()) {
@@ -309,7 +309,7 @@ fun InitialSetupScreen(
                             .fillMaxWidth()
                             .height(60.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                        colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary),
                         enabled = !isFormEmpty
                     ) {
                         Text(stringResource(R.string.finish_setup), fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -330,7 +330,7 @@ fun InitialSetupScreen(
                         @Suppress("DEPRECATION")
                         Text(
                             "Skip for now",
-                            color = MutedForeground,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -360,7 +360,7 @@ fun ResponsiveEditField(
             text = label,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
-            color = TextDark,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -379,7 +379,7 @@ fun ResponsiveEditField(
                 ) 
             },
             shape = RoundedCornerShape(16.dp),
-            leadingIcon = { Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp)) },
+            leadingIcon = { Icon(icon, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
             trailingIcon = {
                 if (isPassword) {
                     val image = if (passwordVisible) AppIcons.Visibility else AppIcons.VisibilityOff
@@ -390,7 +390,7 @@ fun ResponsiveEditField(
             },
             visualTransformation = if (isPassword && !passwordVisible) androidx.compose.ui.text.input.PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = PrimaryBlue,
+                focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
             ),
             singleLine = true,
@@ -416,7 +416,7 @@ fun ResponsiveDropdownField(
             text = label,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
-            color = TextDark,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -436,12 +436,12 @@ fun ResponsiveDropdownField(
                     .menuAnchor(),
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PrimaryBlue,
+                    focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
                     unfocusedContainerColor = Color(0xFFF8FAFC),
                     focusedContainerColor = Color.White
                 ),
-                leadingIcon = { Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp)) },
+                leadingIcon = { Icon(icon, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
                 textStyle = LocalTextStyle.current.copy(fontSize = 16.sp),
                 singleLine = true
             )
@@ -483,16 +483,16 @@ fun MeasurementSystemCard(
         onClick = onClick,
         modifier = modifier.height(80.dp),
         shape = RoundedCornerShape(16.dp),
-        color = if (selected) PrimaryBlue.copy(alpha = 0.1f) else Color.White,
-        border = androidx.compose.foundation.BorderStroke(2.dp, if (selected) PrimaryBlue else Color(0xFFF1F5F9))
+        color = if (selected) androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.White,
+        border = androidx.compose.foundation.BorderStroke(2.dp, if (selected) androidx.compose.material3.MaterialTheme.colorScheme.primary else androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(8.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = title, fontWeight = FontWeight.Bold, color = if (selected) PrimaryBlue else TextDark)
-            Text(text = subtitle, fontSize = 12.sp, color = MutedForeground)
+            Text(text = title, fontWeight = FontWeight.Bold, color = if (selected) androidx.compose.material3.MaterialTheme.colorScheme.primary else androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
+            Text(text = subtitle, fontSize = 12.sp, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

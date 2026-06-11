@@ -2,6 +2,7 @@ package com.example.fluidcheck.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -20,6 +21,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import com.example.fluidcheck.R
 import com.example.fluidcheck.ui.theme.*
 import com.example.fluidcheck.ui.components.ProgressMeterStyle
@@ -67,14 +71,14 @@ fun SettingsScreen(
     onToggleAutoShield: (Boolean) -> Unit = {},
     appTheme: String = "LIGHT",
     onAppThemeChanged: (String) -> Unit = {},
-    appBackground: String = "NONE",
-    onAppBackgroundChanged: (String) -> Unit = {},
+    appIconBackground: String = "BLUE",
     progressMeterStyle: String = "RING",
     onProgressMeterStyleChanged: (String) -> Unit = {},
     appIcon: String = "DEFAULT",
-    onAppIconChanged: (String) -> Unit = {}
+    onAppIconConfigurationChanged: (String, String) -> Unit = { _, _ -> }
 ) {
     val scrollState = rememberScrollState()
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     var showLogoutDialog by remember { mutableStateOf(false) }
     
     // Check if this is the core Admin account
@@ -99,10 +103,10 @@ fun SettingsScreen(
             dismissButton = {
                 @Suppress("DEPRECATION")
                 TextButton(onClick = { showLogoutDialog = false }) {
-                    Text(stringResource(R.string.cancel), color = TextDark)
+                    Text(stringResource(R.string.cancel), color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                 }
             },
-            containerColor = Color.White,
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(28.dp)
         )
     }
@@ -141,10 +145,10 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showRestoreDialog = false }) {
-                    Text("Cancel", color = TextDark)
+                    Text("Cancel", color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                 }
             },
-            containerColor = Color.White,
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(28.dp)
         )
     }
@@ -248,13 +252,13 @@ fun SettingsScreen(
                 shape = RoundedCornerShape(16.dp),
                 border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
             ) {
-                Icon(AppIcons.Save, contentDescription = null, tint = TextDark)
+                Icon(AppIcons.Save, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Restore Purchases",
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp,
-                    color = TextDark
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                 )
             }
             Spacer(modifier = Modifier.height(24.dp))
@@ -307,16 +311,16 @@ fun SettingsScreen(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                color = Color.White,
+                color = themeColors.cardBackground,
                 shadowElevation = 2.dp,
-                border = BorderStroke(1.dp, Color(0xFFF1F5F9))
+                border = BorderStroke(1.dp, themeColors.cardBorder)
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Text(
                         text = "Gamification",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextDark
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(
@@ -325,11 +329,11 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Auto-use Streak Shield", fontWeight = FontWeight.SemiBold, color = TextDark)
+                            Text("Auto-use Streak Shield", fontWeight = FontWeight.SemiBold, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                             Text(
                                 "Automatically consume a shield at midnight if you missed your goal to preserve your streak.",
                                 fontSize = 12.sp,
-                                color = MutedForeground,
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                                 lineHeight = 16.sp
                             )
                         }
@@ -339,7 +343,7 @@ fun SettingsScreen(
                             onCheckedChange = { onToggleAutoShield(it) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
-                                checkedTrackColor = PrimaryBlue,
+                                checkedTrackColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                                 uncheckedThumbColor = Color.White,
                                 uncheckedTrackColor = Color.LightGray.copy(alpha = 0.5f),
                                 uncheckedBorderColor = Color.Transparent
@@ -355,9 +359,8 @@ fun SettingsScreen(
         val isPremium = userRole != "FREE USER" && userRole != "GUEST"
 
         var showThemeDialog by remember { mutableStateOf(false) }
-        var showBackgroundDialog by remember { mutableStateOf(false) }
+        var showAppIconDialog by remember { mutableStateOf(false) }
         var showMeterDialog by remember { mutableStateOf(false) }
-        var showIconDialog by remember { mutableStateOf(false) }
 
         if (showThemeDialog) {
             AlertDialog(
@@ -390,34 +393,263 @@ fun SettingsScreen(
             )
         }
 
-        if (showBackgroundDialog) {
+        if (showAppIconDialog) {
+            var activeTab by remember { mutableStateOf("Icon") }
+            var pendingIcon by remember { mutableStateOf(appIcon) }
+            var pendingBg by remember { mutableStateOf(appIconBackground) }
             AlertDialog(
-                onDismissRequest = { showBackgroundDialog = false },
-                title = { Text("Select Background") },
+                onDismissRequest = { showAppIconDialog = false },
+                title = {
+                    Text(
+                        text = "App Icon Customization",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                },
                 text = {
-                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        BackgroundType.values().forEach { bg ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        showBackgroundDialog = false
-                                        onAppBackgroundChanged(bg.name)
-                                    }
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = appBackground == bg.name,
-                                    onClick = null
-                                )
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Text(bg.displayName)
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Segmented Tab bar
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                .padding(4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            listOf("Icon", "Background").forEach { tab ->
+                                val isSelected = activeTab == tab
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) androidx.compose.material3.MaterialTheme.colorScheme.surface else Color.Transparent)
+                                        .clickable { activeTab = tab }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = tab,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) androidx.compose.material3.MaterialTheme.colorScheme.primary else androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 14.sp
+                                    )
+                                }
                             }
                         }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 300.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            if (activeTab == "Icon") {
+                                val icons = listOf(
+                                    "DEFAULT", "BLUSH_PINK", "BRONZE", "CHAPAGNE", "CREAM_YELLOW", "CYBER_BLUE", 
+                                    "ELECTRIC_PURPLE", "GUNMETAL", "HOT_PINK", "LAVENDER_BLUE", "LIME_GREEN", 
+                                    "NEON_ORANGE", "PEACH_FUZZ", "PLATINUM_SILVER", "ROSE_GOLD", "SAGE_GREEN", "SOFT_MINT"
+                                )
+                                icons.chunked(3).forEach { rowIcons ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        rowIcons.forEach { iconVariant ->
+                                            val isSelected = pendingIcon == iconVariant
+                                            Column(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .border(
+                                                        BorderStroke(
+                                                            width = if (isSelected) 2.dp else 1.dp,
+                                                            color = if (isSelected) androidx.compose.material3.MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.3f)
+                                                        ),
+                                                        shape = RoundedCornerShape(12.dp)
+                                                    )
+                                                    .clickable {
+                                                        pendingIcon = iconVariant
+                                                    }
+                                                    .padding(8.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                // Preview Box
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(54.dp)
+                                                        .clip(RoundedCornerShape(12.dp))
+                                                ) {
+                                                    val bgResId = context.resources.getIdentifier(
+                                                        "ic_launcher_bg_${pendingBg.lowercase()}",
+                                                        "drawable",
+                                                        context.packageName
+                                                    )
+                                                    if (bgResId != 0) {
+                                                        Image(
+                                                            painter = painterResource(id = bgResId),
+                                                            contentDescription = null,
+                                                            modifier = Modifier.fillMaxSize()
+                                                        )
+                                                    }
+                                                    val fgResId = context.resources.getIdentifier(
+                                                        "${iconVariant.lowercase()}_icon",
+                                                        "drawable",
+                                                        context.packageName
+                                                    )
+                                                    if (fgResId != 0) {
+                                                        Image(
+                                                            painter = painterResource(id = fgResId),
+                                                            contentDescription = null,
+                                                            modifier = Modifier.fillMaxSize()
+                                                        )
+                                                    }
+                                                }
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Text(
+                                                    text = iconVariant.lowercase().replaceFirstChar { it.uppercase() }.replace("_", " "),
+                                                    fontSize = 11.sp,
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                    textAlign = TextAlign.Center,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                        }
+                                        if (rowIcons.size < 3) {
+                                            repeat(3 - rowIcons.size) {
+                                                Spacer(modifier = Modifier.weight(1f))
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "Note: Changing the app icon may take a moment to update on your home screen. The app will no longer force-close to apply changes.",
+                                    color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                                    fontSize = 11.sp,
+                                    lineHeight = 15.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            } else {
+                                val backgrounds = listOf(
+                                    "NONE", "BLUE", "DARK", "ORANGE", "CYBERPUNK", "MINIMAL",
+                                    "DEEP_SPACE", "NORDIC_SLATE", "WARM_SAND", "SAGE_GARDEN", "BURGUNDY",
+                                    "AURORA", "SUNSET", "OCEAN", "GRID", "STRIPES"
+                                )
+                                backgrounds.chunked(3).forEach { rowBgs ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        rowBgs.forEach { bgVariant ->
+                                            val isSelected = pendingBg == bgVariant
+                                            Column(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .border(
+                                                        BorderStroke(
+                                                            width = if (isSelected) 2.dp else 1.dp,
+                                                            color = if (isSelected) androidx.compose.material3.MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.3f)
+                                                        ),
+                                                        shape = RoundedCornerShape(12.dp)
+                                                    )
+                                                    .clickable {
+                                                        pendingBg = bgVariant
+                                                    }
+                                                    .padding(8.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                // Preview Box
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(54.dp)
+                                                        .clip(RoundedCornerShape(12.dp))
+                                                ) {
+                                                    val bgResId = context.resources.getIdentifier(
+                                                        "ic_launcher_bg_${bgVariant.lowercase()}",
+                                                        "drawable",
+                                                        context.packageName
+                                                    )
+                                                    if (bgResId != 0) {
+                                                        Image(
+                                                            painter = painterResource(id = bgResId),
+                                                            contentDescription = null,
+                                                            modifier = Modifier.fillMaxSize()
+                                                        )
+                                                    }
+                                                    val fgResId = context.resources.getIdentifier(
+                                                        "${pendingIcon.lowercase()}_icon",
+                                                        "drawable",
+                                                        context.packageName
+                                                    )
+                                                    if (fgResId != 0) {
+                                                        Image(
+                                                            painter = painterResource(id = fgResId),
+                                                            contentDescription = null,
+                                                            modifier = Modifier.fillMaxSize()
+                                                        )
+                                                    }
+                                                }
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Text(
+                                                    text = bgVariant.lowercase().replaceFirstChar { it.uppercase() }.replace("_", " "),
+                                                    fontSize = 11.sp,
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                    textAlign = TextAlign.Center,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                        }
+                                        if (rowBgs.size < 3) {
+                                            repeat(3 - rowBgs.size) {
+                                                Spacer(modifier = Modifier.weight(1f))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Note: Changing the app icon may take a moment to update on your home screen. This process might cause the app to close to apply the changes safely.",
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp,
+                            textAlign = TextAlign.Start,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 },
-                confirmButton = { TextButton(onClick = { showBackgroundDialog = false }) { Text("Close") } }
+                confirmButton = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { showAppIconDialog = false }) {
+                            Text("Cancel")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        TextButton(
+                            onClick = {
+                                showAppIconDialog = false
+                                onAppIconConfigurationChanged(pendingIcon, pendingBg)
+                            }
+                        ) {
+                            Text("Confirm", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
             )
         }
 
@@ -452,49 +684,12 @@ fun SettingsScreen(
             )
         }
 
-        if (showIconDialog) {
-            AlertDialog(
-                onDismissRequest = { showIconDialog = false },
-                title = { Text("Select App Icon") },
-                text = {
-                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        listOf("DEFAULT", "DARK", "MONOCHROME", "OCEAN", "SUNSET", "NEON", "GOLD", "MINIMAL").forEach { iconVariant ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        showIconDialog = false
-                                        onAppIconChanged(iconVariant)
-                                    }
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = appIcon == iconVariant,
-                                    onClick = null
-                                )
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Text(iconVariant.lowercase().replaceFirstChar { it.uppercase() })
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            "Note: Changing the app icon will briefly force-close the app to apply the new icon to your launcher.",
-                            color = WarningAmber,
-                            fontSize = 12.sp
-                        )
-                    }
-                },
-                confirmButton = { TextButton(onClick = { showIconDialog = false }) { Text("Close") } }
-            )
-        }
-
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            color = Color.White,
+            color = themeColors.cardBackground,
             shadowElevation = 2.dp,
-            border = BorderStroke(1.dp, Color(0xFFF1F5F9))
+            border = BorderStroke(1.dp, themeColors.cardBorder)
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -502,7 +697,7 @@ fun SettingsScreen(
                         text = "Customization",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextDark
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                     )
                     if (!isPremium) {
                         Spacer(modifier = Modifier.width(8.dp))
@@ -534,33 +729,19 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(AppIcons.FormatPaint, contentDescription = null, tint = if(isPremium) PrimaryBlue else MutedForeground)
+                        Icon(AppIcons.FormatPaint, contentDescription = null, tint = if(isPremium) androidx.compose.material3.MaterialTheme.colorScheme.primary else MutedForeground)
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
-                            Text("App Theme", fontWeight = FontWeight.SemiBold, color = TextDark)
-                            Text(AppThemeId.valueOf(appTheme).displayName, fontSize = 12.sp, color = MutedForeground)
-                        }
-                    }
-                }
-                HorizontalDivider(color = Slate50)
-
-                // Background Setting
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            if (isPremium) showBackgroundDialog = true else showPremiumDialog = true
-                        }
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(AppIcons.Image, contentDescription = null, tint = if(isPremium) PrimaryBlue else MutedForeground)
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column {
-                            Text("App Background", fontWeight = FontWeight.SemiBold, color = TextDark)
-                            Text(BackgroundType.valueOf(appBackground).displayName, fontSize = 12.sp, color = MutedForeground)
+                            Text("App Theme", fontWeight = FontWeight.SemiBold, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
+                            val themeDisplayName = remember(appTheme) {
+                                try {
+                                    if (appTheme == "AMOLED_BLACK") AppThemeId.DARK.displayName
+                                    else AppThemeId.valueOf(appTheme).displayName
+                                } catch (e: Exception) {
+                                    AppThemeId.LIGHT.displayName
+                                }
+                            }
+                            Text(themeDisplayName, fontSize = 12.sp, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -578,11 +759,11 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(AppIcons.PieChart, contentDescription = null, tint = if(isPremium) PrimaryBlue else MutedForeground)
+                        Icon(AppIcons.PieChart, contentDescription = null, tint = if(isPremium) androidx.compose.material3.MaterialTheme.colorScheme.primary else MutedForeground)
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
-                            Text("Progress Meter Style", fontWeight = FontWeight.SemiBold, color = TextDark)
-                            Text(ProgressMeterStyle.valueOf(progressMeterStyle).displayName, fontSize = 12.sp, color = MutedForeground)
+                            Text("Progress Meter Style", fontWeight = FontWeight.SemiBold, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
+                            Text(ProgressMeterStyle.valueOf(progressMeterStyle).displayName, fontSize = 12.sp, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -593,18 +774,20 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            if (isPremium) showIconDialog = true else showPremiumDialog = true
+                            if (isPremium) showAppIconDialog = true else showPremiumDialog = true
                         }
                         .padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(AppIcons.Goal, contentDescription = null, tint = if(isPremium) PrimaryBlue else MutedForeground)
+                        Icon(AppIcons.Goal, contentDescription = null, tint = if(isPremium) androidx.compose.material3.MaterialTheme.colorScheme.primary else MutedForeground)
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
-                            Text("App Icon", fontWeight = FontWeight.SemiBold, color = TextDark)
-                            Text(appIcon.lowercase().replaceFirstChar { it.uppercase() }, fontSize = 12.sp, color = MutedForeground)
+                            Text("App Icon", fontWeight = FontWeight.SemiBold, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
+                            val iconName = appIcon.lowercase().replace("_", " ").split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+                            val bgName = appIconBackground.lowercase().replace("_", " ").split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+                            Text("$iconName ($bgName Background)", fontSize = 12.sp, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -630,14 +813,14 @@ fun SettingsScreen(
             shape = RoundedCornerShape(16.dp),
             border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
         ) {
-            Icon(AppIcons.Info, contentDescription = null, tint = TextDark)
+            Icon(AppIcons.Info, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.width(8.dp))
             @Suppress("DEPRECATION")
             Text(
                 text = stringResource(R.string.about_developer),
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 16.sp,
-                color = TextDark
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
             )
         }
 
@@ -652,10 +835,10 @@ fun SettingsScreen(
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = PrimaryBlue.copy(alpha = 0.1f),
-                    contentColor = PrimaryBlue
+                    containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    contentColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
                 ),
-                border = BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.2f))
+                border = BorderStroke(1.dp, androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
             ) {
                 Icon(
                     imageVector = if (isAdminMode) AppIcons.PersonOutline else AppIcons.Badge,
@@ -701,7 +884,7 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center,
             fontSize = 12.sp,
-            color = MutedForeground,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Medium
         )
 
@@ -722,19 +905,20 @@ fun ProfileHeader(
 ) {
     val displayName = username.ifEmpty { "User" }.replaceFirstChar { it.uppercase() }
     val isGuest = userId.equals("GUEST", ignoreCase = true) || username.equals("Guest", ignoreCase = true)
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
-        color = Color.White,
+        color = themeColors.cardBackground,
         shadowElevation = 2.dp,
-        border = BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = BorderStroke(1.dp, themeColors.cardBorder)
     ) {
         Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(PrimaryBlue.copy(alpha = 0.12f))
+                    .background(androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
                     .padding(vertical = 32.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -742,7 +926,7 @@ fun ProfileHeader(
                     Surface(
                         modifier = Modifier.size(96.dp),
                         shape = CircleShape,
-                        color = Color.White,
+                        color = themeColors.cardBackground,
                         shadowElevation = 8.dp
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -766,7 +950,7 @@ fun ProfileHeader(
                                     imageVector = AppIcons.PersonOutline,
                                     contentDescription = null,
                                     modifier = Modifier.size(48.dp),
-                                    tint = PrimaryBlue
+                                    tint = androidx.compose.material3.MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
@@ -779,7 +963,7 @@ fun ProfileHeader(
                         text = displayName,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Black,
-                        color = TextDark
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                     )
                     
                     Spacer(modifier = Modifier.height(16.dp))
@@ -800,7 +984,7 @@ fun ProfileHeader(
                             .fillMaxWidth()
                             .height(56.dp),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                        colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary)
                     ) {
                         Text(
                             text = "My Inventory & Badges",
@@ -822,7 +1006,7 @@ fun ProfileHeader(
                     @Suppress("DEPRECATION")
                     Text(
                         text = stringResource(R.string.edit_profile),
-                        color = TextDark,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -835,7 +1019,7 @@ fun ProfileHeader(
                             .fillMaxWidth()
                             .height(56.dp),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                        colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary)
                     ) {
                         Text(
                             text = "Verify Account",
@@ -857,19 +1041,20 @@ fun AdminProfileHeader(
     onEditProfile: () -> Unit
 ) {
     val displayName = username.ifEmpty { "Admin" }.replaceFirstChar { it.uppercase() }
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
-        color = Color.White,
+        color = themeColors.cardBackground,
         shadowElevation = 2.dp,
-        border = BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = BorderStroke(1.dp, themeColors.cardBorder)
     ) {
         Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(PrimaryBlue.copy(alpha = 0.12f))
+                    .background(androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
                     .padding(vertical = 32.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -877,7 +1062,7 @@ fun AdminProfileHeader(
                     Surface(
                         modifier = Modifier.size(96.dp),
                         shape = CircleShape,
-                        color = Color.White,
+                        color = themeColors.cardBackground,
                         shadowElevation = 8.dp
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -901,7 +1086,7 @@ fun AdminProfileHeader(
                                     imageVector = AppIcons.Badge,
                                     contentDescription = null,
                                     modifier = Modifier.size(48.dp),
-                                    tint = PrimaryBlue
+                                    tint = androidx.compose.material3.MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
@@ -914,13 +1099,13 @@ fun AdminProfileHeader(
                         text = displayName,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Black,
-                        color = TextDark
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                     )
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Surface(
-                        color = PrimaryBlue,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         val displayRole = if (userRole == "MODERATOR") "MODERATOR" else "ADMINISTRATOR"
@@ -952,7 +1137,7 @@ fun AdminProfileHeader(
                     @Suppress("DEPRECATION")
                     Text(
                         text = stringResource(R.string.edit_profile),
-                        color = TextDark,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -963,8 +1148,9 @@ fun AdminProfileHeader(
 
 @Composable
 fun StreakBadge(streak: Int) {
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     Surface(
-        color = Color.White,
+        color = themeColors.cardBackground,
         shape = RoundedCornerShape(16.dp),
         shadowElevation = 2.dp
     ) {
@@ -985,14 +1171,14 @@ fun StreakBadge(streak: Int) {
                     text = "STREAK", 
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MutedForeground
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 @Suppress("DEPRECATION")
                 Text(
                     text = "$streak Days", 
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = PrimaryBlue
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -1017,25 +1203,26 @@ fun SmartRemindersSection(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
-        color = Color.White,
+        color = themeColors.cardBackground,
         shadowElevation = 2.dp,
-        border = BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = BorderStroke(1.dp, themeColors.cardBorder)
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Text(
                 text = "Permissions",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextDark
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
             )
             @Suppress("DEPRECATION")
             Text(
                 text = stringResource(R.string.reminders_subtitle),
                 fontSize = 14.sp,
-                color = MutedForeground,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp)
             )
 
@@ -1044,8 +1231,8 @@ fun SmartRemindersSection(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                color = Color.White,
-                border = BorderStroke(1.dp, Color(0xFFF1F5F9))
+                color = themeColors.cardBackground,
+                border = BorderStroke(1.dp, themeColors.cardBorder)
             ) {
                 Column {
                     // 1. Location Access for Weather
@@ -1057,14 +1244,14 @@ fun SmartRemindersSection(
                         Icon(
                             imageVector = AppIcons.Location,
                             contentDescription = null,
-                            tint = PrimaryBlue,
+                            tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = "Location Access for Weather",
                             fontSize = 16.sp,
-                            color = TextDark,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f)
                         )
                         Switch(
@@ -1078,7 +1265,7 @@ fun SmartRemindersSection(
                             },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
-                                checkedTrackColor = PrimaryBlue,
+                                checkedTrackColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                                 uncheckedThumbColor = Color.White,
                                 uncheckedTrackColor = Color.LightGray.copy(alpha = 0.5f),
                                 uncheckedBorderColor = Color.Transparent
@@ -1086,7 +1273,7 @@ fun SmartRemindersSection(
                         )
                     }
 
-                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+                    HorizontalDivider(color = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
 
                     // 2. Enable Notifications
                     Row(
@@ -1097,7 +1284,7 @@ fun SmartRemindersSection(
                         Icon(
                             imageVector = AppIcons.Notifications,
                             contentDescription = null,
-                            tint = PrimaryBlue,
+                            tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
@@ -1105,7 +1292,7 @@ fun SmartRemindersSection(
                         Text(
                             text = "Enable Notifications",
                             fontSize = 16.sp,
-                            color = TextDark,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f)
                         )
                         Switch(
@@ -1113,7 +1300,7 @@ fun SmartRemindersSection(
                             onCheckedChange = { onToggleNotifications(it) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
-                                checkedTrackColor = PrimaryBlue,
+                                checkedTrackColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                                 uncheckedThumbColor = Color.White,
                                 uncheckedTrackColor = Color.LightGray.copy(alpha = 0.5f),
                                 uncheckedBorderColor = Color.Transparent
@@ -1130,7 +1317,7 @@ fun SmartRemindersSection(
                         Icon(
                             imageVector = AppIcons.Lightbulb,
                             contentDescription = null,
-                            tint = if (notificationsEnabled) PrimaryBlue else Color.Gray.copy(alpha = 0.5f),
+                            tint = if (notificationsEnabled) androidx.compose.material3.MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.5f),
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
@@ -1138,7 +1325,7 @@ fun SmartRemindersSection(
                         Text(
                             text = "Enable Smart Reminders",
                             fontSize = 15.sp,
-                            color = if (notificationsEnabled) TextDark else MutedForeground,
+                            color = if (notificationsEnabled) androidx.compose.material3.MaterialTheme.colorScheme.onSurface else MutedForeground,
                             modifier = Modifier.weight(1f)
                         )
                         Switch(
@@ -1147,7 +1334,7 @@ fun SmartRemindersSection(
                             enabled = notificationsEnabled,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
-                                checkedTrackColor = PrimaryBlue,
+                                checkedTrackColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                                 uncheckedThumbColor = Color.White,
                                 uncheckedTrackColor = Color.LightGray.copy(alpha = 0.5f),
                                 uncheckedBorderColor = Color.Transparent
@@ -1164,14 +1351,14 @@ fun SmartRemindersSection(
                         Icon(
                             imageVector = AppIcons.Weather,
                             contentDescription = null,
-                            tint = if (notificationsEnabled) PrimaryBlue else Color.Gray.copy(alpha = 0.5f),
+                            tint = if (notificationsEnabled) androidx.compose.material3.MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.5f),
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = "Dynamic Weather Goal Adjustment",
                             fontSize = 15.sp,
-                            color = if (notificationsEnabled) TextDark else MutedForeground,
+                            color = if (notificationsEnabled) androidx.compose.material3.MaterialTheme.colorScheme.onSurface else MutedForeground,
                             modifier = Modifier.weight(1f)
                         )
                         Switch(
@@ -1182,7 +1369,7 @@ fun SmartRemindersSection(
                             enabled = notificationsEnabled,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
-                                checkedTrackColor = PrimaryBlue,
+                                checkedTrackColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                                 uncheckedThumbColor = Color.White,
                                 uncheckedTrackColor = Color.LightGray.copy(alpha = 0.5f),
                                 uncheckedBorderColor = Color.Transparent
@@ -1199,7 +1386,7 @@ fun SmartRemindersSection(
                 text = stringResource(R.string.reminder_frequency),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextDark
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
             )
             
             Spacer(modifier = Modifier.height(12.dp))
@@ -1219,8 +1406,8 @@ fun SmartRemindersSection(
                         .menuAnchor(),
                     shape = RoundedCornerShape(20.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFF1F5F9),
-                        unfocusedBorderColor = Color(0xFFF1F5F9),
+                        focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,
                     )
                 )
                 ExposedDropdownMenu(
@@ -1269,40 +1456,41 @@ fun MeasurementSystemSection(
             Box(
                 modifier = Modifier
                     .size(100.dp)
-                    .background(Color.White, RoundedCornerShape(16.dp)),
+                    .background(androidx.compose.material3.MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = PrimaryBlue)
+                CircularProgressIndicator(color = androidx.compose.material3.MaterialTheme.colorScheme.primary)
             }
         }
     }
 
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
-        color = Color.White,
+        color = themeColors.cardBackground,
         shadowElevation = 2.dp,
-        border = BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = BorderStroke(1.dp, themeColors.cardBorder)
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Text(
                 text = "Preferences",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextDark
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
             )
             @Suppress("DEPRECATION")
             Text(
                 text = "Customize the units of measurement used throughout the app.",
                 fontSize = 14.sp,
-                color = MutedForeground,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp)
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             // Liquids
-            Text("Liquids", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextDark)
+            Text("Liquids", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.height(8.dp))
             ExposedDropdownMenuBox(
                 expanded = expandedVolume,
@@ -1317,8 +1505,8 @@ fun MeasurementSystemSection(
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
                     shape = RoundedCornerShape(20.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFF1F5F9),
-                        unfocusedBorderColor = Color(0xFFF1F5F9),
+                        focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,
                     )
                 )
                 ExposedDropdownMenu(
@@ -1345,7 +1533,7 @@ fun MeasurementSystemSection(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Weight
-            Text("Weight", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextDark)
+            Text("Weight", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.height(8.dp))
             ExposedDropdownMenuBox(
                 expanded = expandedWeight,
@@ -1360,8 +1548,8 @@ fun MeasurementSystemSection(
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
                     shape = RoundedCornerShape(20.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFF1F5F9),
-                        unfocusedBorderColor = Color(0xFFF1F5F9),
+                        focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,
                     )
                 )
                 ExposedDropdownMenu(
@@ -1388,7 +1576,7 @@ fun MeasurementSystemSection(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Height
-            Text("Height", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextDark)
+            Text("Height", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.height(8.dp))
             ExposedDropdownMenuBox(
                 expanded = expandedHeight,
@@ -1403,8 +1591,8 @@ fun MeasurementSystemSection(
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
                     shape = RoundedCornerShape(20.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFF1F5F9),
-                        unfocusedBorderColor = Color(0xFFF1F5F9),
+                        focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,
                     )
                 )
                 ExposedDropdownMenu(
@@ -1449,7 +1637,7 @@ fun MeasurementSystemSection(
                         .fillMaxWidth()
                         .height(56.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                    colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary)
                 ) {
                     Text(
                         text = "Save",
@@ -1493,19 +1681,20 @@ fun SystemStatusSection(
         else -> MutedForeground
     }
 
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
-        color = Color.White,
+        color = themeColors.cardBackground,
         shadowElevation = 2.dp,
-        border = BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = BorderStroke(1.dp, themeColors.cardBorder)
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = AppIcons.Notifications,
                     contentDescription = null,
-                    tint = PrimaryBlue,
+                    tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
@@ -1514,7 +1703,7 @@ fun SystemStatusSection(
                     text = stringResource(R.string.system_status),
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextDark
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -1526,7 +1715,7 @@ fun SystemStatusSection(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 @Suppress("DEPRECATION")
-                Text(text = stringResource(R.string.auto_sync), fontSize = 16.sp, color = TextDark)
+                Text(text = stringResource(R.string.auto_sync), fontSize = 16.sp, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                 Box(
                     modifier = Modifier
                         .size(8.dp)
@@ -1542,7 +1731,7 @@ fun SystemStatusSection(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 @Suppress("DEPRECATION")
-                Text(text = stringResource(R.string.cloud_backup), fontSize = 16.sp, color = TextDark)
+                Text(text = stringResource(R.string.cloud_backup), fontSize = 16.sp, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                 @Suppress("DEPRECATION")
                 Text(text = backupStatusText, fontSize = 14.sp, color = backupStatusColor)
             }

@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,6 +43,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.Timestamp
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 
@@ -83,7 +85,12 @@ class MainActivity : ComponentActivity() {
             val appThemeFlow = remember(currentUserId) { userPrefsRepository.getAppTheme(currentUserId) }
             val appThemeState by appThemeFlow.collectAsState(initial = "LIGHT")
             
-            val themeId = try { com.example.fluidcheck.ui.theme.AppThemeId.valueOf(appThemeState) } catch (e: Exception) { com.example.fluidcheck.ui.theme.AppThemeId.LIGHT }
+            val themeId = try {
+                if (appThemeState == "AMOLED_BLACK") com.example.fluidcheck.ui.theme.AppThemeId.DARK
+                else com.example.fluidcheck.ui.theme.AppThemeId.valueOf(appThemeState)
+            } catch (e: Exception) {
+                com.example.fluidcheck.ui.theme.AppThemeId.LIGHT
+            }
 
             FluidCheckTheme(themeId = themeId) {
                 // Network connectivity tracking
@@ -184,11 +191,13 @@ class MainActivity : ComponentActivity() {
                 // Request permission on fresh download / first launch
                 LaunchedEffect(Unit) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        if (ContextCompat.checkSelfPermission(
+                        val hasRequested = userPrefsRepository.hasRequestedNotificationPermission().first()
+                        if (!hasRequested && ContextCompat.checkSelfPermission(
                                 context,
                                 Manifest.permission.POST_NOTIFICATIONS
                             ) != PackageManager.PERMISSION_GRANTED
                         ) {
+                            userPrefsRepository.setNotificationPermissionRequested(true)
                             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         }
                     }
@@ -523,8 +532,13 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 } else if (isCheckingSetup) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = PrimaryBlue)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 } else if (!isSetupComplete) {
                     InitialSetupScreen(

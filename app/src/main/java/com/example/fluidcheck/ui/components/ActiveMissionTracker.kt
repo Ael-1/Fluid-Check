@@ -18,7 +18,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fluidcheck.model.MissionPool
-import com.example.fluidcheck.ui.theme.TextDark
 
 @Composable
 fun ActiveMissionTracker(
@@ -26,13 +25,14 @@ fun ActiveMissionTracker(
     userRole: String,
     onNavigateToProgress: () -> Unit
 ) {
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     if (userRole == "FREE USER") return
 
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp)) {
         Text(
             text = "Active Missions",
             style = MaterialTheme.typography.titleSmall,
-            color = TextDark,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(bottom = 8.dp)
         )
         
@@ -40,11 +40,12 @@ fun ActiveMissionTracker(
             Surface(
                 modifier = Modifier.fillMaxWidth().clickable { onNavigateToProgress() },
                 shape = RoundedCornerShape(16.dp),
-                color = Color.White.copy(alpha = 0.5f)
+                color = themeColors.cardBackground,
+                border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder)
             ) {
                 Text(
                     text = "No active missions. Tap to view the board.",
-                    color = Color.Gray,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(16.dp)
                 )
@@ -61,7 +62,8 @@ fun ActiveMissionTracker(
                     Surface(
                         modifier = Modifier.width(160.dp).clickable { onNavigateToProgress() },
                         shape = RoundedCornerShape(16.dp),
-                        color = Color.White,
+                        color = themeColors.cardBackground,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder),
                         shadowElevation = 2.dp
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
@@ -76,25 +78,37 @@ fun ActiveMissionTracker(
                                     text = missionDef.title,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = TextDark,
+                                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            LinearProgressIndicator(
-                                progress = { if (missionDef.targetValue > 0) progress.toFloat() / missionDef.targetValue else 0f },
-                                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-                                color = Color(missionDef.difficulty.badgeRarity.color),
-                                trackColor = Color(0xFFF1F5F9)
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "$progress / ${missionDef.targetValue}",
-                                fontSize = 10.sp,
-                                color = Color.Gray,
-                                modifier = Modifier.align(Alignment.End)
-                            )
+                            val isFailed = (missionData["failed"] as? Boolean) == true
+                            if (isFailed) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "Failed ✗",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Red,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                LinearProgressIndicator(
+                                    progress = { if (missionDef.targetValue > 0) progress.toFloat() / missionDef.targetValue else 0f },
+                                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                                    color = Color(missionDef.difficulty.badgeRarity.color),
+                                    trackColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "$progress / ${missionDef.targetValue}",
+                                    fontSize = 10.sp,
+                                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.align(Alignment.End)
+                                )
+                            }
                         }
                     }
                 }

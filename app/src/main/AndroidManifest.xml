@@ -3,159 +3,7181 @@
     xmlns:tools="http://schemas.android.com/tools" >
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <!-- Android 13 and above -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <!-- Below Android 13 -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Android 13 and above -->
+
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+    <!-- Below Android 13 -->
+
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
+
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@drawable/fluid_check_icon"
+
+        android:icon="@drawable/default_icon"
+
         android:label="@string/app_name"
-        android:roundIcon="@drawable/fluid_check_icon"
+
+        android:roundIcon="@drawable/default_icon"
+
         android:supportsRtl="true"
         android:theme="@style/Theme.App.Starting" >
+
         <activity
+
             android:name=".MainActivity"
+
             android:exported="true"
+
             android:screenOrientation="portrait"
+
             tools:ignore="LockedOrientationActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+
         </activity>
 
         <activity-alias
-            android:name=".MainActivityDark"
+
+            android:name=".MainActivity_default_none"
+
             android:targetActivity=".MainActivity"
-            android:icon="@drawable/fluid_check_icon"
-            android:roundIcon="@drawable/fluid_check_icon"
+
+            android:icon="@mipmap/ic_launcher_default_none"
+
+            android:roundIcon="@mipmap/ic_launcher_default_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
             android:enabled="false"
+
             android:exported="true">
+
             <intent-filter>
+
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
+
             </intent-filter>
-        </activity-alias>
-        
-        <activity-alias
-            android:name=".MainActivityMonochrome"
-            android:targetActivity=".MainActivity"
-            android:icon="@drawable/fluid_check_icon"
-            android:roundIcon="@drawable/fluid_check_icon"
-            android:enabled="false"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+
         </activity-alias>
 
         <activity-alias
-            android:name=".MainActivityOcean"
+
+            android:name=".MainActivity_default_blue"
+
             android:targetActivity=".MainActivity"
-            android:icon="@drawable/fluid_check_icon"
-            android:roundIcon="@drawable/fluid_check_icon"
-            android:enabled="false"
+
+            android:icon="@mipmap/ic_launcher_default_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_default_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="true"
+
             android:exported="true">
+
             <intent-filter>
+
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
+
             </intent-filter>
+
         </activity-alias>
 
         <activity-alias
-            android:name=".MainActivitySunset"
+
+            android:name=".MainActivity_default_dark"
+
             android:targetActivity=".MainActivity"
-            android:icon="@drawable/fluid_check_icon"
-            android:roundIcon="@drawable/fluid_check_icon"
+
+            android:icon="@mipmap/ic_launcher_default_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_default_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
             android:enabled="false"
+
             android:exported="true">
+
             <intent-filter>
+
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
+
             </intent-filter>
+
         </activity-alias>
 
         <activity-alias
-            android:name=".MainActivityNeon"
+
+            android:name=".MainActivity_default_orange"
+
             android:targetActivity=".MainActivity"
-            android:icon="@drawable/fluid_check_icon"
-            android:roundIcon="@drawable/fluid_check_icon"
+
+            android:icon="@mipmap/ic_launcher_default_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_default_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
             android:enabled="false"
+
             android:exported="true">
+
             <intent-filter>
+
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
+
             </intent-filter>
+
         </activity-alias>
 
         <activity-alias
-            android:name=".MainActivityGold"
+
+            android:name=".MainActivity_default_cyberpunk"
+
             android:targetActivity=".MainActivity"
-            android:icon="@drawable/fluid_check_icon"
-            android:roundIcon="@drawable/fluid_check_icon"
+
+            android:icon="@mipmap/ic_launcher_default_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_default_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
             android:enabled="false"
+
             android:exported="true">
+
             <intent-filter>
+
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
+
             </intent-filter>
+
         </activity-alias>
 
         <activity-alias
-            android:name=".MainActivityMinimal"
+
+            android:name=".MainActivity_default_minimal"
+
             android:targetActivity=".MainActivity"
-            android:icon="@drawable/fluid_check_icon"
-            android:roundIcon="@drawable/fluid_check_icon"
+
+            android:icon="@mipmap/ic_launcher_default_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_default_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
             android:enabled="false"
+
             android:exported="true">
+
             <intent-filter>
+
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
+
             </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_default_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_default_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_default_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_default_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_default_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_default_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_default_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_default_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_default_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_default_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_default_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_default_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_default_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_default_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_default_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_default_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_default_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_default_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_default_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_default_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_default_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_default_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_default_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_default_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_default_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_default_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_default_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_default_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_default_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_default_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_blush_pink_none"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_blush_pink_none"
+
+            android:roundIcon="@mipmap/ic_launcher_blush_pink_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_blush_pink_blue"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_blush_pink_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_blush_pink_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_blush_pink_dark"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_blush_pink_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_blush_pink_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_blush_pink_orange"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_blush_pink_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_blush_pink_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_blush_pink_cyberpunk"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_blush_pink_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_blush_pink_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_blush_pink_minimal"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_blush_pink_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_blush_pink_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_blush_pink_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_blush_pink_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_blush_pink_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_blush_pink_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_blush_pink_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_blush_pink_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_blush_pink_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_blush_pink_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_blush_pink_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_blush_pink_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_blush_pink_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_blush_pink_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_blush_pink_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_blush_pink_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_blush_pink_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_blush_pink_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_blush_pink_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_blush_pink_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_blush_pink_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_blush_pink_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_blush_pink_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_blush_pink_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_blush_pink_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_blush_pink_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_blush_pink_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_blush_pink_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_blush_pink_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_blush_pink_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_blush_pink_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_blush_pink_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_bronze_none"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_bronze_none"
+
+            android:roundIcon="@mipmap/ic_launcher_bronze_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_bronze_blue"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_bronze_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_bronze_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_bronze_dark"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_bronze_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_bronze_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_bronze_orange"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_bronze_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_bronze_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_bronze_cyberpunk"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_bronze_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_bronze_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_bronze_minimal"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_bronze_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_bronze_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_bronze_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_bronze_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_bronze_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_bronze_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_bronze_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_bronze_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_bronze_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_bronze_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_bronze_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_bronze_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_bronze_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_bronze_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_bronze_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_bronze_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_bronze_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_bronze_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_bronze_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_bronze_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_bronze_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_bronze_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_bronze_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_bronze_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_bronze_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_bronze_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_bronze_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_bronze_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_bronze_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_bronze_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_bronze_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_bronze_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_chapagne_none"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_chapagne_none"
+
+            android:roundIcon="@mipmap/ic_launcher_chapagne_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_chapagne_blue"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_chapagne_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_chapagne_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_chapagne_dark"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_chapagne_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_chapagne_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_chapagne_orange"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_chapagne_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_chapagne_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_chapagne_cyberpunk"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_chapagne_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_chapagne_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_chapagne_minimal"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_chapagne_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_chapagne_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_chapagne_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_chapagne_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_chapagne_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_chapagne_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_chapagne_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_chapagne_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_chapagne_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_chapagne_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_chapagne_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_chapagne_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_chapagne_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_chapagne_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_chapagne_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_chapagne_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_chapagne_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_chapagne_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_chapagne_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_chapagne_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_chapagne_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_chapagne_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_chapagne_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_chapagne_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_chapagne_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_chapagne_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_chapagne_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_chapagne_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_chapagne_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_chapagne_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_chapagne_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_chapagne_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cream_yellow_none"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cream_yellow_none"
+
+            android:roundIcon="@mipmap/ic_launcher_cream_yellow_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cream_yellow_blue"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cream_yellow_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_cream_yellow_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cream_yellow_dark"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cream_yellow_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_cream_yellow_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cream_yellow_orange"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cream_yellow_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_cream_yellow_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cream_yellow_cyberpunk"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cream_yellow_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_cream_yellow_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cream_yellow_minimal"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cream_yellow_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_cream_yellow_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cream_yellow_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cream_yellow_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_cream_yellow_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cream_yellow_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cream_yellow_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_cream_yellow_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cream_yellow_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cream_yellow_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_cream_yellow_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cream_yellow_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cream_yellow_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_cream_yellow_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cream_yellow_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cream_yellow_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_cream_yellow_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cream_yellow_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cream_yellow_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_cream_yellow_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cream_yellow_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cream_yellow_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_cream_yellow_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cream_yellow_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cream_yellow_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_cream_yellow_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cream_yellow_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cream_yellow_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_cream_yellow_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cream_yellow_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cream_yellow_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_cream_yellow_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cyber_blue_none"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cyber_blue_none"
+
+            android:roundIcon="@mipmap/ic_launcher_cyber_blue_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cyber_blue_blue"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cyber_blue_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_cyber_blue_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cyber_blue_dark"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cyber_blue_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_cyber_blue_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cyber_blue_orange"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cyber_blue_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_cyber_blue_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cyber_blue_cyberpunk"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cyber_blue_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_cyber_blue_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cyber_blue_minimal"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cyber_blue_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_cyber_blue_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cyber_blue_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cyber_blue_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_cyber_blue_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cyber_blue_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cyber_blue_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_cyber_blue_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cyber_blue_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cyber_blue_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_cyber_blue_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cyber_blue_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cyber_blue_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_cyber_blue_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cyber_blue_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cyber_blue_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_cyber_blue_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cyber_blue_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cyber_blue_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_cyber_blue_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cyber_blue_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cyber_blue_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_cyber_blue_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cyber_blue_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cyber_blue_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_cyber_blue_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cyber_blue_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cyber_blue_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_cyber_blue_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_cyber_blue_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_cyber_blue_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_cyber_blue_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_electric_purple_none"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_electric_purple_none"
+
+            android:roundIcon="@mipmap/ic_launcher_electric_purple_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_electric_purple_blue"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_electric_purple_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_electric_purple_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_electric_purple_dark"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_electric_purple_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_electric_purple_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_electric_purple_orange"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_electric_purple_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_electric_purple_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_electric_purple_cyberpunk"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_electric_purple_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_electric_purple_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_electric_purple_minimal"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_electric_purple_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_electric_purple_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_electric_purple_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_electric_purple_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_electric_purple_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_electric_purple_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_electric_purple_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_electric_purple_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_electric_purple_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_electric_purple_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_electric_purple_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_electric_purple_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_electric_purple_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_electric_purple_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_electric_purple_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_electric_purple_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_electric_purple_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_electric_purple_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_electric_purple_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_electric_purple_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_electric_purple_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_electric_purple_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_electric_purple_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_electric_purple_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_electric_purple_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_electric_purple_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_electric_purple_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_electric_purple_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_electric_purple_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_electric_purple_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_electric_purple_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_electric_purple_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_gunmetal_none"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_gunmetal_none"
+
+            android:roundIcon="@mipmap/ic_launcher_gunmetal_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_gunmetal_blue"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_gunmetal_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_gunmetal_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_gunmetal_dark"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_gunmetal_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_gunmetal_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_gunmetal_orange"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_gunmetal_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_gunmetal_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_gunmetal_cyberpunk"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_gunmetal_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_gunmetal_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_gunmetal_minimal"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_gunmetal_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_gunmetal_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_gunmetal_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_gunmetal_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_gunmetal_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_gunmetal_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_gunmetal_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_gunmetal_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_gunmetal_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_gunmetal_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_gunmetal_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_gunmetal_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_gunmetal_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_gunmetal_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_gunmetal_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_gunmetal_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_gunmetal_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_gunmetal_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_gunmetal_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_gunmetal_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_gunmetal_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_gunmetal_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_gunmetal_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_gunmetal_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_gunmetal_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_gunmetal_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_gunmetal_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_gunmetal_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_gunmetal_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_gunmetal_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_gunmetal_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_gunmetal_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_hot_pink_none"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_hot_pink_none"
+
+            android:roundIcon="@mipmap/ic_launcher_hot_pink_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_hot_pink_blue"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_hot_pink_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_hot_pink_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_hot_pink_dark"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_hot_pink_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_hot_pink_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_hot_pink_orange"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_hot_pink_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_hot_pink_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_hot_pink_cyberpunk"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_hot_pink_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_hot_pink_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_hot_pink_minimal"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_hot_pink_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_hot_pink_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_hot_pink_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_hot_pink_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_hot_pink_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_hot_pink_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_hot_pink_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_hot_pink_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_hot_pink_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_hot_pink_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_hot_pink_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_hot_pink_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_hot_pink_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_hot_pink_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_hot_pink_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_hot_pink_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_hot_pink_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_hot_pink_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_hot_pink_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_hot_pink_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_hot_pink_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_hot_pink_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_hot_pink_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_hot_pink_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_hot_pink_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_hot_pink_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_hot_pink_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_hot_pink_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_hot_pink_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_hot_pink_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_hot_pink_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_hot_pink_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lavender_blue_none"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lavender_blue_none"
+
+            android:roundIcon="@mipmap/ic_launcher_lavender_blue_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lavender_blue_blue"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lavender_blue_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_lavender_blue_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lavender_blue_dark"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lavender_blue_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_lavender_blue_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lavender_blue_orange"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lavender_blue_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_lavender_blue_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lavender_blue_cyberpunk"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lavender_blue_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_lavender_blue_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lavender_blue_minimal"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lavender_blue_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_lavender_blue_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lavender_blue_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lavender_blue_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_lavender_blue_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lavender_blue_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lavender_blue_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_lavender_blue_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lavender_blue_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lavender_blue_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_lavender_blue_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lavender_blue_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lavender_blue_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_lavender_blue_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lavender_blue_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lavender_blue_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_lavender_blue_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lavender_blue_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lavender_blue_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_lavender_blue_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lavender_blue_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lavender_blue_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_lavender_blue_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lavender_blue_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lavender_blue_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_lavender_blue_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lavender_blue_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lavender_blue_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_lavender_blue_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lavender_blue_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lavender_blue_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_lavender_blue_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lime_green_none"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lime_green_none"
+
+            android:roundIcon="@mipmap/ic_launcher_lime_green_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lime_green_blue"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lime_green_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_lime_green_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lime_green_dark"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lime_green_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_lime_green_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lime_green_orange"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lime_green_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_lime_green_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lime_green_cyberpunk"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lime_green_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_lime_green_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lime_green_minimal"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lime_green_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_lime_green_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lime_green_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lime_green_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_lime_green_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lime_green_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lime_green_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_lime_green_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lime_green_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lime_green_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_lime_green_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lime_green_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lime_green_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_lime_green_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lime_green_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lime_green_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_lime_green_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lime_green_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lime_green_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_lime_green_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lime_green_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lime_green_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_lime_green_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lime_green_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lime_green_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_lime_green_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lime_green_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lime_green_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_lime_green_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_lime_green_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_lime_green_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_lime_green_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_neon_orange_none"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_neon_orange_none"
+
+            android:roundIcon="@mipmap/ic_launcher_neon_orange_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_neon_orange_blue"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_neon_orange_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_neon_orange_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_neon_orange_dark"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_neon_orange_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_neon_orange_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_neon_orange_orange"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_neon_orange_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_neon_orange_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_neon_orange_cyberpunk"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_neon_orange_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_neon_orange_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_neon_orange_minimal"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_neon_orange_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_neon_orange_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_neon_orange_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_neon_orange_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_neon_orange_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_neon_orange_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_neon_orange_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_neon_orange_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_neon_orange_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_neon_orange_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_neon_orange_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_neon_orange_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_neon_orange_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_neon_orange_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_neon_orange_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_neon_orange_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_neon_orange_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_neon_orange_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_neon_orange_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_neon_orange_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_neon_orange_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_neon_orange_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_neon_orange_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_neon_orange_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_neon_orange_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_neon_orange_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_neon_orange_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_neon_orange_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_neon_orange_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_neon_orange_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_neon_orange_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_neon_orange_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_peach_fuzz_none"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_peach_fuzz_none"
+
+            android:roundIcon="@mipmap/ic_launcher_peach_fuzz_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_peach_fuzz_blue"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_peach_fuzz_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_peach_fuzz_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_peach_fuzz_dark"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_peach_fuzz_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_peach_fuzz_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_peach_fuzz_orange"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_peach_fuzz_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_peach_fuzz_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_peach_fuzz_cyberpunk"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_peach_fuzz_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_peach_fuzz_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_peach_fuzz_minimal"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_peach_fuzz_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_peach_fuzz_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_peach_fuzz_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_peach_fuzz_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_peach_fuzz_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_peach_fuzz_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_peach_fuzz_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_peach_fuzz_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_peach_fuzz_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_peach_fuzz_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_peach_fuzz_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_peach_fuzz_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_peach_fuzz_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_peach_fuzz_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_peach_fuzz_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_peach_fuzz_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_peach_fuzz_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_peach_fuzz_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_peach_fuzz_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_peach_fuzz_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_peach_fuzz_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_peach_fuzz_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_peach_fuzz_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_peach_fuzz_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_peach_fuzz_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_peach_fuzz_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_peach_fuzz_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_peach_fuzz_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_peach_fuzz_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_peach_fuzz_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_peach_fuzz_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_peach_fuzz_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_platinum_silver_none"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_platinum_silver_none"
+
+            android:roundIcon="@mipmap/ic_launcher_platinum_silver_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_platinum_silver_blue"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_platinum_silver_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_platinum_silver_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_platinum_silver_dark"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_platinum_silver_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_platinum_silver_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_platinum_silver_orange"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_platinum_silver_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_platinum_silver_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_platinum_silver_cyberpunk"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_platinum_silver_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_platinum_silver_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_platinum_silver_minimal"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_platinum_silver_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_platinum_silver_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_platinum_silver_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_platinum_silver_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_platinum_silver_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_platinum_silver_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_platinum_silver_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_platinum_silver_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_platinum_silver_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_platinum_silver_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_platinum_silver_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_platinum_silver_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_platinum_silver_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_platinum_silver_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_platinum_silver_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_platinum_silver_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_platinum_silver_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_platinum_silver_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_platinum_silver_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_platinum_silver_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_platinum_silver_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_platinum_silver_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_platinum_silver_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_platinum_silver_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_platinum_silver_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_platinum_silver_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_platinum_silver_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_platinum_silver_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_platinum_silver_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_platinum_silver_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_platinum_silver_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_platinum_silver_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_rose_gold_none"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_rose_gold_none"
+
+            android:roundIcon="@mipmap/ic_launcher_rose_gold_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_rose_gold_blue"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_rose_gold_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_rose_gold_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_rose_gold_dark"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_rose_gold_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_rose_gold_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_rose_gold_orange"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_rose_gold_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_rose_gold_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_rose_gold_cyberpunk"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_rose_gold_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_rose_gold_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_rose_gold_minimal"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_rose_gold_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_rose_gold_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_rose_gold_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_rose_gold_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_rose_gold_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_rose_gold_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_rose_gold_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_rose_gold_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_rose_gold_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_rose_gold_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_rose_gold_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_rose_gold_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_rose_gold_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_rose_gold_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_rose_gold_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_rose_gold_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_rose_gold_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_rose_gold_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_rose_gold_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_rose_gold_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_rose_gold_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_rose_gold_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_rose_gold_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_rose_gold_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_rose_gold_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_rose_gold_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_rose_gold_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_rose_gold_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_rose_gold_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_rose_gold_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_rose_gold_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_rose_gold_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_sage_green_none"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_sage_green_none"
+
+            android:roundIcon="@mipmap/ic_launcher_sage_green_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_sage_green_blue"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_sage_green_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_sage_green_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_sage_green_dark"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_sage_green_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_sage_green_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_sage_green_orange"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_sage_green_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_sage_green_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_sage_green_cyberpunk"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_sage_green_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_sage_green_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_sage_green_minimal"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_sage_green_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_sage_green_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_sage_green_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_sage_green_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_sage_green_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_sage_green_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_sage_green_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_sage_green_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_sage_green_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_sage_green_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_sage_green_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_sage_green_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_sage_green_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_sage_green_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_sage_green_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_sage_green_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_sage_green_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_sage_green_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_sage_green_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_sage_green_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_sage_green_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_sage_green_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_sage_green_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_sage_green_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_sage_green_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_sage_green_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_sage_green_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_sage_green_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_sage_green_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_sage_green_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_sage_green_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_sage_green_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_soft_mint_none"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_soft_mint_none"
+
+            android:roundIcon="@mipmap/ic_launcher_soft_mint_none"
+
+            android:theme="@style/Theme.App.Starting.None"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_soft_mint_blue"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_soft_mint_blue"
+
+            android:roundIcon="@mipmap/ic_launcher_soft_mint_blue"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_soft_mint_dark"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_soft_mint_dark"
+
+            android:roundIcon="@mipmap/ic_launcher_soft_mint_dark"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_soft_mint_orange"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_soft_mint_orange"
+
+            android:roundIcon="@mipmap/ic_launcher_soft_mint_orange"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_soft_mint_cyberpunk"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_soft_mint_cyberpunk"
+
+            android:roundIcon="@mipmap/ic_launcher_soft_mint_cyberpunk"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_soft_mint_minimal"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_soft_mint_minimal"
+
+            android:roundIcon="@mipmap/ic_launcher_soft_mint_minimal"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_soft_mint_deep_space"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_soft_mint_deep_space"
+
+            android:roundIcon="@mipmap/ic_launcher_soft_mint_deep_space"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_soft_mint_nordic_slate"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_soft_mint_nordic_slate"
+
+            android:roundIcon="@mipmap/ic_launcher_soft_mint_nordic_slate"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_soft_mint_warm_sand"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_soft_mint_warm_sand"
+
+            android:roundIcon="@mipmap/ic_launcher_soft_mint_warm_sand"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_soft_mint_sage_garden"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_soft_mint_sage_garden"
+
+            android:roundIcon="@mipmap/ic_launcher_soft_mint_sage_garden"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_soft_mint_burgundy"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_soft_mint_burgundy"
+
+            android:roundIcon="@mipmap/ic_launcher_soft_mint_burgundy"
+
+            android:theme="@style/Theme.App.Starting.Dark"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_soft_mint_aurora"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_soft_mint_aurora"
+
+            android:roundIcon="@mipmap/ic_launcher_soft_mint_aurora"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_soft_mint_sunset"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_soft_mint_sunset"
+
+            android:roundIcon="@mipmap/ic_launcher_soft_mint_sunset"
+
+            android:theme="@style/Theme.App.Starting.Orange"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_soft_mint_ocean"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_soft_mint_ocean"
+
+            android:roundIcon="@mipmap/ic_launcher_soft_mint_ocean"
+
+            android:theme="@style/Theme.App.Starting.Blue"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_soft_mint_grid"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_soft_mint_grid"
+
+            android:roundIcon="@mipmap/ic_launcher_soft_mint_grid"
+
+            android:theme="@style/Theme.App.Starting.Cyberpunk"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
+        </activity-alias>
+
+        <activity-alias
+
+            android:name=".MainActivity_soft_mint_stripes"
+
+            android:targetActivity=".MainActivity"
+
+            android:icon="@mipmap/ic_launcher_soft_mint_stripes"
+
+            android:roundIcon="@mipmap/ic_launcher_soft_mint_stripes"
+
+            android:theme="@style/Theme.App.Starting.Minimal"
+
+            android:enabled="false"
+
+            android:exported="true">
+
+            <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
+            </intent-filter>
+
         </activity-alias>
 
         <receiver
+
             android:name=".util.BootReceiver"
+
             android:exported="false">
+
             <intent-filter>
+
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+
             </intent-filter>
+
         </receiver>
 
         <receiver
+
             android:name=".util.ReminderAlarmReceiver"
+
             android:exported="false">
+
             <intent-filter>
+
                 <action android:name="com.example.fluidcheck.SHOW_REMINDER" />
+
             </intent-filter>
+
         </receiver>
-        
+
         <provider
+
             android:name="androidx.core.content.FileProvider"
+
             android:authorities="${applicationId}.fileprovider"
+
             android:exported="false"
+
             android:grantUriPermissions="true">
+
             <meta-data
+
                 android:name="android.support.FILE_PROVIDER_PATHS"
+
                 android:resource="@xml/file_paths" />
+
         </provider>
 
         <activity
+
             android:name="com.yalantis.ucrop.UCropActivity"
+
             android:screenOrientation="portrait"
+
             android:theme="@style/UCropTheme" />
+
     </application>
 
 </manifest>

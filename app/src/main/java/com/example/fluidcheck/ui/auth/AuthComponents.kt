@@ -110,7 +110,7 @@ fun AuthGoogleSignIn(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(Color.White)
+                .background(androidx.compose.material3.MaterialTheme.colorScheme.surface)
                 .clickable { onGoogleSignInClick() },
             contentAlignment = Alignment.Center
         ) {

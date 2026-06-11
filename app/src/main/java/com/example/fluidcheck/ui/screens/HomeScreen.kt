@@ -196,7 +196,7 @@ fun HomeScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(AppBackground)
+                .background(androidx.compose.material3.MaterialTheme.colorScheme.background)
         ) {
             item {
                 HeroSection(
@@ -237,7 +237,7 @@ fun HomeScreen(
                             enabled = selectionMode,
                             onClick = dismissSelection
                         ),
-                    color = TextDark,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -261,7 +261,7 @@ fun HomeScreen(
                         @Suppress("DEPRECATION")
                         Text(
                             text = stringResource(R.string.no_logs_yet),
-                            color = MutedForeground,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 16.sp,
                             textAlign = TextAlign.Center
                         )
@@ -290,7 +290,7 @@ fun HomeScreen(
                     @Suppress("DEPRECATION")
                     TextButton(
                         onClick = { if (!selectionMode) showHistoryDialog = true else dismissSelection() },
-                        colors = ButtonDefaults.textButtonColors(contentColor = PrimaryBlue),
+                        colors = ButtonDefaults.textButtonColors(contentColor = androidx.compose.material3.MaterialTheme.colorScheme.primary),
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         enabled = true
@@ -348,8 +348,9 @@ fun LazyItemScope.HeroSection(
     onNavigateToProgress: () -> Unit = {},
     progressMeterStyle: String = "RING"
 ) {
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     val gradient = Brush.verticalGradient(
-        colors = listOf(GradientStart, GradientMid, GradientEnd)
+        colors = listOf(themeColors.heroGradientStart, themeColors.heroGradientMid, themeColors.heroGradientEnd)
     )
 
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
@@ -447,7 +448,7 @@ fun LazyItemScope.HeroSection(
                             .padding(horizontal = 24.dp)
                             .clickable { onPremiumFeatureClick() },
                         colors = androidx.compose.material3.CardDefaults.cardColors(
-                            containerColor = Color.White.copy(alpha = 0.15f)
+                            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface.copy(alpha = 0.15f)
                         ),
                         shape = RoundedCornerShape(16.dp)
                     ) {
@@ -634,7 +635,7 @@ fun QuickAddPlusButton(
     Box(
         modifier = modifier
             .height(64.dp)
-            .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+            .background(androidx.compose.material3.MaterialTheme.colorScheme.surface.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
             .drawBehind {
                 drawRoundRect(
                     color = Color.White.copy(alpha = 0.2f),
@@ -728,7 +729,7 @@ fun AddQuickAddDialog(
                         onSave(QuickAddConfig(amount, selectedType))
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary)
             ) {
                 Text("Add")
             }
@@ -785,12 +786,13 @@ fun AddQuickAddDialog(
                 )
             }
         },
-        containerColor = Color.White
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
     )
 }
 
 @Composable
 fun WaveBackground(modifier: Modifier = Modifier) {
+    val waveColorBase = androidx.compose.material3.MaterialTheme.colorScheme.onPrimary
     Canvas(modifier = modifier) {
         val path1 = Path().apply {
             moveTo(0f, size.height * 0.2f)
@@ -799,7 +801,7 @@ fun WaveBackground(modifier: Modifier = Modifier) {
         }
         drawPath(
             path = path1,
-            color = Color.White.copy(alpha = 0.08f),
+            color = waveColorBase.copy(alpha = 0.08f),
             style = Stroke(width = 40.dp.toPx(), cap = StrokeCap.Round)
         )
         
@@ -810,7 +812,7 @@ fun WaveBackground(modifier: Modifier = Modifier) {
         }
         drawPath(
             path = path2,
-            color = Color.White.copy(alpha = 0.06f),
+            color = waveColorBase.copy(alpha = 0.06f),
             style = Stroke(width = 60.dp.toPx(), cap = StrokeCap.Round)
         )
 
@@ -821,7 +823,7 @@ fun WaveBackground(modifier: Modifier = Modifier) {
         }
         drawPath(
             path = path3,
-            color = Color.White.copy(alpha = 0.04f),
+            color = waveColorBase.copy(alpha = 0.04f),
             style = Stroke(width = 50.dp.toPx(), cap = StrokeCap.Round)
         )
     }
@@ -1025,7 +1027,7 @@ fun GoalAchievedDialog(onDismiss: () -> Unit) {
         confirmButton = {
             Button(
                 onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 @Suppress("DEPRECATION")
@@ -1058,7 +1060,7 @@ fun GoalAchievedDialog(onDismiss: () -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             )
         },
-        containerColor = Color.White,
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(24.dp)
     )
 }
@@ -1072,6 +1074,7 @@ fun LogHistoryDialog(
     onDeleteLogs: (List<FluidLog>) -> Unit,
     volumeUnit: VolumeUnit = VolumeUnit.METRIC
 ) {
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedLogs by remember { mutableStateOf(setOf<FluidLog>()) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
@@ -1100,7 +1103,7 @@ fun LogHistoryDialog(
                     Text("Cancel", color = Color.Gray)
                 }
             },
-            containerColor = Color.White
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
         )
     }
 
@@ -1120,7 +1123,7 @@ fun LogHistoryDialog(
                 }
             ) {
                 @Suppress("DEPRECATION")
-                Text(stringResource(R.string.close), fontWeight = FontWeight.Bold, color = PrimaryBlue)
+                Text(stringResource(R.string.close), fontWeight = FontWeight.Bold, color = androidx.compose.material3.MaterialTheme.colorScheme.primary)
             }
         },
         title = {
@@ -1134,7 +1137,7 @@ fun LogHistoryDialog(
                         text = "${selectedLogs.size} selected",
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
-                        color = PrimaryBlue
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.primary
                     )
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1166,7 +1169,7 @@ fun LogHistoryDialog(
                         stringResource(R.string.log_history),
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
-                        color = TextDark
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -1212,13 +1215,13 @@ fun LogHistoryDialog(
                 if (logs == null) {
                     LogHistorySkeleton()
                 } else if (logs.isEmpty()) {
-                    Text("No logs found.", color = MutedForeground)
+                    Text("No logs found.", color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         groupedLogs.forEach { (header, logItems) ->
                             stickyHeader {
                                 Surface(
-                                    color = Color.White,
+                                    color = androidx.compose.material3.MaterialTheme.colorScheme.surface,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     @Suppress("DEPRECATION")
@@ -1226,7 +1229,7 @@ fun LogHistoryDialog(
                                         text = header.uppercase(), 
                                         fontWeight = FontWeight.Black,
                                         fontSize = 11.sp,
-                                        color = PrimaryBlue,
+                                        color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                                         letterSpacing = 1.sp,
                                         modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                                     )
@@ -1236,14 +1239,14 @@ fun LogHistoryDialog(
                                 val isToday = log.date == todayStr
                                 val isLogSelected = selectedLogs.contains(log)
                                 val cardBgColor = when {
-                                    isLogSelected -> PrimaryBlue.copy(alpha = 0.08f)
-                                    else -> Slate50
+                                    isLogSelected -> androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                                    else -> themeColors.cardBackground
                                 }
 
                                 Card(
                                     shape = RoundedCornerShape(12.dp),
                                     colors = CardDefaults.cardColors(containerColor = cardBgColor),
-                                    border = if (isLogSelected) androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.3f)) else null,
+                                    border = if (isLogSelected) androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)) else androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .combinedClickable(
@@ -1274,7 +1277,7 @@ fun LogHistoryDialog(
                                         modifier = Modifier.padding(12.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(log.icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
+                                        Icon(log.icon, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Column(modifier = Modifier.weight(1f)) {
                                             @Suppress("DEPRECATION")
@@ -1301,7 +1304,7 @@ fun LogHistoryDialog(
                                             Text(
                                                 if (header == "Previous Logs") "${log.time} - $formattedDate" else log.time, 
                                                 fontSize = 12.sp, 
-                                                color = MutedForeground,
+                                                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
@@ -1311,7 +1314,7 @@ fun LogHistoryDialog(
                                             Text(
                                                 MeasurementUtils.formatVolumeCompact(LocalContext.current, log.amount, volumeUnit), 
                                                 fontWeight = FontWeight.Bold, 
-                                                color = PrimaryBlue,
+                                                color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Visible
                                             )
@@ -1324,13 +1327,14 @@ fun LogHistoryDialog(
                 }
             }
         },
-        containerColor = Color.White,
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(24.dp)
     )
 }
 
 @Composable
 fun LogHistorySkeleton() {
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     val infiniteTransition = rememberInfiniteTransition(label = "SkeletonPulse")
     val alpha by infiniteTransition.animateFloat(
         initialValue = 0.4f,
@@ -1346,7 +1350,8 @@ fun LogHistorySkeleton() {
         repeat(3) {
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Slate50),
+                colors = CardDefaults.cardColors(containerColor = themeColors.cardBackground),
+                border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -1437,7 +1442,7 @@ fun UpdateDailyGoalDialog(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = Color.White
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
     ) {
         Column(
             modifier = Modifier
@@ -1451,7 +1456,7 @@ fun UpdateDailyGoalDialog(
                 text = stringResource(R.string.daily_goal_dialog_title),
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextDark,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -1489,7 +1494,7 @@ fun UpdateDailyGoalDialog(
                 singleLine = true,
                 textStyle = LocalTextStyle.current.copy(fontSize = 18.sp, fontWeight = FontWeight.Medium),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PrimaryBlue,
+                    focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
                 )
             )
@@ -1508,7 +1513,7 @@ fun UpdateDailyGoalDialog(
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
             ) {
                 @Suppress("DEPRECATION")
@@ -1575,7 +1580,7 @@ fun MetricCard(
         label = "GlowSpread"
     )
 
-    val glowColor = Color(0xFF40E6FD)
+    val glowColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
 
     Surface(
         color = if (isHighlighted) Color.White.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.15f),
@@ -1698,9 +1703,9 @@ fun RecentLogItem(
                 } else Modifier
             ),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+        border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
             modifier = Modifier
@@ -1710,14 +1715,14 @@ fun RecentLogItem(
         ) {
             Surface(
                 modifier = Modifier.size(48.dp),
-                color = PrimaryBlue.copy(alpha = 0.1f),
+                color = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = log.icon,
                         contentDescription = null,
-                        tint = PrimaryBlue,
+                        tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -1731,7 +1736,7 @@ fun RecentLogItem(
                     text = log.type,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
-                    color = TextDark,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1739,7 +1744,7 @@ fun RecentLogItem(
                     Icon(
                         imageVector = AppIcons.Schedule,
                         contentDescription = null,
-                        tint = MutedForeground,
+                        tint = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -1747,7 +1752,7 @@ fun RecentLogItem(
                     Text(
                         text = log.time,
                         fontSize = 12.sp,
-                        color = MutedForeground,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1760,7 +1765,7 @@ fun RecentLogItem(
                     text = MeasurementUtils.formatVolumeCompact(LocalContext.current, log.amount, volumeUnit),
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
-                    color = PrimaryBlue,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     maxLines = 1,
                     overflow = TextOverflow.Visible
                 )

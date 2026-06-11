@@ -84,6 +84,7 @@ fun AdminDashboard(
     currentUserId: String = "",
     measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences = com.example.fluidcheck.util.MeasurementPreferences()
 ) {
+    val themeColors = LocalFluidCheckColors.current
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     var searchQuery by remember { mutableStateOf("") }
     var selectedUserForEdit by remember { mutableStateOf<UserRecord?>(null) }
@@ -261,10 +262,10 @@ fun AdminDashboard(
             dismissButton = {
                 @Suppress("DEPRECATION")
                 TextButton(onClick = { showBulkDeleteConfirm = false }) {
-                    Text(stringResource(R.string.cancel), color = TextDark)
+                    Text(stringResource(R.string.cancel), color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                 }
             },
-            containerColor = Color.White,
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(28.dp)
         )
     }
@@ -314,10 +315,10 @@ fun AdminDashboard(
                 TextButton(
                     onClick = { statusDialogData = null }
                 ) {
-                    Text("OK", color = PrimaryBlue, fontWeight = FontWeight.Bold)
+                    Text("OK", color = androidx.compose.material3.MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             },
-            containerColor = Color.White,
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(28.dp)
         )
     }
@@ -356,10 +357,10 @@ fun AdminDashboard(
                 leadingIcon = { Icon(AppIcons.Search, contentDescription = null, tint = Color.Gray) },
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = Color.LightGray.copy(alpha = 0.3f),
-                    focusedBorderColor = PrimaryBlue,
-                    unfocusedContainerColor = Color.White,
-                    focusedContainerColor = Color.White
+                    unfocusedBorderColor = themeColors.cardBorder,
+                    focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                    unfocusedContainerColor = themeColors.cardBackground,
+                    focusedContainerColor = themeColors.cardBackground
                 ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
@@ -442,6 +443,7 @@ fun EditUserDetailedDialog(
     onDelete: () -> Unit,
     measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences = com.example.fluidcheck.util.MeasurementPreferences()
 ) {
+    val themeColors = LocalFluidCheckColors.current
     var username by remember { mutableStateOf(user.username) }
     var role by remember { mutableStateOf(user.role) }
     var dailyGoal by remember { mutableStateOf(com.example.fluidcheck.util.MeasurementUtils.convertVolumeForDisplay(user.dailyGoal ?: 3000, measurementPreferences.volume).toString()) }
@@ -490,10 +492,10 @@ fun EditUserDetailedDialog(
             },
             dismissButton = {
                 TextButton(onClick = { showDiscardConfirm = false }) {
-                    Text("KEEP EDITING", color = TextDark)
+                    Text("KEEP EDITING", color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                 }
             },
-            containerColor = Color.White,
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(28.dp)
         )
     }
@@ -529,7 +531,7 @@ fun EditUserDetailedDialog(
             text = { 
                 Text(
                     "Are you sure you want to delete \"${user.username.ifEmpty { user.email }}\"? This action cannot be undone.",
-                    color = TextDark
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                 )
             },
             confirmButton = {
@@ -546,10 +548,10 @@ fun EditUserDetailedDialog(
             dismissButton = {
                 @Suppress("DEPRECATION")
                 TextButton(onClick = { showDeleteFirstConfirm = false }) {
-                    Text(stringResource(R.string.cancel), color = TextDark)
+                    Text(stringResource(R.string.cancel), color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                 }
             },
-            containerColor = Color.White,
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(28.dp)
         )
     }
@@ -575,7 +577,7 @@ fun EditUserDetailedDialog(
                 .fillMaxSize()
                 .padding(16.dp),
             shape = RoundedCornerShape(28.dp),
-            color = Color.White
+            color = themeColors.cardBackground
         ) {
             if (internalStatusDialogData != null) {
                 val (isSuccess, message) = internalStatusDialogData!!
@@ -591,10 +593,10 @@ fun EditUserDetailedDialog(
                     text = { Text(message) },
                     confirmButton = {
                         TextButton(onClick = { internalStatusDialogData = null }) {
-                            Text("OK", color = PrimaryBlue, fontWeight = FontWeight.Bold)
+                            Text("OK", color = androidx.compose.material3.MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         }
                     },
-                    containerColor = Color.White,
+                    containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
                     shape = RoundedCornerShape(28.dp)
                 )
             }
@@ -615,7 +617,7 @@ fun EditUserDetailedDialog(
                         text = if (canEdit) "Edit User Details" else "User Details",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextDark
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                     )
                     IconButton(onClick = {
                         if (hasChanges()) {
@@ -635,9 +637,9 @@ fun EditUserDetailedDialog(
                     Surface(
                         modifier = Modifier.size(100.dp),
                         shape = CircleShape,
-                        color = Color.White,
+                        color = themeColors.cardBackground,
                         shadowElevation = 2.dp,
-                        border = androidx.compose.foundation.BorderStroke(2.dp, PrimaryBlue.copy(alpha = 0.3f))
+                        border = androidx.compose.foundation.BorderStroke(2.dp, androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                     ) {
                         AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
@@ -680,7 +682,7 @@ fun EditUserDetailedDialog(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 if (canEdit && user.role != "ADMIN") {
-                    Text("Role", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextDark)
+                    Text("Role", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                     Spacer(modifier = Modifier.height(8.dp))
                     var roleExpanded by remember { mutableStateOf(false) }
                     ExposedDropdownMenuBox(
@@ -695,8 +697,8 @@ fun EditUserDetailedDialog(
                             modifier = Modifier.fillMaxWidth().menuAnchor(),
                             shape = RoundedCornerShape(16.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = PrimaryBlue,
-                                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                                focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = themeColors.cardBorder
                             )
                         )
                         ExposedDropdownMenu(
@@ -774,10 +776,10 @@ fun EditUserDetailedDialog(
                             .fillMaxWidth()
                             .clickable { showProgressGraph = !showProgressGraph },
                         shape = RoundedCornerShape(16.dp),
-                        color = if (showProgressGraph) PrimaryBlue.copy(alpha = 0.08f) else Slate50,
+                        color = if (showProgressGraph) androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else themeColors.cardBackground,
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp, 
-                            if (showProgressGraph) PrimaryBlue.copy(alpha = 0.3f) else Color.LightGray.copy(alpha = 0.2f)
+                            if (showProgressGraph) androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else themeColors.cardBorder
                         )
                     ) {
                         Row(
@@ -789,7 +791,7 @@ fun EditUserDetailedDialog(
                                 Icon(
                                     AppIcons.Progress,
                                     contentDescription = null,
-                                    tint = PrimaryBlue,
+                                    tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
@@ -797,7 +799,7 @@ fun EditUserDetailedDialog(
                                     text = if (showProgressGraph) "Hide Progress Graph" else "Show Progress Graph",
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = TextDark
+                                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                                 )
                             }
                             Icon(
@@ -869,7 +871,7 @@ fun EditUserDetailedDialog(
                             .fillMaxWidth()
                             .height(56.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                        colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary),
                         enabled = !isLoading
                     ) {
                         if (isLoading) {
@@ -943,7 +945,7 @@ fun PasswordConfirmationDialog(
                     text = "🔒 Security Verification",
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
-                    color = TextDark
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -985,7 +987,7 @@ fun PasswordConfirmationDialog(
                     }),
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryBlue,
+                        focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
                         errorBorderColor = ErrorRed
                     ),
@@ -1004,7 +1006,7 @@ fun PasswordConfirmationDialog(
                     Spacer(modifier = Modifier.height(12.dp))
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth(),
-                        color = PrimaryBlue
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -1040,10 +1042,10 @@ fun PasswordConfirmationDialog(
                 onClick = onDismiss,
                 enabled = !isLoading
             ) {
-                Text(stringResource(R.string.cancel), color = TextDark)
+                Text(stringResource(R.string.cancel), color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
             }
         },
-        containerColor = Color.White,
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(28.dp)
     )
 }
@@ -1055,6 +1057,7 @@ fun UserProgressChart(
     accountCreatedAt: com.google.firebase.Timestamp? = null,
     measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences = com.example.fluidcheck.util.MeasurementPreferences()
 ) {
+    val themeColors = LocalFluidCheckColors.current
     var selectedTab by remember { mutableStateOf("Week") }
     var navOffset by remember { mutableIntStateOf(0) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -1154,9 +1157,9 @@ fun UserProgressChart(
             .fillMaxWidth()
             .wrapContentHeight(),
         shape = RoundedCornerShape(24.dp),
-        color = Color.White,
+        color = themeColors.cardBackground,
         shadowElevation = 4.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Slate100)
+        border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -1207,19 +1210,20 @@ fun InfoSectionHeader(title: String) {
 
 @Composable
 fun ReadOnlyField(label: String, value: String) {
+    val themeColors = LocalFluidCheckColors.current
     Column(modifier = Modifier.padding(bottom = 12.dp)) {
-        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextDark)
+        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
         Spacer(modifier = Modifier.height(4.dp))
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            color = Slate50,
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
+            color = themeColors.cardBackground,
+            border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder)
         ) {
             Text(
                 text = value,
                 modifier = Modifier.padding(16.dp),
-                color = MutedForeground,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 14.sp
             )
         }
@@ -1241,7 +1245,7 @@ fun AnalyticsGrid(
                 title = stringResource(R.string.total_users),
                 value = totalUsers,
                 icon = AppIcons.Group,
-                iconColor = PrimaryBlue,
+                iconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
             AnalyticsCard(
@@ -1293,7 +1297,7 @@ fun AnalyticsCard(
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(32.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
@@ -1320,7 +1324,7 @@ fun AnalyticsCard(
                 text = value,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Black,
-                color = TextDark
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
             )
         }
     }
@@ -1354,7 +1358,7 @@ fun UserDirectoryHeader(
                         text = "$selectedCount selected",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = PrimaryBlue
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.primary
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1388,7 +1392,7 @@ fun UserDirectoryHeader(
                 text = stringResource(R.string.user_directory),
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextDark
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
             )
             @Suppress("DEPRECATION")
             Text(
@@ -1459,7 +1463,7 @@ fun RowScope.SortableColumnHeader(
         Text(
             text = title, 
             fontSize = 14.sp, 
-            color = if (isActive) PrimaryBlue else Color.Gray,
+            color = if (isActive) androidx.compose.material3.MaterialTheme.colorScheme.primary else Color.Gray,
             fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
         )
         if (isActive) {
@@ -1473,7 +1477,7 @@ fun RowScope.SortableColumnHeader(
                 imageVector = if (isDown) Icons.Default.ArrowDropDown else Icons.Default.ArrowDropUp,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
-                tint = PrimaryBlue
+                tint = androidx.compose.material3.MaterialTheme.colorScheme.primary
             )
         }
     }
@@ -1489,7 +1493,7 @@ fun UserRow(
     onLongClick: () -> Unit = {}
 ) {
     val selectionColor by animateColorAsState(
-        targetValue = if (isSelected) PrimaryBlue.copy(alpha = 0.08f) else Color.Transparent,
+        targetValue = if (isSelected) androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else Color.Transparent,
         animationSpec = tween(durationMillis = 200)
     )
 
@@ -1513,7 +1517,7 @@ fun UserRow(
                     onCheckedChange = { onClick() },
                     modifier = Modifier.size(32.dp),
                     colors = CheckboxDefaults.colors(
-                        checkedColor = PrimaryBlue,
+                        checkedColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                         uncheckedColor = Color.Gray.copy(alpha = 0.5f)
                     )
                 )
@@ -1521,7 +1525,7 @@ fun UserRow(
             }
 
             Column(modifier = Modifier.weight(2f)) {
-                Text(user.username.ifEmpty { "No Username" }, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextDark)
+                Text(user.username.ifEmpty { "No Username" }, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                 Text(user.email, fontSize = 12.sp, color = Color.Gray)
             }
             
@@ -1529,10 +1533,10 @@ fun UserRow(
                 val roleColor = when (user.role) {
                     "ADMIN" -> Blue100
                     "MODERATOR" -> Amber100
-                    else -> Slate100
+                    else -> androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
                 }
                 val roleTextColor = when (user.role) {
-                    "ADMIN" -> PrimaryBlue
+                    "ADMIN" -> androidx.compose.material3.MaterialTheme.colorScheme.primary
                     "MODERATOR" -> Amber700
                     else -> Color.Gray
                 }

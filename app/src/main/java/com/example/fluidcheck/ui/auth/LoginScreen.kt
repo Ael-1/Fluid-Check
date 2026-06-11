@@ -268,12 +268,12 @@ fun LoginScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                            colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface),
                             shape = RoundedCornerShape(16.dp)
                         ) {
                             Text(
                                 text = stringResource(R.string.sign_in),
-                                color = PrimaryBlue,
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
@@ -349,7 +349,7 @@ fun LoginScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(Color.White)
+                                .background(androidx.compose.material3.MaterialTheme.colorScheme.surface)
                                 .clickable { onGoogleSignInClick() },
                             contentAlignment = Alignment.Center
                         ) {

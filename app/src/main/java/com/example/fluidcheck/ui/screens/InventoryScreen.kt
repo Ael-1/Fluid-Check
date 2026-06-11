@@ -28,8 +28,6 @@ import com.example.fluidcheck.model.BadgeDefinition
 import com.example.fluidcheck.model.BadgeRarity
 import com.example.fluidcheck.model.MissionPool
 import com.example.fluidcheck.model.UserRecord
-import com.example.fluidcheck.ui.theme.PrimaryBlue
-import com.example.fluidcheck.ui.theme.TextDark
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -116,19 +114,21 @@ fun ConsumablesTab(
     onShieldClick: () -> Unit,
     onFragmentClick: () -> Unit
 ) {
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     Column(modifier = Modifier.padding(24.dp).fillMaxSize()) {
-        Text("Your Items", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextDark)
+        Text("Your Items", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
         Spacer(modifier = Modifier.height(16.dp))
         
         // Shield Item
         Surface(
             modifier = Modifier.fillMaxWidth().clickable { onShieldClick() },
             shape = RoundedCornerShape(16.dp),
-            color = Color.White,
-            shadowElevation = 2.dp
+            color = themeColors.cardBackground,
+            shadowElevation = 2.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder)
         ) {
             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(64.dp).background(PrimaryBlue.copy(alpha=0.1f), CircleShape), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.size(64.dp).background(androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha=0.1f), CircleShape), contentAlignment = Alignment.Center) {
                     Text("🛡️", fontSize = 32.sp)
                 }
                 Spacer(modifier = Modifier.width(16.dp))
@@ -136,7 +136,7 @@ fun ConsumablesTab(
                     Text("Streak Shield", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text("Protects your streak if you miss your goal.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
-                Text("x$shields", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = PrimaryBlue)
+                Text("x$shields", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = androidx.compose.material3.MaterialTheme.colorScheme.primary)
             }
         }
         
@@ -146,8 +146,9 @@ fun ConsumablesTab(
         Surface(
             modifier = Modifier.fillMaxWidth().clickable { onFragmentClick() },
             shape = RoundedCornerShape(16.dp),
-            color = Color.White,
-            shadowElevation = 2.dp
+            color = themeColors.cardBackground,
+            shadowElevation = 2.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder)
         ) {
             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(64.dp).background(Color(0xFF8B5CF6).copy(alpha=0.1f), CircleShape), contentAlignment = Alignment.Center) {
@@ -162,7 +163,7 @@ fun ConsumablesTab(
                         progress = { fragments / 10f },
                         modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
                         color = Color(0xFF8B5CF6),
-                        trackColor = Color(0xFFF1F5F9)
+                        trackColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
                     )
                 }
                 Spacer(modifier = Modifier.width(16.dp))
@@ -196,7 +197,7 @@ fun BadgeGalleryTab(
                     "Mission Badges",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = TextDark,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 24.dp)
                 )
                 
@@ -240,7 +241,7 @@ fun BadgeGalleryTab(
                 "Milestone Badges",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = TextDark,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 32.dp, bottom = 8.dp)
             )
         }
@@ -298,7 +299,7 @@ fun BadgeItem(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .offset(x = 4.dp, y = 4.dp)
-                        .background(PrimaryBlue, CircleShape)
+                        .background(androidx.compose.material3.MaterialTheme.colorScheme.primary, CircleShape)
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text("x$count", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -310,7 +311,7 @@ fun BadgeItem(
             text = badge.name,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
-            color = if (isEarned) TextDark else Color.Gray,
+            color = if (isEarned) androidx.compose.material3.MaterialTheme.colorScheme.onSurface else Color.Gray,
             textAlign = TextAlign.Center,
             maxLines = 2
         )
@@ -344,7 +345,7 @@ fun BadgeDetailsDialog(badge: BadgeDefinition, count: Int, onDismiss: () -> Unit
                 Text(badge.description, textAlign = TextAlign.Center, color = Color.Gray)
                 Spacer(modifier = Modifier.height(16.dp))
                 if (count > 0) {
-                    Text("Earned $count time${if (count > 1) "s" else ""}", fontWeight = FontWeight.Bold, color = PrimaryBlue)
+                    Text("Earned $count time${if (count > 1) "s" else ""}", fontWeight = FontWeight.Bold, color = androidx.compose.material3.MaterialTheme.colorScheme.primary)
                 } else {
                     Text("Not yet earned", color = Color.Gray)
                 }

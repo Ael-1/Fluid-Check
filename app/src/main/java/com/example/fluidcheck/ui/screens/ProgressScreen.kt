@@ -60,6 +60,7 @@ fun ProgressScreen(
     onCompleteMission: suspend (String) -> Unit = {},
     onNavigateToInventory: () -> Unit = {}
 ) {
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     var selectedTab by remember { mutableStateOf("Day") }
     var navOffset by remember { mutableIntStateOf(0) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -198,7 +199,7 @@ fun ProgressScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppBackground)
+            .background(androidx.compose.material3.MaterialTheme.colorScheme.background)
             .padding(horizontal = 24.dp)
             .verticalScroll(rememberScrollState())
     ) {
@@ -210,7 +211,7 @@ fun ProgressScreen(
             text = stringResource(R.string.your_progress),
             style = MaterialTheme.typography.headlineLarge.copy(
                 fontSize = 32.sp,
-                color = TextDark,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                 letterSpacing = (-0.5).sp
             )
         )
@@ -219,7 +220,7 @@ fun ProgressScreen(
         Text(
             text = stringResource(R.string.progress_subtitle),
             style = MaterialTheme.typography.bodyLarge.copy(
-                color = MutedForeground
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
             ),
             modifier = Modifier.padding(top = 4.dp)
         )
@@ -232,9 +233,9 @@ fun ProgressScreen(
                 .fillMaxWidth()
                 .wrapContentHeight(),
             shape = RoundedCornerShape(40.dp),
-            color = Color.White,
+            color = themeColors.cardBackground,
             shadowElevation = 8.dp,
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+            border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder)
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
@@ -295,7 +296,7 @@ fun ProgressScreen(
             grade.startsWith("B") -> Color(0xFFFFF4E5)
             grade.startsWith("C") -> Color(0xFFFFFBE6)
             grade.startsWith("D") -> Color(0xFFFFF2F2)
-            else -> Color(0xFFF1F5F9)
+            else -> androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
         }
         val gradeTextColor = when {
             grade.startsWith("A") -> Color(0xFF1B803A)
@@ -311,9 +312,9 @@ fun ProgressScreen(
                 .wrapContentHeight()
                 .clickable { if (userRole == "FREE USER") onPremiumFeatureClick() },
             shape = RoundedCornerShape(32.dp),
-            color = if (userRole == "FREE USER") Color(0xFFF8FAFC) else Color.White,
+            color = if (userRole == "FREE USER") themeColors.cardBackground.copy(alpha = 0.5f) else themeColors.cardBackground,
             shadowElevation = if (userRole == "FREE USER") 2.dp else 8.dp,
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+            border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder)
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Row(
@@ -325,7 +326,7 @@ fun ProgressScreen(
                         Icon(
                             imageVector = AppIcons.AICoach,
                             contentDescription = null,
-                            tint = if (userRole == "FREE USER") Color.LightGray else PrimaryBlue,
+                            tint = if (userRole == "FREE USER") Color.LightGray else androidx.compose.material3.MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -333,7 +334,7 @@ fun ProgressScreen(
                             text = "AI Weekly Scorecard",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = if (userRole == "FREE USER") Color.Gray else TextDark
+                                color = if (userRole == "FREE USER") Color.Gray else androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                             )
                         )
                     }
@@ -365,7 +366,7 @@ fun ProgressScreen(
                     Text(
                         text = feedback,
                         style = MaterialTheme.typography.bodyLarge.copy(
-                            color = MutedForeground,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 22.sp
                         )
                     )
@@ -373,7 +374,7 @@ fun ProgressScreen(
                     Text(
                         text = "Unlock Premium to get detailed AI analysis on your weekly hydration habits, personalized tips, and a weekly grade.",
                         style = MaterialTheme.typography.bodyLarge.copy(
-                            color = MutedForeground.copy(alpha = 0.7f),
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             lineHeight = 22.sp
                         )
                     )
@@ -411,7 +412,7 @@ fun TimeRangeTabs(selectedTab: String, onTabSelected: (String) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFFF1F5F9))
+            .background(androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant)
             .padding(4.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -427,7 +428,7 @@ fun TimeRangeTabs(selectedTab: String, onTabSelected: (String) -> Unit) {
                             else Modifier
                         )
                         .clip(RoundedCornerShape(12.dp))
-                        .background(if (isSelected) Color.White else Color.Transparent)
+                        .background(if (isSelected) androidx.compose.material3.MaterialTheme.colorScheme.surface else Color.Transparent)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
@@ -441,7 +442,7 @@ fun TimeRangeTabs(selectedTab: String, onTabSelected: (String) -> Unit) {
                         text = tab,
                         fontSize = 14.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) TextDark else MutedForeground
+                        color = if (isSelected) androidx.compose.material3.MaterialTheme.colorScheme.onSurface else MutedForeground
                     )
                 }
             }
@@ -459,7 +460,7 @@ fun DateNavigationBar(
     onLabelClick: () -> Unit
 ) {
     Surface(
-        color = AccentBlue.copy(alpha = 0.3f),
+        color = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -478,7 +479,7 @@ fun DateNavigationBar(
                 Icon(
                     imageVector = AppIcons.ArrowLeft,
                     contentDescription = stringResource(R.string.previous),
-                    tint = if (isPreviousEnabled) TextDark else Color(0xFF94A3B8).copy(alpha = 0.3f),
+                    tint = if (isPreviousEnabled) androidx.compose.material3.MaterialTheme.colorScheme.onSurface else Color(0xFF94A3B8).copy(alpha = 0.3f),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -501,7 +502,7 @@ fun DateNavigationBar(
                     text = label,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextDark
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -513,7 +514,7 @@ fun DateNavigationBar(
                 Icon(
                     imageVector = AppIcons.ArrowRight,
                     contentDescription = stringResource(R.string.next),
-                    tint = if (isNextEnabled) TextDark else Color(0xFF94A3B8).copy(alpha = 0.3f),
+                    tint = if (isNextEnabled) androidx.compose.material3.MaterialTheme.colorScheme.onSurface else Color(0xFF94A3B8).copy(alpha = 0.3f),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -534,7 +535,7 @@ fun HydrationDatePickerDialog(
     var currentMonth by remember { mutableStateOf(YearMonth.from(initialDate)) }
     var selectedDate by remember { mutableStateOf(initialDate) }
     val today = remember { LocalDate.now(PST_ZONE) }
-    val completedGoalColor = AccentBlue.copy(alpha = 0.3f)
+    val completedGoalColor = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
@@ -542,12 +543,12 @@ fun HydrationDatePickerDialog(
             TextButton(
                 onClick = { onDateSelected(selectedDate) }
             ) {
-                Text(stringResource(R.string.confirm), color = PrimaryBlue, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.confirm), color = androidx.compose.material3.MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismissRequest) {
-                Text(stringResource(R.string.cancel), color = MutedForeground)
+                Text(stringResource(R.string.cancel), color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         title = {
@@ -555,7 +556,7 @@ fun HydrationDatePickerDialog(
                 text = "Select Date",
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.Bold,
-                    color = TextDark
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                 )
             )
         },
@@ -580,7 +581,7 @@ fun HydrationDatePickerDialog(
                         Icon(
                             imageVector = AppIcons.ArrowLeft,
                             contentDescription = "Previous Month",
-                            tint = if (prevEnabled) TextDark else Color(0xFF94A3B8).copy(alpha = 0.3f)
+                            tint = if (prevEnabled) androidx.compose.material3.MaterialTheme.colorScheme.onSurface else Color(0xFF94A3B8).copy(alpha = 0.3f)
                         )
                     }
 
@@ -588,7 +589,7 @@ fun HydrationDatePickerDialog(
                         text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())),
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
-                        color = TextDark
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                     )
 
                     IconButton(
@@ -598,7 +599,7 @@ fun HydrationDatePickerDialog(
                         Icon(
                             imageVector = AppIcons.ArrowRight,
                             contentDescription = "Next Month",
-                            tint = if (nextEnabled) TextDark else Color(0xFF94A3B8).copy(alpha = 0.3f)
+                            tint = if (nextEnabled) androidx.compose.material3.MaterialTheme.colorScheme.onSurface else Color(0xFF94A3B8).copy(alpha = 0.3f)
                         )
                     }
                 }
@@ -615,7 +616,7 @@ fun HydrationDatePickerDialog(
                             textAlign = TextAlign.Center,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
-                            color = MutedForeground
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -662,13 +663,15 @@ fun HydrationDatePickerDialog(
                                     ) {
                                         if (isSelectable) {
                                             // Progress background representation (pie chart style)
+                                            val primaryColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
+                                            val bgColor = androidx.compose.material3.MaterialTheme.colorScheme.background
                                             Canvas(modifier = Modifier.fillMaxSize().padding(4.dp)) {
                                                 val size = this.size
                                                 val radius = size.minDimension / 2
                                                 
-                                                // Background soft progress circle (using AppBackground color)
+                                                // Background soft progress circle (using androidx.compose.material3.MaterialTheme.colorScheme.background color)
                                                 drawCircle(
-                                                    color = AppBackground,
+                                                    color = bgColor,
                                                     radius = radius
                                                 )
                                                 
@@ -687,7 +690,7 @@ fun HydrationDatePickerDialog(
                                                 // Clean border ring highlight for the selected date
                                                 if (isSelected) {
                                                     drawCircle(
-                                                        color = PrimaryBlue,
+                                                        color = primaryColor,
                                                         radius = radius - 1.dp.toPx(),
                                                         style = Stroke(width = 2.5f.dp.toPx())
                                                     )
@@ -701,8 +704,8 @@ fun HydrationDatePickerDialog(
                                             fontSize = 13.sp,
                                             color = when {
                                                 !isSelectable -> MutedForeground.copy(alpha = 0.3f)
-                                                isSelected -> PrimaryBlue
-                                                else -> TextDark
+                                                isSelected -> androidx.compose.material3.MaterialTheme.colorScheme.primary
+                                                else -> androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                                             }
                                         )
                                     }
@@ -746,7 +749,7 @@ fun HydrationLineChart(
                 Text(
                     text = label,
                     fontSize = 11.sp,
-                    color = MutedForeground,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -758,13 +761,14 @@ fun HydrationLineChart(
         Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 // Grid Lines
+                val gridColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val height = size.height
                     val lines = if (yLabels.size > 1) yLabels.size - 1 else 1
                     for (i in 0..lines) {
                         val y = height - (i * (height / lines))
                         drawLine(
-                            color = Color(0xFFF1F5F9),
+                            color = gridColor,
                             start = Offset(0f, y),
                             end = Offset(size.width, y),
                             strokeWidth = 1.dp.toPx()
@@ -773,6 +777,7 @@ fun HydrationLineChart(
                 }
 
                 // Line Chart Visuals
+                val primaryColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     if (dataPoints.isEmpty()) return@Canvas
 
@@ -809,7 +814,7 @@ fun HydrationLineChart(
 
                         drawPath(
                             path = path,
-                            color = PrimaryBlue,
+                            color = primaryColor,
                             style = Stroke(width = 3.dp.toPx())
                         )
                     }
@@ -822,7 +827,7 @@ fun HydrationLineChart(
                             center = point
                         )
                         drawCircle(
-                            color = PrimaryBlue,
+                            color = primaryColor,
                             radius = 4.dp.toPx(),
                             center = point,
                             style = Stroke(width = 2.dp.toPx())
@@ -849,7 +854,7 @@ fun HydrationLineChart(
                     Text(
                         text = processedLabel,
                         fontSize = 11.sp,
-                        color = MutedForeground,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.width(IntrinsicSize.Min)

@@ -27,6 +27,7 @@ import com.example.fluidcheck.ui.theme.*
 @Composable
 fun AboutDeveloperScreen(onBack: () -> Unit) {
     val scrollState = rememberScrollState()
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
 
     Scaffold(
         topBar = {
@@ -38,11 +39,11 @@ fun AboutDeveloperScreen(onBack: () -> Unit) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AppBackground
+                    containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background
                 )
             )
         },
-        containerColor = AppBackground
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -58,7 +59,7 @@ fun AboutDeveloperScreen(onBack: () -> Unit) {
             Surface(
                 modifier = Modifier.size(160.dp),
                 shape = CircleShape,
-                color = Color.White,
+                color = themeColors.cardBackground,
                 shadowElevation = 8.dp
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -77,7 +78,7 @@ fun AboutDeveloperScreen(onBack: () -> Unit) {
                 text = "Vincent Rafael Apog",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Black,
-                color = TextDark,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
             
@@ -85,7 +86,7 @@ fun AboutDeveloperScreen(onBack: () -> Unit) {
                 text = stringResource(R.string.lead_developer),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = PrimaryBlue,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                 letterSpacing = 1.sp
             )
 
@@ -94,22 +95,22 @@ fun AboutDeveloperScreen(onBack: () -> Unit) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
-                color = Color.White,
+                color = themeColors.cardBackground,
                 shadowElevation = 2.dp,
-                border = androidx.compose.foundation.BorderStroke(1.dp, Slate100)
+                border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder)
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Text(
                         text = stringResource(R.string.dev_background_title),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextDark
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = stringResource(R.string.dev_background_content),
                         fontSize = 14.sp,
-                        color = MutedForeground,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 22.sp
                     )
                 }
@@ -121,16 +122,16 @@ fun AboutDeveloperScreen(onBack: () -> Unit) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
-                color = Color.White,
+                color = themeColors.cardBackground,
                 shadowElevation = 2.dp,
-                border = androidx.compose.foundation.BorderStroke(1.dp, Slate100)
+                border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder)
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Text(
                         text = stringResource(R.string.get_in_touch),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextDark
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                     )
                     
                     Spacer(modifier = Modifier.height(16.dp))
@@ -159,14 +160,14 @@ fun ContactItem(icon: ImageVector, label: String, value: String) {
         Surface(
             modifier = Modifier.size(40.dp),
             shape = RoundedCornerShape(12.dp),
-            color = PrimaryBlue.copy(alpha = 0.1f)
+            color = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
-                    tint = PrimaryBlue
+                    tint = androidx.compose.material3.MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -178,13 +179,13 @@ fun ContactItem(icon: ImageVector, label: String, value: String) {
                 text = label,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = MutedForeground
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = value,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextDark
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
             )
         }
     }

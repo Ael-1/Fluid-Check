@@ -4,12 +4,16 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectDragGestures
+import kotlin.math.roundToInt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.zIndex
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,13 +52,8 @@ import com.example.fluidcheck.ui.screens.AboutDeveloperScreen
 import com.example.fluidcheck.ui.auth.SignUpScreen
 import com.example.fluidcheck.ui.auth.VerifyAccountScreen
 import com.example.fluidcheck.ui.admin.AdminDashboard
-import com.example.fluidcheck.ui.theme.AppBackgroundContainer
-import com.example.fluidcheck.ui.theme.BackgroundType
 import com.example.fluidcheck.ui.theme.AppIcons
-import com.example.fluidcheck.ui.theme.PrimaryBlue
-import com.example.fluidcheck.ui.theme.TextDark
 import com.example.fluidcheck.ui.theme.Slate50
-import com.example.fluidcheck.ui.theme.Slate100
 import com.example.fluidcheck.ui.theme.ErrorRed
 import com.example.fluidcheck.util.NetworkMonitor
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -108,8 +107,8 @@ fun MainScreen(
     val appThemeFlow = remember(userId) { repository.getAppTheme(userId) }
     val appTheme by appThemeFlow.collectAsState(initial = "LIGHT")
     
-    val appBackgroundFlow = remember(userId) { repository.getAppBackground(userId) }
-    val appBackground by appBackgroundFlow.collectAsState(initial = "NONE")
+    val appIconBackgroundFlow = remember(userId) { repository.getAppIconBackground(userId) }
+    val appIconBackground by appIconBackgroundFlow.collectAsState(initial = "BLUE")
     
     val progressMeterStyleFlow = remember(userId) { repository.getProgressMeterStyle(userId) }
     val progressMeterStyle by progressMeterStyleFlow.collectAsState(initial = "RING")
@@ -204,6 +203,78 @@ fun MainScreen(
     var isAdminMode by rememberSaveable(userId, isPrimaryAdmin, isDatabaseAdmin, adminModeState) { 
         val prefValue = adminModeState as? Boolean
         mutableStateOf(if (isPrimaryAdmin) true else prefValue ?: isDatabaseAdmin) 
+    }
+
+    // Mission Completion Banner states
+    val notifiedMissionIdsFlow = remember(userId) { repository.getNotifiedMissionIds(userId) }
+    val notifiedMissionIds by notifiedMissionIdsFlow.collectAsState(initial = emptySet())
+    val bannerQueue = remember { mutableStateListOf<String>() }
+    var currentBannerMissionId by remember { mutableStateOf<String?>(null) }
+    var isFirstCheck by remember { mutableStateOf(true) }
+
+    LaunchedEffect(userRecord?.activeMissions, notifiedMissionIds) {
+        val currentRecord = userRecord ?: return@LaunchedEffect
+        val activeMissions = currentRecord.activeMissions ?: emptyList()
+        val activeIds = activeMissions.mapNotNull { it["missionId"] as? String }.toSet()
+        
+        // Clean up persistent notified IDs that are no longer active to allow re-entry in future accepts
+        val currentNotified = notifiedMissionIds.intersect(activeIds)
+        if (currentNotified.size != notifiedMissionIds.size) {
+            repository.saveNotifiedMissionIds(userId, currentNotified)
+        }
+
+        val completedNow = activeMissions.filter { data ->
+            val missionId = data["missionId"] as? String ?: return@filter false
+            val progress = (data["progress"] as? Number)?.toInt() ?: 0
+            val missionDef = com.example.fluidcheck.model.MissionPool.getMission(missionId)
+            val targetValue = missionDef?.targetValue ?: 0
+            val isFailed = (data["failed"] as? Boolean) == true
+            progress >= targetValue && targetValue > 0 && !isFailed
+        }.mapNotNull { it["missionId"] as? String }
+
+        if (isFirstCheck) {
+            val updatedNotified = currentNotified + completedNow.toSet()
+            if (updatedNotified.size != notifiedMissionIds.size) {
+                repository.saveNotifiedMissionIds(userId, updatedNotified)
+            }
+            isFirstCheck = false
+        } else {
+            val newlyCompleted = completedNow.filter { !notifiedMissionIds.contains(it) }
+            if (newlyCompleted.isNotEmpty()) {
+                val updatedNotified = notifiedMissionIds + newlyCompleted.toSet()
+                repository.saveNotifiedMissionIds(userId, updatedNotified)
+                newlyCompleted.forEach { mId ->
+                    if (!bannerQueue.contains(mId)) {
+                        bannerQueue.add(mId)
+                    }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(currentBannerMissionId, bannerQueue.size) {
+        if (currentBannerMissionId == null && bannerQueue.isNotEmpty()) {
+            currentBannerMissionId = bannerQueue.removeAt(0)
+        }
+    }
+
+    LaunchedEffect(currentBannerMissionId) {
+        val currentId = currentBannerMissionId
+        if (currentId != null) {
+            kotlinx.coroutines.delay(5000)
+            if (currentBannerMissionId == currentId) {
+                currentBannerMissionId = null
+            }
+        }
+    }
+
+    LaunchedEffect(userId) {
+        if (userId.isNotEmpty() && userId != "GUEST") {
+            while (true) {
+                firestoreRepository.checkMissionProgress(userId)
+                kotlinx.coroutines.delay(15000) // Periodic update check every 15 seconds
+            }
+        }
     }
 
     // Role Reconciliation (Supports Cold Start via DataStore and Live Sync)
@@ -444,7 +515,7 @@ fun MainScreen(
             onDismissRequest = { showRoleChangeDialog = false },
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(AppIcons.Info, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(24.dp))
+                    Icon(AppIcons.Info, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Role Updated", fontWeight = FontWeight.Bold)
                 }
@@ -453,28 +524,28 @@ fun MainScreen(
                 Text(
                     buildAnnotatedString {
                         append("Your account role has been updated from ")
-                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = PrimaryBlue)) {
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = androidx.compose.material3.MaterialTheme.colorScheme.primary)) {
                             append(oldRoleName)
                         }
                         append(" to ")
-                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = PrimaryBlue)) {
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = androidx.compose.material3.MaterialTheme.colorScheme.primary)) {
                             append(newRoleName)
                         }
                         append(". Some features may have been added or removed.")
                     },
-                    color = TextDark
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                 )
             },
             confirmButton = {
                 Button(
                     onClick = { showRoleChangeDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                    colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Got it")
                 }
             },
-            containerColor = Color.White,
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(28.dp)
         )
     }
@@ -509,7 +580,7 @@ fun MainScreen(
             if (!isLoading && !isAdminMode && currentDestination?.route == NavRoutes.Home.route) {
                 FloatingActionButton(
                     onClick = { showLogSheet = true },
-                    containerColor = PrimaryBlue,
+                    containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     contentColor = Color.White,
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.size(64.dp)
@@ -523,23 +594,17 @@ fun MainScreen(
             }
         }
     ) { innerPadding ->
-        val bgType = try { BackgroundType.valueOf(appBackground) } catch (e: Exception) { BackgroundType.NONE }
-        AppBackgroundContainer(
-            backgroundType = bgType,
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(Unit) {
+                .pointerInput(Unit) {
                         detectTapGestures(onTap = { focusManager.clearFocus() })
                     }
             ) {
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = PrimaryBlue)
+                    CircularProgressIndicator(color = androidx.compose.material3.MaterialTheme.colorScheme.primary)
                 }
             } else {
                 NavHost(
@@ -898,20 +963,26 @@ fun MainScreen(
                                 },
                                 appTheme = appTheme,
                                 onAppThemeChanged = { newTheme ->
-                                    scope.launch { repository.setAppTheme(userId, newTheme) }
-                                },
-                                appBackground = appBackground,
-                                onAppBackgroundChanged = { newBg ->
-                                    scope.launch { repository.setAppBackground(userId, newBg) }
-                                },
+                                     scope.launch(kotlinx.coroutines.Dispatchers.IO) { 
+                                         repository.setAppTheme(userId, newTheme)
+                                         // Decoupled theme from icon change to prevent force close and undesired background shifts
+                                     }
+                                 },
+                                appIconBackground = appIconBackground,
                                 progressMeterStyle = progressMeterStyle,
                                 onProgressMeterStyleChanged = { newStyle ->
                                     scope.launch { repository.setProgressMeterStyle(userId, newStyle) }
                                 },
                                 appIcon = appIcon,
-                                onAppIconChanged = { newIcon ->
-                                    scope.launch { repository.setAppIcon(userId, newIcon) }
-                                    com.example.fluidcheck.util.AppIconManager.changeAppIcon(context, newIcon)
+                                onAppIconConfigurationChanged = { newIcon, newBg ->
+                                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                        // Only trigger if something actually changed
+                                        if (newIcon != appIcon || newBg != appIconBackground) {
+                                            repository.setAppIcon(userId, newIcon)
+                                            repository.setAppIconBackground(userId, newBg)
+                                            com.example.fluidcheck.util.AppIconManager.changeAppIcon(context, newIcon, newBg)
+                                        }
+                                    }
                                 }
                             )
                     }
@@ -978,9 +1049,125 @@ fun MainScreen(
                     }
                 }
             }
+
+            currentBannerMissionId?.let { missionId ->
+                key(missionId) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = true,
+                        enter = androidx.compose.animation.slideInVertically(
+                            initialOffsetY = { -it }
+                        ),
+                        exit = androidx.compose.animation.slideOutVertically(
+                            targetOffsetY = { -it }
+                        ),
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .zIndex(99f)
+                    ) {
+                        MissionCompletionBanner(
+                            missionId = missionId,
+                            onDismiss = { currentBannerMissionId = null }
+                        )
+                    }
+                }
+            }
         }
     }
 }
+
+@Composable
+fun MissionCompletionBanner(
+    missionId: String,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val missionDef = com.example.fluidcheck.model.MissionPool.getMission(missionId) ?: return
+    val swipeOffset = remember { androidx.compose.animation.core.Animatable(0f) }
+    val scope = rememberCoroutineScope()
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .offset { androidx.compose.ui.unit.IntOffset(0, swipeOffset.value.roundToInt()) }
+            .pointerInput(missionId) {
+                detectDragGestures(
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        if (dragAmount.y < 0) { // swipe up only
+                            scope.launch {
+                                swipeOffset.snapTo(swipeOffset.value + dragAmount.y)
+                            }
+                        }
+                    },
+                    onDragEnd = {
+                        if (swipeOffset.value < -100f) {
+                            scope.launch {
+                                swipeOffset.animateTo(-500f)
+                                onDismiss()
+                            }
+                        } else {
+                            scope.launch {
+                                swipeOffset.animateTo(0f)
+                            }
+                        }
+                    },
+                    onDragCancel = {
+                        scope.launch {
+                            swipeOffset.animateTo(0f)
+                        }
+                    }
+                )
+            },
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF0F172A),
+            contentColor = Color.White
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(Color(0xFF22C55E).copy(alpha = 0.2f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("🏆", fontSize = 24.sp)
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = "Mission Completed!",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = Color(0xFF22C55E)
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = missionDef.title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = missionDef.description,
+                    fontSize = 12.sp,
+                    color = Color.LightGray,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1007,7 +1194,7 @@ fun LogNewDrinkSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = Color.White,
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
         dragHandle = null
     ) {
         Column(
@@ -1027,7 +1214,7 @@ fun LogNewDrinkSheet(
                     text = stringResource(R.string.log_new_drink),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextDark,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1073,14 +1260,14 @@ fun LogNewDrinkSheet(
                         .height(56.dp)
                         .menuAnchor(),
                     leadingIcon = {
-                        Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
+                        Icon(icon, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     },
                     trailingIcon = {
                         Icon(AppIcons.ArrowDown, contentDescription = null)
                     },
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryBlue,
+                        focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
                     ),
                     textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
@@ -1101,7 +1288,7 @@ fun LogNewDrinkSheet(
                                     Icon(
                                         type.icon,
                                         contentDescription = null,
-                                        tint = PrimaryBlue,
+                                        tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
@@ -1159,7 +1346,7 @@ fun LogNewDrinkSheet(
                 }),
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PrimaryBlue,
+                    focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
                     focusedContainerColor = Slate50,
                     unfocusedContainerColor = Slate50
@@ -1185,7 +1372,7 @@ fun LogNewDrinkSheet(
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1247,7 +1434,7 @@ fun EditLogDialog(
                     Text(stringResource(R.string.cancel))
                 }
             },
-            containerColor = Color.White
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
         )
     }
 
@@ -1269,7 +1456,7 @@ fun EditLogDialog(
                     text = stringResource(R.string.edit_log),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextDark,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1318,14 +1505,14 @@ fun EditLogDialog(
                             .height(56.dp)
                             .menuAnchor(),
                         leadingIcon = {
-                            Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
+                            Icon(icon, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                         },
                         trailingIcon = {
                             Icon(AppIcons.ArrowDown, contentDescription = null)
                         },
                         shape = RoundedCornerShape(16.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryBlue,
+                            focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
                         ),
                         textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
@@ -1347,7 +1534,7 @@ fun EditLogDialog(
                                         Icon(
                                             type.icon,
                                             contentDescription = null,
-                                            tint = PrimaryBlue,
+                                            tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(20.dp)
                                         )
                                         Spacer(modifier = Modifier.width(12.dp))
@@ -1390,7 +1577,7 @@ fun EditLogDialog(
                     keyboardActions = KeyboardActions(onNext = { timeFocus.requestFocus() }),
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryBlue,
+                        focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = Color.LightGray.copy(alpha = 0.3f)
                     ),
                     textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
@@ -1429,7 +1616,7 @@ fun EditLogDialog(
                     }),
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryBlue,
+                        focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
                     ),
                     textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
@@ -1454,7 +1641,7 @@ fun EditLogDialog(
                         .fillMaxWidth()
                         .height(56.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                    colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary)
                 ) {
                     @Suppress("DEPRECATION")
                     Text(
@@ -1465,7 +1652,7 @@ fun EditLogDialog(
                 }
             }
         },
-        containerColor = Color.White,
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(24.dp)
     )
 }
@@ -1495,7 +1682,7 @@ fun FluidBottomNavigation(
     }
 
     NavigationBar(
-        containerColor = Color.White,
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -1522,11 +1709,11 @@ fun FluidBottomNavigation(
                     )
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = PrimaryBlue,
-                    selectedTextColor = PrimaryBlue,
+                    selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                    selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     unselectedIconColor = Color.Gray.copy(alpha = 0.6f),
                     unselectedTextColor = Color.Gray.copy(alpha = 0.6f),
-                    indicatorColor = PrimaryBlue.copy(alpha = 0.1f)
+                    indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                 )
             )
         }

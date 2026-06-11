@@ -502,8 +502,8 @@ val Typography = Typography(
    - **Quality Assurance:** Ensure high contrast, text readability, and perfect icon/background color pairing for each theme palette.
 
 2. **Custom Icons and Backgrounds:**
-   - **App Logos:** Provide multiple alternative color variations of the app logo that users can set as their device launcher icon. *CRITICAL:* Do not create or source entirely new icon designs. Strictly use the existing, original app icon and apply modifications to it (e.g., recoloring, color inversion, adding a gradient background, or creating a sleek monochrome version).
-   - **App Backgrounds:** Provide a wide selection of custom backgrounds for the app's main screens. Varieties should include solid colors, soft blurred gradients, subtle geometric patterns, and minimal dynamic particle effects.
+   - **App Icon:** Provide multiple alternative color variations of the app icon that users can set as their device launcher icon. _CRITICAL:_ Do not create or source entirely new icon designs. Strictly use the existing, original app icon and apply modifications to it (e.g., recoloring, color inversion, adding a gradient background, or creating a sleek monochrome version).
+   - **App Icon Backgrounds:** Provide a wide selection of custom backgrounds for the app icon's background. Varieties should include solid colors, soft blurred gradients, subtle geometric patterns, and minimal dynamic particle effects.
 
 3. **Progress Meter Variants:**
    - **Alternative Designs:** In addition to the default "Progress Ring", develop several alternative visual representations for the daily goal intake meter. Examples:
@@ -521,6 +521,18 @@ val Typography = Typography(
    - **App Logo Selector:** Add a button that opens a dialog box displaying a grid of alternative app logos. Tapping a logo applies it.
    - **Progress Meter Selector:** Implement a dropdown menu allowing users to toggle between the different progress meter UI styles across the app.
 
-## 18. Ads
+## 18. Simulated Advertisements (Free Users Only)
 
-1. In this case since we don't have actual advertisements, create a mock ups of ads inside the app. Such as ad banners, or a popup ads if pressing active buttons elements like buttons, textboxes, toggle bars, etc. for 6-10 times (The 6-10 press triggering times must be randomized. Eg. the random calculation starts if the app detected the first active element pressed if the threshold random pressed between 6 to 10 is triggered. Display the pop up ad.)
+*Note: This feature is strictly for Free Users. Premium Users will have a completely ad-free experience.*
+
+1. **Mock Advertisement System:**
+   Since there is no actual third-party ad network integrated, develop a system that displays locally generated, mock advertisements throughout the app.
+
+2. **Ad Banner Placements:**
+   - Integrate static or slightly animated mock ad banners at the top or bottom of non-intrusive screens (e.g., Home Screen, Settings Screen).
+
+3. **Interaction-Triggered Pop-up Ads (Interstitials):**
+   - **Trigger Mechanism:** Implement a counter that tracks how many times the user interacts with active UI elements (such as tapping buttons, focusing textboxes, or toggling switches).
+   - **Randomized Threshold:** Upon the first UI interaction, generate a random threshold number between 6 and 10.
+   - **Display Logic:** Once the user's interaction count reaches the randomized threshold, instantly display a full-screen pop-up mock advertisement.
+   - **Reset Cycle:** After the user dismisses the pop-up ad, the interaction counter resets to zero, a new random threshold (between 6 and 10) is generated, and the cycle repeats.

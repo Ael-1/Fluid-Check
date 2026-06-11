@@ -11,7 +11,7 @@ import com.example.fluidcheck.R
 
 object AppIcons {
     // App Logo
-    val AppLogo = R.drawable.fluid_check_icon
+    val AppLogo = R.drawable.default_icon
     val GoogleLogo = R.drawable.ic_google_logo
 
     // Navigation

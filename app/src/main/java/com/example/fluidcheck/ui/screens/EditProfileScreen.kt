@@ -529,15 +529,15 @@ fun EditProfileScreen(
                         context.startActivity(intent)
                     }
                 ) {
-                    Text("OPEN SETTINGS", color = PrimaryBlue, fontWeight = FontWeight.Bold)
+                    Text("OPEN SETTINGS", color = androidx.compose.material3.MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showPermissionSettingsDialog = false }) {
-                    Text("CANCEL", color = TextDark)
+                    Text("CANCEL", color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                 }
             },
-            containerColor = Color.White,
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(28.dp)
         )
     }
@@ -545,7 +545,7 @@ fun EditProfileScreen(
     if (showPhotoSourceSelector) {
         ModalBottomSheet(
             onDismissRequest = { showPhotoSourceSelector = false },
-            containerColor = Color.White,
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
             dragHandle = { BottomSheetDefaults.DragHandle() }
         ) {
             Column(
@@ -557,7 +557,7 @@ fun EditProfileScreen(
                     text = "Change Profile Photo",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextDark,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
                 
@@ -571,7 +571,7 @@ fun EditProfileScreen(
                         .padding(vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(AppIcons.Camera, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(24.dp))
+                    Icon(AppIcons.Camera, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(16.dp))
                     Text("Take a Photo", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 }
@@ -586,7 +586,7 @@ fun EditProfileScreen(
                         .padding(vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(AppIcons.Image, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(24.dp))
+                    Icon(AppIcons.Image, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(16.dp))
                     Text("Choose from Gallery", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 }
@@ -640,10 +640,10 @@ fun EditProfileScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showUnsavedChangesDialog = false }) {
-                    Text("KEEP EDITING", color = TextDark)
+                    Text("KEEP EDITING", color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                 }
             },
-            containerColor = Color.White,
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(28.dp)
         )
     }
@@ -681,12 +681,12 @@ fun EditProfileScreen(
                         }
                     }
                 ) {
-                    Text("CONFIRM", color = PrimaryBlue, fontWeight = FontWeight.Bold)
+                    Text("CONFIRM", color = androidx.compose.material3.MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showReauthDialog = false }) {
-                    Text("CANCEL", color = TextDark)
+                    Text("CANCEL", color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                 }
             }
         )
@@ -699,7 +699,7 @@ fun EditProfileScreen(
             text = { 
                 if (isLoading) {
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = PrimaryBlue)
+                        CircularProgressIndicator(color = androidx.compose.material3.MaterialTheme.colorScheme.primary)
                     }
                 } else {
                     @Suppress("DEPRECATION")
@@ -723,7 +723,7 @@ fun EditProfileScreen(
                             }
                         }
                     ) {
-                        Text(stringResource(R.string.confirm).uppercase(), color = PrimaryBlue, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.confirm).uppercase(), color = androidx.compose.material3.MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     }
                 }
             },
@@ -731,11 +731,11 @@ fun EditProfileScreen(
                 if (!isLoading) {
                     @Suppress("DEPRECATION")
                     TextButton(onClick = { showSaveDialog = false }) {
-                        Text(stringResource(R.string.cancel), color = TextDark)
+                        Text(stringResource(R.string.cancel), color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                     }
                 }
             },
-            containerColor = Color.White,
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(28.dp)
         )
     }
@@ -766,10 +766,10 @@ fun EditProfileScreen(
                         if (isSuccess) onBack()
                     }
                 ) {
-                    Text("OK", color = PrimaryBlue, fontWeight = FontWeight.Bold)
+                    Text("OK", color = androidx.compose.material3.MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             },
-            containerColor = Color.White,
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(28.dp)
         )
     }
@@ -785,11 +785,11 @@ fun EditProfileScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AppBackground
+                    containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background
                 )
             )
         },
-        containerColor = AppBackground
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -870,7 +870,7 @@ fun EditProfileScreen(
 
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = PrimaryBlue)
+                    CircularProgressIndicator(color = androidx.compose.material3.MaterialTheme.colorScheme.primary)
                 }
             } else {
                 Button(
@@ -934,8 +934,8 @@ fun EditProfileScreen(
                         .height(56.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = PrimaryBlue,
-                        disabledContainerColor = PrimaryBlue.copy(alpha = 0.5f)
+                        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                        disabledContainerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                     )
                 ) {
                     if (isLoading) {
@@ -971,14 +971,15 @@ fun ProfileSettingsContainer(
     emailVerified: Boolean = false,
     onVerifyEmail: () -> Unit = {}
 ) {
+    val themeColors = LocalFluidCheckColors.current
     val isGuest = userId == "GUEST"
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
-        color = Color.White,
+        color = themeColors.cardBackground,
         shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Slate100)
+        border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder)
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             @Suppress("DEPRECATION")
@@ -986,7 +987,7 @@ fun ProfileSettingsContainer(
                 text = stringResource(R.string.profile_title),
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextDark
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
             )
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -1000,9 +1001,9 @@ fun ProfileSettingsContainer(
                     Surface(
                         modifier = Modifier.size(120.dp),
                         shape = CircleShape,
-                        color = Color.White,
+                        color = themeColors.cardBackground,
                         shadowElevation = 4.dp,
-                        border = androidx.compose.foundation.BorderStroke(2.dp, PrimaryBlue.copy(alpha = 0.2f))
+                        border = androidx.compose.foundation.BorderStroke(2.dp, androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                     ) {
                         if (profilePhotoModel != null) {
                             coil.compose.SubcomposeAsyncImage(
@@ -1015,7 +1016,7 @@ fun ProfileSettingsContainer(
                                 contentScale = ContentScale.Crop,
                                 loading = {
                                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = PrimaryBlue, strokeWidth = 2.dp)
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = androidx.compose.material3.MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
                                     }
                                 },
                                 error = {
@@ -1023,7 +1024,7 @@ fun ProfileSettingsContainer(
                                         imageVector = AppIcons.PersonOutline,
                                         contentDescription = null,
                                         modifier = Modifier.padding(24.dp),
-                                        tint = PrimaryBlue
+                                        tint = androidx.compose.material3.MaterialTheme.colorScheme.primary
                                     )
                                 }
                             )
@@ -1032,7 +1033,7 @@ fun ProfileSettingsContainer(
                                 imageVector = AppIcons.PersonOutline,
                                 contentDescription = null,
                                 modifier = Modifier.padding(24.dp),
-                                tint = PrimaryBlue
+                                tint = androidx.compose.material3.MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -1042,7 +1043,7 @@ fun ProfileSettingsContainer(
                             .align(Alignment.BottomEnd)
                             .size(32.dp),
                         shape = CircleShape,
-                        containerColor = if (enabled) PrimaryBlue else Color.Gray,
+                        containerColor = if (enabled) androidx.compose.material3.MaterialTheme.colorScheme.primary else Color.Gray,
                         contentColor = Color.White
                     ) {
                         Icon(AppIcons.Camera, contentDescription = "Change photo", modifier = Modifier.size(16.dp))
@@ -1099,7 +1100,7 @@ fun ProfileSettingsContainer(
                             enabled = enabled,
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                         ) {
-                            Text("Verify Email", color = PrimaryBlue, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Verify Email", color = androidx.compose.material3.MaterialTheme.colorScheme.primary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -1140,7 +1141,7 @@ fun ProfileSettingsContainer(
                     Text(
                         "Password management is handled by Google.",
                         fontSize = 12.sp,
-                        color = Color.Gray,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
                     )
                 }
@@ -1161,6 +1162,7 @@ fun PersonalRecordsContainer(
     enabled: Boolean,
     measurementPreferences: com.example.fluidcheck.util.MeasurementPreferences = com.example.fluidcheck.util.MeasurementPreferences()
 ) {
+    val themeColors = LocalFluidCheckColors.current
     var sexExpanded by remember { mutableStateOf(false) }
     var actExpanded by remember { mutableStateOf(false) }
     var envExpanded by remember { mutableStateOf(false) }
@@ -1179,9 +1181,9 @@ fun PersonalRecordsContainer(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(40.dp),
-        color = Color.White,
+        color = themeColors.cardBackground,
         shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Slate100)
+        border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder)
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             @Suppress("DEPRECATION")
@@ -1189,7 +1191,7 @@ fun PersonalRecordsContainer(
                 text = stringResource(R.string.personal_records_title),
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextDark
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
             )
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -1247,7 +1249,7 @@ fun PersonalRecordsContainer(
                             text = stringResource(R.string.sex_label),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
-                            color = TextDark,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                         ExposedDropdownMenuBox(
@@ -1264,10 +1266,10 @@ fun PersonalRecordsContainer(
                                     .menuAnchor(),
                                 shape = RoundedCornerShape(16.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = PrimaryBlue,
-                                    unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                                    focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = themeColors.cardBorder
                                 ),
-                                leadingIcon = { Icon(AppIcons.Gender, contentDescription = null, tint = PrimaryBlue) },
+                                leadingIcon = { Icon(AppIcons.Gender, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary) },
                                 singleLine = true,
                                 textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
                                 enabled = enabled
@@ -1299,7 +1301,7 @@ fun PersonalRecordsContainer(
                 text = stringResource(R.string.activity_level_label),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextDark,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             ExposedDropdownMenuBox(
@@ -1316,10 +1318,10 @@ fun PersonalRecordsContainer(
                         .menuAnchor(),
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryBlue,
-                        unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                        focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = themeColors.cardBorder
                     ),
-                    leadingIcon = { Icon(AppIcons.Activity, contentDescription = null, tint = PrimaryBlue) },
+                    leadingIcon = { Icon(AppIcons.Activity, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary) },
                     singleLine = true,
                     textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
                     enabled = enabled
@@ -1348,7 +1350,7 @@ fun PersonalRecordsContainer(
                 text = stringResource(R.string.environment_dropdown_label),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextDark,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             ExposedDropdownMenuBox(
@@ -1365,10 +1367,10 @@ fun PersonalRecordsContainer(
                         .menuAnchor(),
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryBlue,
-                        unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                        focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = themeColors.cardBorder
                     ),
-                    leadingIcon = { Icon(AppIcons.Weather, contentDescription = null, tint = PrimaryBlue) },
+                    leadingIcon = { Icon(AppIcons.Weather, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary) },
                     singleLine = true,
                     textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
                     enabled = enabled
@@ -1408,6 +1410,7 @@ fun EditField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
+    val themeColors = LocalFluidCheckColors.current
     var passwordVisible by remember { mutableStateOf(false) }
 
     Column {
@@ -1416,7 +1419,7 @@ fun EditField(
             text = label,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = TextDark,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(bottom = 8.dp)
         )
         OutlinedTextField(
@@ -1425,7 +1428,7 @@ fun EditField(
             modifier = modifier.fillMaxWidth(),
             placeholder = { if (placeholder.isNotEmpty()) Text(placeholder, fontSize = 14.sp) },
             shape = RoundedCornerShape(16.dp),
-            leadingIcon = { Icon(icon, contentDescription = null, tint = PrimaryBlue) },
+            leadingIcon = { Icon(icon, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary) },
             trailingIcon = {
                 if (isPassword) {
                     val image = if (passwordVisible) AppIcons.Visibility else AppIcons.VisibilityOff
@@ -1436,8 +1439,8 @@ fun EditField(
             },
             visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = PrimaryBlue,
-                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = themeColors.cardBorder
             ),
             singleLine = true,
             textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
@@ -1448,7 +1451,7 @@ fun EditField(
                 if (error != null) {
                     Text(text = error, color = Color.Red, fontSize = 12.sp)
                 } else if (helperText != null) {
-                    Text(text = helperText, color = Color.Gray, fontSize = 12.sp)
+                    Text(text = helperText, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 }
             },
             keyboardOptions = keyboardOptions,

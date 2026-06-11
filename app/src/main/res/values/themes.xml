@@ -15,6 +15,18 @@
         <item name="postSplashScreenTheme">@style/Theme.FluidCheck</item>
     </style>
 
+    <style name="Theme.App.Starting.None" parent="Theme.App.Starting" />
+
+    <style name="Theme.App.Starting.Blue" parent="Theme.App.Starting" />
+
+    <style name="Theme.App.Starting.Dark" parent="Theme.App.Starting" />
+
+    <style name="Theme.App.Starting.Orange" parent="Theme.App.Starting" />
+
+    <style name="Theme.App.Starting.Cyberpunk" parent="Theme.App.Starting" />
+
+    <style name="Theme.App.Starting.Minimal" parent="Theme.App.Starting" />
+
     <!-- Custom Theme for UCrop to fix toolbar overlapping with status bar / display cutouts -->
     <style name="UCropTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:fitsSystemWindows">true</item>

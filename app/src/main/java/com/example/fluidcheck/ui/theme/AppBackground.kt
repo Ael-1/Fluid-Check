@@ -50,7 +50,7 @@ fun AppBackgroundContainer(
                 Box(modifier = Modifier.fillMaxSize().background(Color(0xFFFDFBF7)))
             }
             BackgroundType.SOLID_SLATE -> {
-                Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF1F5F9)))
+                Box(modifier = Modifier.fillMaxSize().background(androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant))
             }
             BackgroundType.SOLID_MIDNIGHT -> {
                 Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A)))

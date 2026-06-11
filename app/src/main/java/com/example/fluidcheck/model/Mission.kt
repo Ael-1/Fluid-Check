@@ -37,6 +37,38 @@ data class MissionDefinition(
     val isMultiDay: Boolean = false // If true, progress carries over across daily resets
 )
 
+fun getMissionExpirationTime(acceptedAt: Long, missionDef: MissionDefinition): Long {
+    if (missionDef.targetType == MissionTargetType.TIME_WINDOW) {
+        val targetHour = missionDef.targetHour ?: 24
+        val isBefore = missionDef.isBeforeHour
+        
+        val calendar = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("GMT+8")).apply {
+            timeInMillis = acceptedAt
+            set(java.util.Calendar.HOUR_OF_DAY, targetHour)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        
+        if (isBefore) {
+            if (acceptedAt >= calendar.timeInMillis) {
+                calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
+            }
+            return calendar.timeInMillis
+        } else {
+            val midnight = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("GMT+8")).apply {
+                timeInMillis = acceptedAt
+                set(java.util.Calendar.HOUR_OF_DAY, 23)
+                set(java.util.Calendar.MINUTE, 59)
+                set(java.util.Calendar.SECOND, 59)
+                set(java.util.Calendar.MILLISECOND, 999)
+            }
+            return midnight.timeInMillis
+        }
+    }
+    return acceptedAt + (missionDef.difficulty.durationDays * 24L * 60 * 60 * 1000)
+}
+
 data class ActiveMission(
     val missionId: String = "",
     val progress: Int = 0,

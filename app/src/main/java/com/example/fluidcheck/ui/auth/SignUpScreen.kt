@@ -283,13 +283,13 @@ fun SignUpScreen(
                         .fillMaxWidth()
                         .height(56.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                    colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface)
                 ) {
                     Text(
                         text = stringResource(R.string.create_account),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = PrimaryBlue
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.primary
                     )
                 }
 

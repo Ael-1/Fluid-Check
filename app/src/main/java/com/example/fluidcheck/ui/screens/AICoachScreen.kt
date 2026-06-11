@@ -115,7 +115,7 @@ fun AICoachScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppBackground)
+            .background(androidx.compose.material3.MaterialTheme.colorScheme.background)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
@@ -274,19 +274,20 @@ fun SmartGoalSetterCard(
         NoInternetDialog(onDismiss = { showNoInternetDialog = false })
     }
 
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(32.dp),
-        color = Color.White,
+        color = themeColors.cardBackground,
         shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Slate100)
+        border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder)
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = AppIcons.Adjust,
                     contentDescription = null,
-                    tint = PrimaryBlue,
+                    tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
@@ -294,7 +295,7 @@ fun SmartGoalSetterCard(
                     text = stringResource(R.string.personalized_goals),
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextDark,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -302,7 +303,7 @@ fun SmartGoalSetterCard(
             Text(
                 text = stringResource(R.string.ai_planning_subtitle),
                 fontSize = 15.sp,
-                color = MutedForeground,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 40.dp, top = 2.dp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -412,14 +413,14 @@ fun SmartGoalSetterCard(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(PrimaryBlue.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+                            .background(androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
                             .padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "Your Ideal Daily Intake: $formattedResult",
                             fontWeight = FontWeight.Bold,
-                            color = PrimaryBlue,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                             fontSize = 18.sp,
                             textAlign = TextAlign.Center
                         )
@@ -482,7 +483,7 @@ fun SmartGoalSetterCard(
                     .height(60.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isConnected) PrimaryBlue else PrimaryBlue.copy(alpha = 0.5f)
+                    containerColor = if (isConnected) androidx.compose.material3.MaterialTheme.colorScheme.primary else androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                 )
             ) {
                 if (isLoading) {
@@ -496,7 +497,7 @@ fun SmartGoalSetterCard(
 
             Spacer(modifier = Modifier.height(24.dp))
             
-            HorizontalDivider(color = Slate100, thickness = 1.dp)
+            HorizontalDivider(color = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
             
             Spacer(modifier = Modifier.height(20.dp))
             
@@ -511,7 +512,7 @@ fun SmartGoalSetterCard(
                     Icon(
                         imageVector = AppIcons.Weather,
                         contentDescription = null,
-                        tint = PrimaryBlue,
+                        tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
@@ -520,12 +521,12 @@ fun SmartGoalSetterCard(
                             text = "Dynamic Weather Goal Adjustment",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextDark
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Automatically adjust goals based on local temperature",
                             fontSize = 12.sp,
-                            color = MutedForeground
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -540,7 +541,7 @@ fun SmartGoalSetterCard(
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
-                        checkedTrackColor = PrimaryBlue,
+                        checkedTrackColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                         uncheckedThumbColor = Color.White,
                         uncheckedTrackColor = Color.LightGray.copy(alpha = 0.5f),
                         uncheckedBorderColor = Color.Transparent
@@ -595,19 +596,20 @@ fun AIHydrationAssessmentCard(
         NoInternetDialog(onDismiss = { showNoInternetDialog = false })
     }
 
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(32.dp),
-        color = Color.White,
+        color = themeColors.cardBackground,
         shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Slate100)
+        border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder)
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = AppIcons.History,
                     contentDescription = null,
-                    tint = PrimaryBlue,
+                    tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
@@ -615,13 +617,13 @@ fun AIHydrationAssessmentCard(
                     text = "AI Hydration Assessment",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextDark
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                 )
             }
             Text(
                 text = "Analyze your overall drink habits and get custom feedback",
                 fontSize = 15.sp,
-                color = MutedForeground,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 40.dp, top = 2.dp)
             )
 
@@ -631,13 +633,13 @@ fun AIHydrationAssessmentCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(PrimaryBlue.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+                        .background(androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
                         .padding(16.dp)
                 ) {
                     Text(
                         text = assessmentResult,
                         fontSize = 15.sp,
-                        color = TextDark,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                         lineHeight = 22.sp
                     )
                 }
@@ -696,7 +698,7 @@ fun AIHydrationAssessmentCard(
                     .height(60.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isConnected) PrimaryBlue else PrimaryBlue.copy(alpha = 0.5f)
+                    containerColor = if (isConnected) androidx.compose.material3.MaterialTheme.colorScheme.primary else androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                 )
             ) {
                 if (isLoading) {
@@ -737,19 +739,20 @@ fun AIRecommendationsCard(
         NoInternetDialog(onDismiss = { showNoInternetDialog = false })
     }
 
+    val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(32.dp),
-        color = Color.White,
+        color = themeColors.cardBackground,
         shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Slate100)
+        border = androidx.compose.foundation.BorderStroke(1.dp, themeColors.cardBorder)
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = AppIcons.Psychology,
                     contentDescription = null,
-                    tint = PrimaryBlue,
+                    tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
@@ -757,19 +760,19 @@ fun AIRecommendationsCard(
                     text = stringResource(R.string.ai_coach_title),
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextDark
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                 )
             }
             Text(
                 text = stringResource(R.string.ai_recommendation_subtitle),
                 fontSize = 15.sp,
-                color = MutedForeground,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 40.dp, top = 2.dp)
             )
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            Text(stringResource(R.string.preferences_prompt), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextDark)
+            Text(stringResource(R.string.preferences_prompt), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.height(8.dp))
             CoachTextArea(
                 value = preferences,
@@ -781,7 +784,7 @@ fun AIRecommendationsCard(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text(stringResource(R.string.habits_prompt), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextDark)
+            Text(stringResource(R.string.habits_prompt), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.height(8.dp))
             CoachTextArea(
                 value = habits,
@@ -797,16 +800,16 @@ fun AIRecommendationsCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(AccentBlue.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+                        .background(androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
                         .padding(16.dp)
                 ) {
                     Row {
-                        Icon(AppIcons.Lightbulb, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(20.dp))
+                        Icon(AppIcons.Lightbulb, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = recommendation,
                             fontSize = 15.sp,
-                            color = TextDark
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -847,7 +850,7 @@ fun AIRecommendationsCard(
                     .height(60.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isConnected) PrimaryBlue else PrimaryBlue.copy(alpha = 0.5f)
+                    containerColor = if (isConnected) androidx.compose.material3.MaterialTheme.colorScheme.primary else androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                 )
             ) {
                 if (isLoading) {
@@ -874,14 +877,14 @@ fun AIDisclaimer() {
         Icon(
             imageVector = AppIcons.Info,
             contentDescription = null,
-            tint = MutedForeground,
+            tint = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(18.dp).padding(top = 2.dp)
         )
         Spacer(modifier = Modifier.width(10.dp))
         Text(
             text = stringResource(R.string.ai_disclaimer),
             fontSize = 14.sp,
-            color = MutedForeground,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Start,
             lineHeight = 20.sp
         )
@@ -898,12 +901,13 @@ fun CoachTextField(
     imeAction: ImeAction = ImeAction.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
+    val themeColors = LocalFluidCheckColors.current
     Column(modifier = modifier) {
         Text(
             text = label, 
             fontSize = 15.sp, 
             fontWeight = FontWeight.SemiBold, 
-            color = TextDark,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(start = 4.dp)
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -916,8 +920,8 @@ fun CoachTextField(
                 .height(58.dp),
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = PrimaryBlue,
-                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = themeColors.cardBorder
             ),
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = imeAction),
@@ -935,6 +939,7 @@ fun CoachTextArea(
     imeAction: ImeAction = ImeAction.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
+    val themeColors = LocalFluidCheckColors.current
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -944,10 +949,10 @@ fun CoachTextArea(
             .height(130.dp),
         shape = RoundedCornerShape(16.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = PrimaryBlue,
-            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
-            unfocusedContainerColor = Slate50,
-            focusedContainerColor = Color.White
+            focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = themeColors.cardBorder,
+            unfocusedContainerColor = themeColors.cardBackground,
+            focusedContainerColor = themeColors.cardBackground
         ),
         keyboardOptions = KeyboardOptions(imeAction = imeAction),
         keyboardActions = keyboardActions,
@@ -967,12 +972,13 @@ fun ResponsiveDropdownField(
     icon: ImageVector?,
     isCoachStyle: Boolean = false
 ) {
+    val themeColors = LocalFluidCheckColors.current
     Column {
         Text(
             text = label,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
-            color = TextDark,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
         )
         ExposedDropdownMenuBox(
@@ -990,12 +996,12 @@ fun ResponsiveDropdownField(
                     .menuAnchor(),
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PrimaryBlue,
-                    unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
-                    unfocusedContainerColor = Slate50,
-                    focusedContainerColor = Color.White
+                    focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = themeColors.cardBorder,
+                    unfocusedContainerColor = themeColors.cardBackground,
+                    focusedContainerColor = themeColors.cardBackground
                 ),
-                leadingIcon = icon?.let { { Icon(it, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(24.dp)) } },
+                leadingIcon = icon?.let { { Icon(it, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp)) } },
                 textStyle = LocalTextStyle.current.copy(fontSize = 16.sp),
                 singleLine = true
             )
@@ -1030,12 +1036,12 @@ fun NoInternetDialog(onDismiss: () -> Unit) {
         confirmButton = {
             Button(
                 onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary)
             ) {
                 Text("OK")
             }
         },
-        containerColor = Color.White,
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(28.dp)
     )
 }

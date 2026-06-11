@@ -47,9 +47,6 @@ private val PremiumColorDeep = Color(0xFF1D4ED8)  // Deep royal blue
 // Matches the application's light-mode design tokens
 private val PremiumSurface = Color.White
 private val PremiumSurfaceLight = Color(0xFFF8FAFC)
-private val PremiumAccent = PrimaryBlue // App's main blue
-private val PremiumAccentLight = AccentBlue // App's secondary blue
-private val PremiumTextPrimary = TextDark // App's default dark text (0xFF1E293B)
 private val PremiumTextSecondary = MutedForeground // App's default gray text (0xFF64748B)
 private val PremiumDivider = Color(0xFFE2E8F0) // Clean light border color
 private val PremiumSuccess = SuccessGreen // App's default green (0xFF22C55E)
@@ -61,7 +58,7 @@ private val PremiumGradient = Brush.linearGradient(
 
 private val PremiumCardGradient = Brush.verticalGradient(
     colors = listOf(
-        Color(0xFFF0F9FF), // Top matches AppBackground (soft sky blue)
+        Color(0xFFF0F9FF), // Top matches androidx.compose.material3.MaterialTheme.colorScheme.background (soft sky blue)
         Color.White,       // Transitions to clean white surface
         Color.White
     )
@@ -245,7 +242,7 @@ fun PremiumPaywallDialog(
                                 text = "Upgrade to Premium",
                                 fontSize = 28.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = PremiumTextPrimary,
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                                 textAlign = TextAlign.Center
                             )
 
@@ -336,8 +333,8 @@ fun PremiumPaywallDialog(
                             // Cloud backup note
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
-                                color = PremiumAccent.copy(alpha = 0.08f),
-                                border = BorderStroke(1.dp, PremiumAccent.copy(alpha = 0.2f))
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                                border = BorderStroke(1.dp, androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                             ) {
                                 Row(
                                     modifier = Modifier.padding(14.dp),
@@ -346,7 +343,7 @@ fun PremiumPaywallDialog(
                                     Icon(
                                         Icons.Outlined.Info,
                                         contentDescription = null,
-                                        tint = PremiumAccentLight,
+                                        tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(10.dp))
@@ -519,7 +516,7 @@ private fun PricingCard(
                 text = price,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = if (isSelected) PremiumColorDark else PremiumTextPrimary
+                color = if (isSelected) PremiumColorDark else androidx.compose.material3.MaterialTheme.colorScheme.onSurface
             )
 
             Text(
@@ -609,7 +606,7 @@ private fun BenefitRow(benefit: BenefitItem) {
                 text = benefit.title,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = PremiumTextPrimary
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = benefit.description,

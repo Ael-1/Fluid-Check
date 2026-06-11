@@ -214,7 +214,7 @@ class FirestoreRepository(private val context: Context? = null) {
             activeMissions = document.get("activeMissions") as? List<Map<String, Any>> ?: emptyList(),
             completedMissionsToday = document.get("completedMissionsToday") as? List<String> ?: emptyList(),
             abortedMissionsToday = document.get("abortedMissionsToday") as? List<String> ?: emptyList(),
-            earnedBadges = document.get("earnedBadges") as? Map<String, Int> ?: emptyMap(),
+            earnedBadges = (document.get("earnedBadges") as? Map<String, Number>)?.mapValues { it.value.toInt() } ?: emptyMap(),
             earnedMilestones = document.get("earnedMilestones") as? List<String> ?: emptyList()
         )
     }
@@ -590,7 +590,7 @@ class FirestoreRepository(private val context: Context? = null) {
                 if (missionDef == null || completed || aborted) {
                     false
                 } else {
-                    val expirationTime = acceptedAt + (missionDef.difficulty.durationDays * DAY_IN_MS)
+                    val expirationTime = com.example.fluidcheck.model.getMissionExpirationTime(acceptedAt, missionDef)
                     currentTime <= expirationTime
                 }
             }
@@ -1076,13 +1076,28 @@ class FirestoreRepository(private val context: Context? = null) {
             val activeData = userDoc.get("activeMissions") as? List<Map<String, Any>> ?: return
             if (activeData.isEmpty()) return
             
-            // Find the earliest accepted time among active missions
             val currentTime = System.currentTimeMillis()
-            val earliestAcceptedAt = activeData.minOfOrNull { (it["acceptedAt"] as? Number)?.toLong() ?: currentTime } ?: currentTime
+            val calendar = Calendar.getInstance(TimeZone.getTimeZone("GMT+8")).apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val startOfToday = calendar.timeInMillis
             
-            // Fetch all logs since the earliest accepted time
+            // Check if we have any active single-day missions
+            val hasSingleDayMission = activeData.any { data ->
+                val mId = data["missionId"] as? String ?: ""
+                val mDef = MissionPool.getMission(mId)
+                mDef != null && !mDef.isMultiDay
+            }
+            
+            val earliestAcceptedAt = activeData.minOfOrNull { (it["acceptedAt"] as? Number)?.toLong() ?: currentTime } ?: currentTime
+            val fetchStartTime = if (hasSingleDayMission) Math.min(earliestAcceptedAt, startOfToday) else earliestAcceptedAt
+
+            // Fetch all logs since fetchStartTime
             val querySnapshot = userRef.collection("fluid_logs")
-                .whereGreaterThanOrEqualTo("id", earliestAcceptedAt)
+                .whereGreaterThanOrEqualTo("id", fetchStartTime)
                 .get().await()
             val recentLogs = querySnapshot.toObjects(FluidLog::class.java)
             
@@ -1093,8 +1108,9 @@ class FirestoreRepository(private val context: Context? = null) {
                 val missionDef = MissionPool.getMission(missionId) ?: return@map data
                 val acceptedAt = (data["acceptedAt"] as? Number)?.toLong() ?: currentTime
                 
-                // Only consider logs that occurred AFTER this specific mission was accepted
-                val missionLogs = recentLogs.filter { it.id >= acceptedAt }
+                // For daily/single-day missions, count logs from start of today. Otherwise, count since acceptedAt.
+                val sinceTime = if (missionDef.isMultiDay) acceptedAt else startOfToday
+                val missionLogs = recentLogs.filter { it.id >= sinceTime }
                 
                 val totalVolume = missionLogs.sumOf { it.amount }
                 val logCount = missionLogs.size
@@ -1126,12 +1142,13 @@ class FirestoreRepository(private val context: Context? = null) {
                     }
                 }
                 
-                if (progress >= missionDef.targetValue) {
-                    data.toMutableMap().apply { 
-                        put("progress", Math.min(progress, missionDef.targetValue))
-                    }
-                } else {
-                    data.toMutableMap().apply { put("progress", progress) }
+                val expiration = com.example.fluidcheck.model.getMissionExpirationTime(acceptedAt, missionDef)
+                val isExpired = currentTime > expiration
+                val failed = isExpired && progress < missionDef.targetValue
+                
+                data.toMutableMap().apply { 
+                    put("progress", Math.min(progress, missionDef.targetValue))
+                    put("failed", failed)
                 }
             }
             

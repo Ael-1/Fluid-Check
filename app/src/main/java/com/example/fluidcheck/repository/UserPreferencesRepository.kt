@@ -42,9 +42,31 @@ class UserPreferencesRepository(private val context: Context) {
         fun weightUnitKey(userId: String) = stringPreferencesKey(sanitize("${userId}_weight_unit"))
         fun heightUnitKey(userId: String) = stringPreferencesKey(sanitize("${userId}_height_unit"))
         fun appThemeKey(userId: String) = stringPreferencesKey(sanitize("${userId}_app_theme"))
-        fun appBackgroundKey(userId: String) = stringPreferencesKey(sanitize("${userId}_app_background"))
+        fun appIconBackgroundKey(userId: String) = stringPreferencesKey(sanitize("${userId}_app_icon_background"))
         fun progressMeterStyleKey(userId: String) = stringPreferencesKey(sanitize("${userId}_progress_meter_style"))
         fun appIconKey(userId: String) = stringPreferencesKey(sanitize("${userId}_app_icon"))
+        fun notifiedMissionIdsKey(userId: String) = stringSetPreferencesKey(sanitize("${userId}_notified_mission_ids"))
+        val notificationPermissionRequestedKey = booleanPreferencesKey("notification_permission_requested")
+    }
+
+    fun getNotifiedMissionIds(userId: String): Flow<Set<String>> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.notifiedMissionIdsKey(userId)] ?: emptySet()
+    }
+
+    suspend fun saveNotifiedMissionIds(userId: String, notifiedIds: Set<String>) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.notifiedMissionIdsKey(userId)] = notifiedIds
+        }
+    }
+
+    fun hasRequestedNotificationPermission(): Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.notificationPermissionRequestedKey] ?: false
+    }
+
+    suspend fun setNotificationPermissionRequested(requested: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.notificationPermissionRequestedKey] = requested
+        }
     }
 
     fun getUserRecord(userId: String): Flow<UserRecord> = context.dataStore.data.map { preferences ->
@@ -251,13 +273,13 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
-    fun getAppBackground(userId: String): Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[PreferencesKeys.appBackgroundKey(userId)] ?: "NONE"
+    fun getAppIconBackground(userId: String): Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.appIconBackgroundKey(userId)] ?: "BLUE"
     }
 
-    suspend fun setAppBackground(userId: String, backgroundType: String) {
+    suspend fun setAppIconBackground(userId: String, backgroundType: String) {
         context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.appBackgroundKey(userId)] = backgroundType
+            preferences[PreferencesKeys.appIconBackgroundKey(userId)] = backgroundType
         }
     }
 
