@@ -51,9 +51,6 @@ fun getMissionExpirationTime(acceptedAt: Long, missionDef: MissionDefinition): L
         }
         
         if (isBefore) {
-            if (acceptedAt >= calendar.timeInMillis) {
-                calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
-            }
             return calendar.timeInMillis
         } else {
             val midnight = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("GMT+8")).apply {

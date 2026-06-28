@@ -77,7 +77,8 @@ data class UserRecord(
     val perfectWeekStreak: Int = 0,
     val hydrationMasterStreak: Int = 0,
     val weekendWarriorWeeks: Int = 0,
-    val nightOwlStreak: Int = 0
+    val nightOwlStreak: Int = 0,
+    val pendingRewards: List<Map<String, Any>> = emptyList()
 ) {
     fun isEmpty(): Boolean {
         return weight.isEmpty() && height.isEmpty() && age.isEmpty() && 

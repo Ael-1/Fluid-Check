@@ -173,6 +173,45 @@ fun MainScreen(
         )
     }
     
+    var showDebugRewards by remember { mutableStateOf(false) }
+
+    if (showDebugRewards) {
+        val debugRewards = listOf(
+            mapOf(
+                "missionId" to "easy_01",
+                "missionTitle" to "Hydration Rookie (Debug)",
+                "badgeId" to "badge_easy_01",
+                "shieldFragments" to 1,
+                "streakShields" to 0
+            ),
+            mapOf(
+                "missionId" to "mod_01",
+                "missionTitle" to "Camel (Debug)",
+                "badgeId" to "badge_mod_15",
+                "shieldFragments" to 0,
+                "streakShields" to 1
+            )
+        )
+        RewardsClaimedDialog(
+            rewards = debugRewards,
+            onDismiss = { showDebugRewards = false }
+        )
+    }
+
+    var dismissedRewardsByUid by remember { mutableStateOf<String?>(null) }
+    val currentRecord = userRecord
+    if (currentRecord != null && currentRecord.pendingRewards.isNotEmpty() && dismissedRewardsByUid != currentRecord.uid) {
+        RewardsClaimedDialog(
+            rewards = currentRecord.pendingRewards,
+            onDismiss = {
+                dismissedRewardsByUid = currentRecord.uid
+                scope.launch {
+                    firestoreRepository.clearPendingRewards(userId)
+                }
+            }
+        )
+    }
+    
     // Last session's mode from DataStore
     val adminModePrefFlow = remember(userId) { repository.getAdminModeFlow(userId) }
     val adminModeState by adminModePrefFlow.collectAsState(initial = "LOADING")
@@ -740,7 +779,8 @@ fun MainScreen(
                                     android.widget.Toast.makeText(context, "Failed to complete mission.", android.widget.Toast.LENGTH_SHORT).show()
                                 }
                             },
-                            onNavigateToInventory = { navController.navigate(NavRoutes.Inventory.route) }
+                            onNavigateToInventory = { navController.navigate(NavRoutes.Inventory.route) },
+                            onTriggerDebugRewards = { showDebugRewards = true }
                         )
                     }
                     composable(NavRoutes.AICoach.route) { 
@@ -1733,4 +1773,157 @@ fun FluidBottomNavigation(
             )
         }
     }
+}
+
+@Composable
+fun RewardsClaimedDialog(
+    rewards: List<Map<String, Any>>,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "🎉 Mission Accomplished!",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "You've earned rewards for completing your missions yesterday!",
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                rewards.forEach { reward ->
+                    val title = reward["missionTitle"] as? String ?: "Mission Complete"
+                    val badgeId = reward["badgeId"] as? String ?: ""
+                    val fragments = (reward["shieldFragments"] as? Number)?.toInt() ?: 0
+                    val shields = (reward["streakShields"] as? Number)?.toInt() ?: 0
+
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = title,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
+                            )
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Badge Item details
+                                val badgeDef = com.example.fluidcheck.model.MissionPool.getBadge(badgeId)
+                                if (badgeDef != null) {
+                                    val iconEmoji = when(badgeDef.rarity) {
+                                        com.example.fluidcheck.model.BadgeRarity.COMMON -> "⚪"
+                                        com.example.fluidcheck.model.BadgeRarity.RARE -> "🔵"
+                                        com.example.fluidcheck.model.BadgeRarity.EPIC -> "🟣"
+                                        com.example.fluidcheck.model.BadgeRarity.LEGENDARY -> "🟡"
+                                        else -> "⚪"
+                                    }
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = Color(badgeDef.rarity.color).copy(alpha = 0.15f),
+                                        modifier = Modifier.padding(4.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(iconEmoji, fontSize = 16.sp)
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = badgeDef.name,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(badgeDef.rarity.color)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (shields > 0) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("🛡️", fontSize = 16.sp)
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "+$shields Streak Shield",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = androidx.compose.material3.MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (fragments > 0) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = Color(0xFF8B5CF6).copy(alpha = 0.1f)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("🧩", fontSize = 16.sp)
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "+$fragments Fragment",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF8B5CF6)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Got it!")
+            }
+        }
+    )
 }

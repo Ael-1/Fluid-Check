@@ -215,7 +215,8 @@ class FirestoreRepository(private val context: Context? = null) {
             completedMissionsToday = document.get("completedMissionsToday") as? List<String> ?: emptyList(),
             abortedMissionsToday = document.get("abortedMissionsToday") as? List<String> ?: emptyList(),
             earnedBadges = (document.get("earnedBadges") as? Map<String, Number>)?.mapValues { it.value.toInt() } ?: emptyMap(),
-            earnedMilestones = document.get("earnedMilestones") as? List<String> ?: emptyList()
+            earnedMilestones = document.get("earnedMilestones") as? List<String> ?: emptyList(),
+            pendingRewards = document.get("pendingRewards") as? List<Map<String, Any>> ?: emptyList()
         )
     }
 
@@ -331,6 +332,7 @@ class FirestoreRepository(private val context: Context? = null) {
             batch.set(logRef, newLog)
             
             commitBatch(batch)
+            checkMissionProgress(uid)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -351,6 +353,7 @@ class FirestoreRepository(private val context: Context? = null) {
             batch.delete(logRef)
             
             commitBatch(batch)
+            checkMissionProgress(uid)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -374,6 +377,7 @@ class FirestoreRepository(private val context: Context? = null) {
                 batch.delete(logRef)
             }
             commitBatch(batch)
+            checkMissionProgress(uid)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -552,14 +556,16 @@ class FirestoreRepository(private val context: Context? = null) {
             val highestStreak = userDoc.getLong("highestStreak")?.toInt() ?: 0
             val totalRingsClosed = userDoc.getLong("totalRingsClosed")?.toInt() ?: 0
             val autoShieldEnabled = userDoc.getBoolean("autoShieldEnabled") ?: false
-            val streakShields = userDoc.getLong("streakShields")?.toInt() ?: 0
-
+            var currentShields = userDoc.getLong("streakShields")?.toInt() ?: 0
+            var currentFragments = userDoc.getLong("shieldFragments")?.toInt() ?: 0
             val lastEvaluatedDate = userDoc.getString("lastEvaluatedDate") ?: ""
 
             // If the last evaluated date was already today, we don't need to re-evaluate
             if (lastEvaluatedDate == todayStr) {
                 return Result.success(Unit)
             }
+
+            val updates = mutableMapOf<String, Any>()
 
             // Get yesterday's logs to check if the goal was met
             val yesterdayLogs = getLogsForDate(uid, yesterdayStr)
@@ -578,34 +584,69 @@ class FirestoreRepository(private val context: Context? = null) {
                     1
                 }
 
-                val updates = mutableMapOf<String, Any>(
-                    "streak" to newStreak,
-                    "lastRingClosedDate" to yesterdayStr,
-                    "totalRingsClosed" to totalRingsClosed + 1
-                )
+                updates["streak"] = newStreak
+                updates["lastRingClosedDate"] = yesterdayStr
+                updates["totalRingsClosed"] = totalRingsClosed + 1
+                
                 if (newStreak > highestStreak) {
                     updates["highestStreak"] = newStreak
                 }
-                userRef.update(updates).await()
             } else {
                 // Yesterday's goal was not met
-                if (autoShieldEnabled && streakShields > 0) {
-                    // Auto-use a streak shield to protect streak
-                    val updates = mapOf(
-                        "streakShields" to streakShields - 1,
-                        "lastRingClosedDate" to yesterdayStr // Fake closing the ring to prevent streak drop tomorrow
-                    )
-                    userRef.update(updates).await()
+                if (autoShieldEnabled && currentShields > 0) {
+                    currentShields -= 1
+                    updates["streakShields"] = currentShields
+                    updates["lastRingClosedDate"] = yesterdayStr // Fake closing the ring to prevent streak drop tomorrow
                 } else {
                     // Reset streak to 0
-                    userRef.update("streak", 0).await()
+                    updates["streak"] = 0
                 }
             }
-            // Gamification Daily Reset: Retain multi-day missions, clear single-day or expired
+
+            // Gamification Daily Reset & Rewards Calculation
             val activeData = userDoc.get("activeMissions") as? List<Map<String, Any>> ?: emptyList()
+            val completedMissions = activeData.filter { it["completed"] == true }
+            val newPendingRewards = mutableListOf<Map<String, Any>>()
+            val earnedBadges = (userDoc.get("earnedBadges") as? Map<String, Number>)?.mapValues { it.value.toInt() }?.toMutableMap() ?: mutableMapOf()
+
+            completedMissions.forEach { activeMissionMap ->
+                val missionId = activeMissionMap["missionId"] as? String ?: return@forEach
+                val missionDef = com.example.fluidcheck.model.MissionPool.getMission(missionId) ?: return@forEach
+                
+                // Add badge
+                val currentBadgeCount = earnedBadges[missionDef.badgeId] ?: 0
+                earnedBadges[missionDef.badgeId] = currentBadgeCount + 1
+                
+                // Roll for shield fragments
+                var fragmentAwarded = 0
+                var shieldAwarded = 0
+                if (missionDef.difficulty == com.example.fluidcheck.model.MissionDifficulty.EPIC) {
+                    currentShields += 1
+                    shieldAwarded = 1
+                } else if (Math.random() <= missionDef.difficulty.shieldFragmentChance) {
+                    fragmentAwarded = 1
+                    if (currentFragments + 1 >= 10) {
+                        currentFragments = currentFragments + 1 - 10
+                        currentShields += 1
+                        shieldAwarded = 1
+                    } else {
+                        currentFragments += 1
+                    }
+                }
+                
+                newPendingRewards.add(
+                    mapOf(
+                        "missionId" to missionId,
+                        "missionTitle" to missionDef.title,
+                        "badgeId" to missionDef.badgeId,
+                        "shieldFragments" to fragmentAwarded,
+                        "streakShields" to shieldAwarded
+                    )
+                )
+            }
+
             val currentTime = System.currentTimeMillis()
-            val DAY_IN_MS = 24L * 60 * 60 * 1000
-            
+            // Retain multi-day missions, clear single-day or expired
             val retainedMissions = activeData.filter { data ->
                 val missionId = data["missionId"] as? String ?: return@filter false
                 val completed = data["completed"] as? Boolean ?: false
@@ -620,15 +661,31 @@ class FirestoreRepository(private val context: Context? = null) {
                     currentTime <= expirationTime
                 }
             }
+
+            updates["activeMissions"] = retainedMissions
+            updates["completedMissionsToday"] = emptyList<String>()
+            updates["abortedMissionsToday"] = emptyList<String>()
+            updates["lastEvaluatedDate"] = todayStr
+            updates["earnedBadges"] = earnedBadges
+            updates["shieldFragments"] = currentFragments
+            updates["streakShields"] = currentShields
             
-            userRef.update(
-                mapOf(
-                    "activeMissions" to retainedMissions,
-                    "completedMissionsToday" to emptyList<String>(),
-                    "abortedMissionsToday" to emptyList<String>(),
-                    "lastEvaluatedDate" to todayStr
-                )
-            ).await()
+            if (newPendingRewards.isNotEmpty()) {
+                val currentPendingRewards = userDoc.get("pendingRewards") as? List<Map<String, Any>> ?: emptyList()
+                updates["pendingRewards"] = currentPendingRewards + newPendingRewards
+            }
+
+            userRef.update(updates).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun clearPendingRewards(userId: String): Result<Unit> {
+        if (userId == "GUEST" || userId.isEmpty()) return Result.success(Unit)
+        return try {
+            usersCollection.document(userId).update("pendingRewards", emptyList<Map<String, Any>>()).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -1075,7 +1132,10 @@ class FirestoreRepository(private val context: Context? = null) {
                 updates["earnedBadges"] = earnedBadges
                 
                 // Roll for shield fragments
-                if (Math.random() <= missionDef.difficulty.shieldFragmentChance) {
+                if (missionDef.difficulty == com.example.fluidcheck.model.MissionDifficulty.EPIC) {
+                    val currentShields = (snapshot.getLong("streakShields") ?: 0).toInt()
+                    updates["streakShields"] = currentShields + 1
+                } else if (Math.random() <= missionDef.difficulty.shieldFragmentChance) {
                     val currentFragments = (snapshot.getLong("shieldFragments") ?: 0).toInt()
                     val currentShields = (snapshot.getLong("streakShields") ?: 0).toInt()
                     if (currentFragments + 1 >= 10) {
@@ -1111,20 +1171,32 @@ class FirestoreRepository(private val context: Context? = null) {
             }
             val startOfToday = calendar.timeInMillis
             
-            // Check if we have any active single-day missions
-            val hasSingleDayMission = activeData.any { data ->
+            // Check if we have any active missions that explicitly target today
+            val hasTodayMission = activeData.any { data ->
                 val mId = data["missionId"] as? String ?: ""
                 val mDef = MissionPool.getMission(mId)
-                mDef != null && !mDef.isMultiDay
+                mDef != null && (mDef.title.contains("today", ignoreCase = true) || mDef.description.contains("today", ignoreCase = true))
             }
             
-            val earliestAcceptedAt = activeData.minOfOrNull { (it["acceptedAt"] as? Number)?.toLong() ?: currentTime } ?: currentTime
-            val fetchStartTime = if (hasSingleDayMission) Math.min(earliestAcceptedAt, startOfToday) else earliestAcceptedAt
+            val earliestAcceptedAt = activeData.minOfOrNull { data ->
+                when (val value = data["acceptedAt"]) {
+                    is Number -> value.toLong()
+                    is com.google.firebase.Timestamp -> value.toDate().time
+                    else -> currentTime
+                }
+            } ?: currentTime
+            val fetchStartTime = if (hasTodayMission) Math.min(earliestAcceptedAt, startOfToday) else earliestAcceptedAt
 
-            // Fetch all logs since fetchStartTime
-            val querySnapshot = userRef.collection("fluid_logs")
-                .whereGreaterThanOrEqualTo("id", fetchStartTime)
-                .get().await()
+            // Fetch all logs since fetchStartTime - try cache first to avoid async server latencies
+            val querySnapshot = try {
+                userRef.collection("fluid_logs")
+                    .whereGreaterThanOrEqualTo("id", fetchStartTime)
+                    .get(com.google.firebase.firestore.Source.CACHE).await()
+            } catch (e: Exception) {
+                userRef.collection("fluid_logs")
+                    .whereGreaterThanOrEqualTo("id", fetchStartTime)
+                    .get().await()
+            }
             val recentLogs = querySnapshot.toObjects(FluidLog::class.java)
             
             val dailyGoal = userDoc.getLong("dailyGoal")?.toInt() ?: 3000
@@ -1132,10 +1204,16 @@ class FirestoreRepository(private val context: Context? = null) {
             val updatedMissions = activeData.map { data ->
                 val missionId = data["missionId"] as? String ?: return@map data
                 val missionDef = MissionPool.getMission(missionId) ?: return@map data
-                val acceptedAt = (data["acceptedAt"] as? Number)?.toLong() ?: currentTime
+                val acceptedAt = when (val value = data["acceptedAt"]) {
+                    is Number -> value.toLong()
+                    is com.google.firebase.Timestamp -> value.toDate().time
+                    else -> currentTime
+                }
                 
-                // For daily/single-day missions, count logs from start of today. Otherwise, count since acceptedAt.
-                val sinceTime = if (missionDef.isMultiDay) acceptedAt else startOfToday
+                // If it explicitly says "today", count since startOfToday. Otherwise, count since acceptedAt.
+                val isTodayMission = missionDef.title.contains("today", ignoreCase = true) || 
+                                     missionDef.description.contains("today", ignoreCase = true)
+                val sinceTime = if (isTodayMission) startOfToday else acceptedAt
                 val missionLogs = recentLogs.filter { it.id >= sinceTime }
                 
                 val totalVolume = missionLogs.sumOf { it.amount }
@@ -1168,13 +1246,16 @@ class FirestoreRepository(private val context: Context? = null) {
                     }
                 }
                 
+                val completed = progress >= missionDef.targetValue
                 val expiration = com.example.fluidcheck.model.getMissionExpirationTime(acceptedAt, missionDef)
                 val isExpired = currentTime > expiration
-                val failed = isExpired && progress < missionDef.targetValue
+                val failed = isExpired && !completed
                 
                 data.toMutableMap().apply { 
                     put("progress", Math.min(progress, missionDef.targetValue))
+                    put("completed", completed)
                     put("failed", failed)
+                    put("acceptedAt", acceptedAt) // Keep acceptedAt stable
                 }
             }
             

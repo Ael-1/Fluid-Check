@@ -58,7 +58,8 @@ fun ProgressScreen(
     onAcceptMission: suspend (String) -> Unit = {},
     onAbortMission: suspend (String) -> Unit = {},
     onCompleteMission: suspend (String) -> Unit = {},
-    onNavigateToInventory: () -> Unit = {}
+    onNavigateToInventory: () -> Unit = {},
+    onTriggerDebugRewards: () -> Unit = {}
 ) {
     val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     var selectedTab by remember { mutableStateOf("Day") }
@@ -396,7 +397,8 @@ fun ProgressScreen(
                 onAcceptMission = onAcceptMission,
                 onAbortMission = onAbortMission,
                 onCompleteMission = onCompleteMission,
-                onNavigateToInventory = onNavigateToInventory
+                onNavigateToInventory = onNavigateToInventory,
+                onTriggerDebugRewards = onTriggerDebugRewards
             )
         }
 
