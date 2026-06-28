@@ -283,9 +283,9 @@ fun BadgeItem(
         ) {
             val iconEmoji = when(badge.rarity) {
                 BadgeRarity.COMMON -> "⚪"
-                BadgeRarity.RARE -> "🔵"
-                BadgeRarity.EPIC -> "🟣"
-                BadgeRarity.LEGENDARY -> "🟡"
+                BadgeRarity.UNCOMMON -> "🔵"
+                BadgeRarity.RARE -> "🟣"
+                BadgeRarity.EPIC -> "🟡"
                 BadgeRarity.MILESTONE -> "🟢"
             }
             Text(

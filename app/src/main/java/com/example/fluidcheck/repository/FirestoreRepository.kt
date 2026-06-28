@@ -1039,19 +1039,27 @@ class FirestoreRepository(private val context: Context? = null) {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("GMT+8") }
         val todayStr = sdf.format(Date())
         return try {
-            // Randomly select missions based on probabilities
+            val userRef = usersCollection.document(userId)
+            val userDoc = userRef.get().await()
+            val activeData = userDoc.get("activeMissions") as? List<Map<String, Any>> ?: emptyList()
+            val activeIds = activeData.mapNotNull { it["missionId"] as? String }
+            
+            // Spawn only (10 - activeCount) new missions, ensuring we don't exceed 10 total board slots
+            val spawnCount = (10 - activeIds.size).coerceAtLeast(0)
+            
+            // Randomly select missions based on probabilities, excluding already active ones
             val selectedMissions = mutableListOf<String>()
-            val pool = MissionPool.missions.toMutableList()
+            val pool = MissionPool.missions.filter { it.id !in activeIds }.toMutableList()
             pool.shuffle()
-            for (i in 0 until 10) {
+            for (i in 0 until spawnCount) {
                 if (pool.isEmpty()) break
-                selectedMissions.add(pool.removeAt(0).id) // Simplified for now, should use weighted selection ideally
+                selectedMissions.add(pool.removeAt(0).id)
             }
-            usersCollection.document(userId).update(
+            
+            userRef.update(
                 mapOf(
                     "missionBoardDate" to todayStr,
                     "boardMissionIds" to selectedMissions,
-                    // Keep multi-day active missions
                 )
             ).await()
             Result.success(Unit)

@@ -1843,9 +1843,9 @@ fun RewardsClaimedDialog(
                                 if (badgeDef != null) {
                                     val iconEmoji = when(badgeDef.rarity) {
                                         com.example.fluidcheck.model.BadgeRarity.COMMON -> "⚪"
-                                        com.example.fluidcheck.model.BadgeRarity.RARE -> "🔵"
-                                        com.example.fluidcheck.model.BadgeRarity.EPIC -> "🟣"
-                                        com.example.fluidcheck.model.BadgeRarity.LEGENDARY -> "🟡"
+                                        com.example.fluidcheck.model.BadgeRarity.UNCOMMON -> "🔵"
+                                        com.example.fluidcheck.model.BadgeRarity.RARE -> "🟣"
+                                        com.example.fluidcheck.model.BadgeRarity.EPIC -> "🟡"
                                         else -> "⚪"
                                     }
                                     Surface(

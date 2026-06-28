@@ -2,9 +2,9 @@ package com.example.fluidcheck.model
 
 enum class BadgeRarity(val label: String, val color: Long) {
     COMMON("Common", 0xFF94A3B8),       // Slate gray
-    RARE("Rare", 0xFF3B82F6),           // Blue
-    EPIC("Epic", 0xFF8B5CF6),           // Purple
-    LEGENDARY("Legendary", 0xFFF59E0B), // Gold
+    UNCOMMON("Uncommon", 0xFF3B82F6),   // Blue
+    RARE("Rare", 0xFF8B5CF6),           // Purple
+    EPIC("Epic", 0xFFF59E0B),           // Gold
     MILESTONE("Milestone", 0xFF10B981)  // Emerald green
 }
 

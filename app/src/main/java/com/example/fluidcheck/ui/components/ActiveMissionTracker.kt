@@ -28,6 +28,14 @@ fun ActiveMissionTracker(
     val themeColors = com.example.fluidcheck.ui.theme.LocalFluidCheckColors.current
     if (userRole == "FREE USER") return
 
+    val filteredMissions = androidx.compose.runtime.remember(activeMissions) {
+        activeMissions.filter { data ->
+            (data["completed"] as? Boolean) != true && 
+            (data["failed"] as? Boolean) != true &&
+            (data["aborted"] as? Boolean) != true
+        }
+    }
+
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp)) {
         Text(
             text = "Active Missions",
@@ -36,7 +44,7 @@ fun ActiveMissionTracker(
             modifier = Modifier.padding(bottom = 8.dp)
         )
         
-        if (activeMissions.isEmpty()) {
+        if (filteredMissions.isEmpty()) {
             Surface(
                 modifier = Modifier.fillMaxWidth().clickable { onNavigateToProgress() },
                 shape = RoundedCornerShape(16.dp),
@@ -54,7 +62,7 @@ fun ActiveMissionTracker(
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(activeMissions) { missionData ->
+                items(filteredMissions) { missionData ->
                     val missionId = missionData["missionId"] as? String ?: return@items
                     val progress = (missionData["progress"] as? Number)?.toInt() ?: 0
                     val missionDef = MissionPool.getMission(missionId) ?: return@items

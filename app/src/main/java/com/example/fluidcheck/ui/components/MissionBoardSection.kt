@@ -79,7 +79,7 @@ fun MissionBoardSection(
             }
             
             Text(
-                text = "Rewards will be given after the daily reset at 00:00.",
+                text = "Rewards and new missions will be given after the daily reset at 00:00.",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Gray,
                 modifier = Modifier.padding(top = 4.dp)
@@ -141,8 +141,12 @@ fun MissionBoardSection(
                     }
                 }
 
+                // Display both generated board missions and any currently active/accepted missions
+                val activeIds = activeMissions.mapNotNull { it["missionId"] as? String }
+                val allDisplayMissionIds = (activeIds + boardMissionIds).distinct()
+
                 // Sort missions: Active, completed, or aborted missions first
-                val sortedMissionIds = boardMissionIds.sortedByDescending { missionId ->
+                val sortedMissionIds = allDisplayMissionIds.sortedByDescending { missionId ->
                     val isActive = activeMissions.any { it["missionId"] == missionId }
                     val isCompleted = completedMissionsToday.contains(missionId)
                     val isAborted = abortedMissionsToday.contains(missionId)

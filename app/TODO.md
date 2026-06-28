@@ -468,9 +468,9 @@ val Typography = Typography(
      - _Epic Missions:_ 6% chance to appear in a slot.
    - **Reward Tiers & Probabilities:**
      - _Easy Missions:_ Reward: Common Badges, with a 6.25% probability of dropping a "Streak Shield Fragment."
-     - _Moderate Missions:_ Reward: Rare Badges, with a 12.5% probability of dropping a "Streak Shield Fragment."
-     - _Hard Missions:_ Reward: Epic Badges, with a 33% probability of dropping a "Streak Shield Fragment."
-     - _Epic Missions:_ Reward: Legendary Badges and a guaranteed "Full Streak Shield." (Only 5 out of the 50 total missions should be categorized as Epic, appearing rarely on the board).
+     - _Moderate Missions:_ Reward: Uncommon Badges, with a 12.5% probability of dropping a "Streak Shield Fragment."
+     - _Hard Missions:_ Reward: Rare Badges, with a 33% probability of dropping a "Streak Shield Fragment."
+     - _Epic Missions:_ Reward: Epic Badges and a guaranteed "Full Streak Shield." (Only 5 out of the 50 total missions should be categorized as Epic, appearing rarely on the board).
    - _Note: 10 Streak Shield Fragments automatically combine to craft 1 Full Streak Shield._
 
 2. **Inventory & Collectibles (Settings Screen):**
@@ -523,7 +523,7 @@ val Typography = Typography(
 
 ## 18. Simulated Advertisements (Free Users Only)
 
-*Note: This feature is strictly for Free Users. Premium Users will have a completely ad-free experience.*
+_Note: This feature is strictly for Free Users. Premium Users will have a completely ad-free experience._
 
 1. **Mock Advertisement System:**
    Since there is no actual third-party ad network integrated, develop a system that displays locally generated, mock advertisements throughout the app.

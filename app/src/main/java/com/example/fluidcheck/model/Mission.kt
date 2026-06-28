@@ -8,9 +8,9 @@ enum class MissionDifficulty(
     val durationDays: Int             // Number of days before mission expires
 ) {
     EASY("Easy", 0.50, 0.125, BadgeRarity.COMMON, 1),
-    MODERATE("Moderate", 0.30, 0.33, BadgeRarity.RARE, 1),
-    HARD("Hard", 0.14, 0.66, BadgeRarity.EPIC, 3),
-    EPIC("Epic", 0.06, 1.0, BadgeRarity.LEGENDARY, 7)
+    MODERATE("Moderate", 0.30, 0.33, BadgeRarity.UNCOMMON, 1),
+    HARD("Hard", 0.14, 0.66, BadgeRarity.RARE, 3),
+    EPIC("Epic", 0.06, 1.0, BadgeRarity.EPIC, 7)
 }
 
 enum class MissionTargetType {
