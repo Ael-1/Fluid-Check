@@ -1275,7 +1275,11 @@ fun LogNewDrinkSheet(
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                        unfocusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant,
+                        focusedContainerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,
+                        focusedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                     ),
                     textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
                     singleLine = true
@@ -1354,9 +1358,13 @@ fun LogNewDrinkSheet(
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
-                    focusedContainerColor = Slate50,
-                    unfocusedContainerColor = Slate50
+                    unfocusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant,
+                    focusedContainerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,
+                    focusedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
+                    focusedPlaceholderColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    unfocusedPlaceholderColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 ),
                 textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
                 singleLine = true
