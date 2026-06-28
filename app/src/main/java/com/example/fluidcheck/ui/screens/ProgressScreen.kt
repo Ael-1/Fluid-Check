@@ -645,7 +645,7 @@ fun HydrationDatePickerDialog(
                                     val isSelected = cellDate == selectedDate
                                     
                                     // Calculate progress percentage
-                                    val dateStr = cellDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.getDefault()))
+                                    val dateStr = cellDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.US))
                                     val dayLogs = allLogs.filter { it.date == dateStr }
                                     val totalIntake = dayLogs.sumOf { it.amount }.toFloat()
                                     val progressPct = if (dailyGoal > 0) (totalIntake / dailyGoal).coerceIn(0f, 1f) else 0f
@@ -882,17 +882,49 @@ fun getChartDataForRange(
                 else -> date.format(DateTimeFormatter.ofPattern("MMM dd, yyyy", Locale.getDefault()))
             }
             
-            val targetDateStr = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.getDefault()))
+            val targetDateStr = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.US))
             val dayLogs = allLogs.filter { it.date == targetDateStr }
             
-            val timeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
-            val sortedLogs = dayLogs.mapNotNull { log ->
-                try {
-                    val time = LocalTime.parse(log.time, timeFormatter)
-                    log to time
+            val sortedLogs = dayLogs.map { log ->
+                val time = try {
+                    val cleanTime = log.time.trim().uppercase(Locale.US)
+                    val formats = listOf(
+                        DateTimeFormatter.ofPattern("h:mm a", Locale.US),
+                        DateTimeFormatter.ofPattern("hh:mm a", Locale.US),
+                        DateTimeFormatter.ofPattern("H:mm", Locale.US),
+                        DateTimeFormatter.ofPattern("HH:mm", Locale.US),
+                        DateTimeFormatter.ofPattern("h:mm:ss a", Locale.US),
+                        DateTimeFormatter.ofPattern("hh:mm:ss a", Locale.US)
+                    )
+                    var parsedTime: LocalTime? = null
+                    for (formatter in formats) {
+                        try {
+                            parsedTime = LocalTime.parse(cleanTime, formatter)
+                            break
+                        } catch (e: Exception) {
+                            // continue
+                        }
+                    }
+                    parsedTime ?: run {
+                        val parts = cleanTime.split(":")
+                        if (parts.isNotEmpty()) {
+                            val hour = parts[0].filter { it.isDigit() }.toIntOrNull() ?: 12
+                            val minute = if (parts.size > 1) parts[1].filter { it.isDigit() }.toIntOrNull() ?: 0 else 0
+                            val isPm = cleanTime.contains("PM")
+                            val adjustedHour = when {
+                                isPm && hour < 12 -> hour + 12
+                                !isPm && hour == 12 -> 0
+                                else -> hour
+                            }
+                            LocalTime.of(adjustedHour.coerceIn(0, 23), minute.coerceIn(0, 59))
+                        } else {
+                            LocalTime.of(12, 0)
+                        }
+                    }
                 } catch (e: Exception) {
-                    null
+                    LocalTime.of(12, 0)
                 }
+                log to time
             }.sortedBy { it.second }
 
             // Cumulative Sum Logic
@@ -900,11 +932,26 @@ fun getChartDataForRange(
             val points = mutableListOf<Float>()
             val xOffsets = mutableListOf<Float>()
             
+            // Start from midnight with 0 volume
+            points.add(0f)
+            xOffsets.add(0f)
+
             sortedLogs.forEach { (log, time) ->
                 runningTotal += log.amount
                 points.add(runningTotal)
                 val offsetInDay = time.toSecondOfDay().toFloat() / (24 * 60 * 60)
                 xOffsets.add(offsetInDay)
+            }
+            
+            // If it's today and we have logs, extend the line to current time? 
+            // Or just leave it at the last log. Let's extend to "now" if it's today to show current progress.
+            if (offset == 0 && sortedLogs.isNotEmpty()) {
+                val nowTime = LocalTime.now(PST_ZONE)
+                val nowOffset = nowTime.toSecondOfDay().toFloat() / (24 * 60 * 60)
+                if (nowOffset > (xOffsets.lastOrNull() ?: 0f)) {
+                    points.add(runningTotal)
+                    xOffsets.add(nowOffset)
+                }
             }
 
             val chartMax = if (runningTotal > dailyGoal) {
@@ -935,21 +982,19 @@ fun getChartDataForRange(
             val weekPoints = mutableListOf<Float>()
             for (i in 0..6) {
                 val currentDay = monday.plusDays(i.toLong())
-                val dayStr = currentDay.format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.getDefault()))
+                val dayStr = currentDay.format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.US))
                 val total = allLogs.filter { it.date == dayStr }.sumOf { it.amount }.toFloat()
                 weekPoints.add(total)
             }
 
             val limitIndex = if (offset == 0) today.dayOfWeek.value - 1 else 6
-            val firstActive = weekPoints.indexOfFirst { it > 0 }
             
             val filteredPoints = mutableListOf<Float>()
             val xOffsets = mutableListOf<Float>()
-            if (firstActive != -1 && firstActive <= limitIndex) {
-                for (i in firstActive..limitIndex) {
-                    filteredPoints.add(weekPoints[i])
-                    xOffsets.add(i / 6f)
-                }
+            // Always show from Monday to today/Sunday
+            for (i in 0..limitIndex) {
+                filteredPoints.add(weekPoints[i])
+                xOffsets.add(i / 6f)
             }
 
             val maxInChart = if (filteredPoints.isNotEmpty()) filteredPoints.maxOrNull() ?: 0f else 0f
@@ -1002,14 +1047,12 @@ fun getChartDataForRange(
                 }
             } else 3
             
-            val firstActive = monthPoints.indexOfFirst { it > 0 }
             val filteredPoints = mutableListOf<Float>()
             val xOffsets = mutableListOf<Float>()
-            if (firstActive != -1 && firstActive <= limitIndex) {
-                for (i in firstActive..limitIndex) {
-                    filteredPoints.add(monthPoints[i])
-                    xOffsets.add(i / 3f)
-                }
+            // Show from Week 1 to current week
+            for (i in 0..limitIndex) {
+                filteredPoints.add(monthPoints[i])
+                xOffsets.add(i / 3f)
             }
 
             val maxInChart = if (filteredPoints.isNotEmpty()) filteredPoints.maxOrNull() ?: 0f else 0f
@@ -1048,14 +1091,12 @@ fun getChartDataForRange(
             }
 
             val limitIndex = if (offset == 0) today.monthValue - 1 else 11
-            val firstActive = yearPoints.indexOfFirst { it > 0 }
             val filteredPoints = mutableListOf<Float>()
             val xOffsets = mutableListOf<Float>()
-            if (firstActive != -1 && firstActive <= limitIndex) {
-                for (i in firstActive..limitIndex) {
-                    filteredPoints.add(yearPoints[i])
-                    xOffsets.add(i / 11f)
-                }
+            // Show from January to current month
+            for (i in 0..limitIndex) {
+                filteredPoints.add(yearPoints[i])
+                xOffsets.add(i / 11f)
             }
 
             val maxInChart = if (filteredPoints.isNotEmpty()) filteredPoints.maxOrNull() ?: 0f else 0f

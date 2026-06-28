@@ -1178,7 +1178,7 @@ fun LogHistoryDialog(
             val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
             val groupedLogs = remember(logs) {
                 if (logs == null) return@remember emptyList()
-                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).apply {
+                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply {
                     timeZone = java.util.TimeZone.getTimeZone("GMT+8")
                 }
                 val now = java.util.Date()
@@ -1205,7 +1205,7 @@ fun LogHistoryDialog(
             }
 
             val sdfToday = remember {
-                java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).apply {
+                java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply {
                     timeZone = java.util.TimeZone.getTimeZone("GMT+8")
                 }
             }
@@ -1291,7 +1291,7 @@ fun LogHistoryDialog(
                                             @Suppress("DEPRECATION")
                                             val formattedDate = remember(log.date, screenWidth) {
                                                 try {
-                                                    val parser = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                                                    val parser = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
                                                     val date = parser.parse(log.date)
                                                     val formatPattern = if (screenWidth < 360) "MMM d, yyyy" else "MMMM d, yyyy"
                                                     val formatter = java.text.SimpleDateFormat(formatPattern, java.util.Locale.getDefault())

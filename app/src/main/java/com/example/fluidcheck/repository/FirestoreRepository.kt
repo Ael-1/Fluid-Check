@@ -279,6 +279,19 @@ class FirestoreRepository(private val context: Context? = null) {
         }
     }
 
+    private suspend fun commitBatch(batch: com.google.firebase.firestore.WriteBatch) {
+        val task = batch.commit()
+        val isOnline = context?.let { ctx ->
+            val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+            val activeNet = cm?.activeNetwork
+            val caps = cm?.getNetworkCapabilities(activeNet)
+            caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        } ?: true
+        if (isOnline) {
+            task.await()
+        }
+    }
+
     suspend fun saveFluidLog(uid: String, log: FluidLog): Result<Unit> {
         if (uid == "GUEST") {
             guestRepository?.saveFluidLog(log)
@@ -292,7 +305,7 @@ class FirestoreRepository(private val context: Context? = null) {
             batch.update(userRef, "totalFluidDrankAllTime", FieldValue.increment(log.amount.toLong()))
             batch.set(logRef, log)
             
-            batch.commit().await()
+            commitBatch(batch)
             
             // GAMIFICATION: Update active mission progress after log is saved
             checkMissionProgress(uid)
@@ -317,7 +330,7 @@ class FirestoreRepository(private val context: Context? = null) {
             batch.update(userRef, "totalFluidDrankAllTime", FieldValue.increment(amountDiff))
             batch.set(logRef, newLog)
             
-            batch.commit().await()
+            commitBatch(batch)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -337,7 +350,7 @@ class FirestoreRepository(private val context: Context? = null) {
             batch.update(userRef, "totalFluidDrankAllTime", FieldValue.increment(-log.amount.toLong()))
             batch.delete(logRef)
             
-            batch.commit().await()
+            commitBatch(batch)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -360,7 +373,7 @@ class FirestoreRepository(private val context: Context? = null) {
                 val logRef = userRef.collection("fluid_logs").document(log.id.toString())
                 batch.delete(logRef)
             }
-            batch.commit().await()
+            commitBatch(batch)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -397,6 +410,19 @@ class FirestoreRepository(private val context: Context? = null) {
             querySnapshot.toObjects(FluidLog::class.java)
         } catch (e: Exception) {
             emptyList()
+        }
+    }
+
+    suspend fun syncFluidLogsFromServer(uid: String): Result<Unit> {
+        if (uid.isEmpty() || uid == "GUEST") return Result.success(Unit)
+        return try {
+            usersCollection.document(uid)
+                .collection("fluid_logs")
+                .get(com.google.firebase.firestore.Source.SERVER)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 

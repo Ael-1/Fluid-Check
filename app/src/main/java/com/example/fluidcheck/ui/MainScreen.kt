@@ -422,6 +422,13 @@ fun MainScreen(
         }
     }
 
+    // Sync logs from Firestore server when device is connected to internet
+    LaunchedEffect(isConnected, userId) {
+        if (isConnected && userId.isNotEmpty() && userId != "GUEST") {
+            firestoreRepository.syncFluidLogsFromServer(userId)
+        }
+    }
+
     if (showLogSheet) {
         LogNewDrinkSheet(
             onDismiss = { showLogSheet = false },
@@ -431,10 +438,10 @@ fun MainScreen(
             onConfirm = { type, amount ->
                 scope.launch {
                     try {
-                        val sdfTime = SimpleDateFormat("h:mm a", Locale.getDefault()).apply {
+                        val sdfTime = SimpleDateFormat("h:mm a", Locale.US).apply {
                             timeZone = TimeZone.getTimeZone("GMT+8")
                         }
-                        val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+                        val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
                             timeZone = TimeZone.getTimeZone("GMT+8")
                         }
                         val now = Date()
@@ -642,10 +649,10 @@ fun MainScreen(
                             onQuickAdd = { config ->
                                  scope.launch {
                                     try {
-                                        val sdfTime = SimpleDateFormat("h:mm a", Locale.getDefault()).apply {
+                                        val sdfTime = SimpleDateFormat("h:mm a", Locale.US).apply {
                                             timeZone = TimeZone.getTimeZone("GMT+8")
                                         }
-                                        val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+                                        val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
                                             timeZone = TimeZone.getTimeZone("GMT+8")
                                         }
                                         val now = Date()
