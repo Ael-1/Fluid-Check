@@ -454,10 +454,18 @@ fun MainScreen(
         }
     }
 
-    // Streak Catch-up & Evaluation (Task 1.12)
-    LaunchedEffect(userRecord, currentTodayDate) {
+    // Streak Catch-up & Evaluation (Task 1.12) and Dynamic Mission Board Generation
+    LaunchedEffect(userRecord, currentTodayDate, isConnected) {
         if (userId.isNotEmpty() && !isAdminMode) {
             firestoreRepository.evaluateStreak(userId)
+        }
+        val record = userRecord
+        if (record != null && isConnected && record.role != "FREE USER" && userId.isNotEmpty() && userId != "GUEST") {
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("GMT+8") }
+            val todayStr = sdf.format(Date())
+            if (record.missionBoardDate != todayStr) {
+                firestoreRepository.generateDailyMissionBoard(userId)
+            }
         }
     }
 

@@ -1042,7 +1042,11 @@ class FirestoreRepository(private val context: Context? = null) {
             val userRef = usersCollection.document(userId)
             val userDoc = userRef.get().await()
             val activeData = userDoc.get("activeMissions") as? List<Map<String, Any>> ?: emptyList()
-            val activeIds = activeData.mapNotNull { it["missionId"] as? String }
+            val activeIds = activeData.filter { data ->
+                (data["completed"] as? Boolean) != true &&
+                (data["failed"] as? Boolean) != true &&
+                (data["aborted"] as? Boolean) != true
+            }.mapNotNull { it["missionId"] as? String }
             
             // Spawn only (10 - activeCount) new missions, ensuring we don't exceed 10 total board slots
             val spawnCount = (10 - activeIds.size).coerceAtLeast(0)
